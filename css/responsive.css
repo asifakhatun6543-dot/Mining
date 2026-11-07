@@ -1,0 +1,68 @@
+/* OpenPDF Studio - Responsive & Accessibility Rules */
+
+@media (max-width: 1200px) {
+  .right-sidebar {
+    width: 240px;
+  }
+  .left-sidebar {
+    width: 180px;
+  }
+}
+
+@media (max-width: 900px) {
+  .right-sidebar {
+    position: absolute;
+    right: 0;
+    top: 0;
+    bottom: 0;
+    box-shadow: var(--shadow-sheet);
+    transform: translateX(100%);
+    transition: transform 0.2s ease;
+  }
+  .right-sidebar.open {
+    transform: translateX(0);
+  }
+}
+
+@media (max-width: 768px) {
+  .left-sidebar {
+    position: absolute;
+    left: 0;
+    top: 0;
+    bottom: 0;
+    box-shadow: var(--shadow-sheet);
+    transform: translateX(-100%);
+    transition: transform 0.2s ease;
+  }
+  .left-sidebar.open {
+    transform: translateX(0);
+  }
+  .toolbar-group .tool-btn span {
+    display: none;
+  }
+}
+
+/* Accessibility Focus States */
+button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-visible {
+  outline: 2px solid var(--accent-primary);
+  outline-offset: 1px;
+}
+
+/* Scrollbar Customization */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: rgba(0, 0, 0, 0.15);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--border-subtle);
+  border-radius: var(--radius-full);
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--text-dim);
+}
