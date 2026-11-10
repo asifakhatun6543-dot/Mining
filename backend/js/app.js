@@ -2,7 +2,7 @@
  * OpenPDF Studio - Main Application Controller
  */
 
-import { State } from "./state.js";
+import { State, getApiUrl } from "./state.js";
 import { HistoryManager } from "./history.js";
 import { PDFRenderer } from "./pdf-renderer.js";
 import { TextSelectionManager } from "./text-selection.js";
@@ -55,7 +55,7 @@ class OpenPDFStudioApp {
 
   async _checkHealth() {
     try {
-      const res = await fetch("/api/health");
+      const res = await fetch(getApiUrl("/api/health"));
       if (res.ok) {
         const data = await res.json();
         console.log("Backend healthy:", data);
@@ -310,12 +310,14 @@ class OpenPDFStudioApp {
     // Sample document cards
     document.getElementById("load-sample-digital")?.addEventListener("click", async () => {
       welcomeModal.style.display = "none";
-      await this.loadSampleDocument("/sample_docs/sample_digital_contract.pdf", "sample_digital_contract.pdf");
+      const sampleUrl = new URL("sample_docs/sample_digital_contract.pdf", document.baseURI).href;
+      await this.loadSampleDocument(sampleUrl, "sample_digital_contract.pdf");
     });
 
     document.getElementById("load-sample-scanned")?.addEventListener("click", async () => {
       welcomeModal.style.display = "none";
-      await this.loadSampleDocument("/sample_docs/sample_scanned_receipt.pdf", "sample_scanned_receipt.pdf");
+      const sampleUrl = new URL("sample_docs/sample_scanned_receipt.pdf", document.baseURI).href;
+      await this.loadSampleDocument(sampleUrl, "sample_scanned_receipt.pdf");
     });
   }
 
@@ -348,7 +350,7 @@ class OpenPDFStudioApp {
       const formData = new FormData();
       formData.append("file", file);
 
-      const apiRes = await fetch("/api/documents/analyze", {
+      const apiRes = await fetch(getApiUrl("/api/documents/analyze"), {
         method: "POST",
         body: formData
       });

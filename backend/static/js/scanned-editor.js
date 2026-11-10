@@ -2,7 +2,7 @@
  * OpenPDF Studio - Scanned Document & OCR Interactive Editor
  */
 
-import { State } from "./state.js";
+import { State, getApiUrl } from "./state.js";
 import { HistoryManager } from "./history.js";
 
 export class ScannedEditor {
@@ -99,7 +99,7 @@ export class ScannedEditor {
       formData.append("language", "eng");
       formData.append("dpi", 300);
 
-      const res = await fetch("/api/documents/ocr", {
+      const res = await fetch(getApiUrl("/api/documents/ocr"), {
         method: "POST",
         body: formData
       });
@@ -190,7 +190,7 @@ export class ScannedEditor {
     formData.append("font_size", 14.0);
 
     try {
-      const res = await fetch("/api/documents/scanned-preview", {
+      const res = await fetch(getApiUrl("/api/documents/scanned-preview"), {
         method: "POST",
         body: formData
       });

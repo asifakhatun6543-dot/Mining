@@ -2,7 +2,7 @@
  * OpenPDF Studio - PDF Export Client & Validation Modal
  */
 
-import { State } from "./state.js";
+import { State, getApiUrl } from "./state.js";
 
 export class ExportClient {
   constructor() {
@@ -109,7 +109,7 @@ export class ExportClient {
     };
 
     try {
-      const res = await fetch("/api/documents/export", {
+      const res = await fetch(getApiUrl("/api/documents/export"), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload)
@@ -138,7 +138,7 @@ export class ExportClient {
       }
 
       const dlLink = this.modalEl.querySelector("#export-download-link");
-      dlLink.href = data.download_url;
+      dlLink.href = getApiUrl(data.download_url);
       dlLink.download = data.download_filename || "edited_document.pdf";
       dlLink.style.display = "flex";
 

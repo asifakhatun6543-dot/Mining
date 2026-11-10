@@ -6,7 +6,7 @@ import { State } from "./state.js";
 
 // Configure PDF.js worker
 if (window.pdfjsLib) {
-  window.pdfjsLib.GlobalWorkerOptions.workerSrc = "/vendor/pdfjs/pdf.worker.js";
+  window.pdfjsLib.GlobalWorkerOptions.workerSrc = new URL("vendor/pdfjs/pdf.worker.js", document.baseURI).href;
 }
 
 export class PDFRenderer {

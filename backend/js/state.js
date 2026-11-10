@@ -176,3 +176,11 @@ export const State = {
     this.emit("pageOpsChanged", this.pendingPageOperations);
   }
 };
+
+export function getApiUrl(path) {
+  const p = path.startsWith("/") ? path : "/" + path;
+  if (typeof window !== "undefined" && window.location.hostname.includes("github.io")) {
+    return "https://mining-lilac.vercel.app" + p;
+  }
+  return p;
+}
