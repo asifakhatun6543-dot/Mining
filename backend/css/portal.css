@@ -1,0 +1,653 @@
+/* ==========================================================================
+   OpenPDF Studio - Landing Portal & Multi-Tool Suite CSS
+   ========================================================================== */
+
+/* --------------------------------------------------------------------------
+   Layout Containers & View Switching
+   -------------------------------------------------------------------------- */
+#landing-view {
+  flex: 1;
+  height: 100vh;
+  height: 100dvh;
+  background: #f8fafc;
+  color: #0f172a;
+  display: flex;
+  flex-direction: column;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+#editor-view {
+  display: none; /* Hidden until user chooses PDF Editor */
+  height: 100vh;
+  height: 100dvh;
+  overflow: hidden;
+  flex-direction: column;
+}
+
+/* --------------------------------------------------------------------------
+   Portal Navigation Bar
+   -------------------------------------------------------------------------- */
+.portal-navbar {
+  height: 64px;
+  background: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(10px);
+  border-bottom: 1px solid #e2e8f0;
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 24px;
+}
+
+.portal-brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  text-decoration: none;
+  font-weight: 800;
+  font-size: 18px;
+  color: #0f172a;
+  cursor: pointer;
+}
+
+.portal-brand .brand-icon {
+  width: 34px;
+  height: 34px;
+  background: linear-gradient(135deg, #ea580c 0%, #f97316 100%);
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #ffffff;
+  font-weight: 800;
+  font-size: 18px;
+  box-shadow: 0 4px 10px rgba(234, 88, 12, 0.3);
+}
+
+.portal-nav-links {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.portal-nav-link {
+  color: #475569;
+  font-size: 14px;
+  font-weight: 600;
+  padding: 8px 14px;
+  border-radius: 6px;
+  text-decoration: none;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  background: transparent;
+  border: none;
+}
+
+.portal-nav-link:hover {
+  color: #0f172a;
+  background: #f1f5f9;
+}
+
+.portal-nav-link.active {
+  color: #2563eb;
+  background: #eff6ff;
+}
+
+.portal-nav-cta {
+  background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
+  color: #ffffff !important;
+  font-weight: 700;
+  padding: 8px 18px;
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(37, 99, 235, 0.25);
+}
+
+.portal-nav-cta:hover {
+  background: linear-gradient(135deg, #1d4ed8 0%, #1e40af 100%);
+  color: #ffffff !important;
+}
+
+/* --------------------------------------------------------------------------
+   Hero Section
+   -------------------------------------------------------------------------- */
+.portal-hero {
+  padding: 56px 20px 36px 20px;
+  text-align: center;
+  max-width: 960px;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.hero-pill-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 14px;
+  border-radius: 9999px;
+  background: #eff6ff;
+  border: 1px solid #bfdbfe;
+  color: #1d4ed8;
+  font-size: 13px;
+  font-weight: 700;
+  margin-bottom: 20px;
+}
+
+.hero-pill-badge svg {
+  color: #2563eb;
+}
+
+.portal-hero h1 {
+  font-size: 44px;
+  font-weight: 800;
+  color: #0f172a;
+  line-height: 1.15;
+  letter-spacing: -0.02em;
+  margin-bottom: 16px;
+}
+
+.portal-hero h1 span.gradient-text {
+  background: linear-gradient(135deg, #2563eb 0%, #7c3aed 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.portal-hero p.hero-subhead {
+  font-size: 18px;
+  color: #475569;
+  max-width: 680px;
+  line-height: 1.5;
+  margin-bottom: 32px;
+}
+
+/* Quick Universal Drop Area in Hero */
+.hero-dropzone {
+  width: 100%;
+  max-width: 720px;
+  background: #ffffff;
+  border: 2px dashed #93c5fd;
+  border-radius: 16px;
+  padding: 32px 24px;
+  box-shadow: 0 10px 30px rgba(37, 99, 235, 0.08);
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+}
+
+.hero-dropzone:hover,
+.hero-dropzone.drag-over {
+  border-color: #2563eb;
+  background: #f0f7ff;
+  transform: translateY(-2px);
+  box-shadow: 0 14px 35px rgba(37, 99, 235, 0.15);
+}
+
+.hero-dropzone-icon {
+  width: 52px;
+  height: 52px;
+  background: #eff6ff;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #2563eb;
+}
+
+.hero-dropzone-title {
+  font-size: 17px;
+  font-weight: 700;
+  color: #0f172a;
+}
+
+.hero-dropzone-subtitle {
+  font-size: 13px;
+  color: #64748b;
+}
+
+/* --------------------------------------------------------------------------
+   Tools Grid Section
+   -------------------------------------------------------------------------- */
+.tools-section {
+  max-width: 1140px;
+  margin: 0 auto;
+  padding: 30px 20px 60px 20px;
+  width: 100%;
+}
+
+.section-title-wrap {
+  text-align: center;
+  margin-bottom: 36px;
+}
+
+.section-title {
+  font-size: 28px;
+  font-weight: 800;
+  color: #0f172a;
+  margin-bottom: 8px;
+}
+
+.section-subtitle {
+  font-size: 15px;
+  color: #64748b;
+}
+
+.tools-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  gap: 22px;
+}
+
+.tool-card {
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 14px;
+  padding: 24px;
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  display: flex;
+  flex-direction: column;
+  position: relative;
+  overflow: hidden;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.04);
+}
+
+.tool-card:hover {
+  transform: translateY(-4px);
+  border-color: #3b82f6;
+  box-shadow: 0 12px 24px -4px rgba(37, 99, 235, 0.12), 0 4px 8px -2px rgba(0, 0, 0, 0.04);
+}
+
+.tool-card-badge {
+  position: absolute;
+  top: 14px;
+  right: 14px;
+  font-size: 11px;
+  font-weight: 700;
+  padding: 3px 8px;
+  border-radius: 9999px;
+  background: #eff6ff;
+  color: #2563eb;
+  border: 1px solid #bfdbfe;
+}
+
+.tool-card-badge.popular {
+  background: #fef3c7;
+  color: #b45309;
+  border-color: #fde68a;
+}
+
+.tool-card-icon {
+  width: 48px;
+  height: 48px;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 16px;
+}
+
+.tool-card-icon.blue { background: #eff6ff; color: #2563eb; }
+.tool-card-icon.purple { background: #f5f3ff; color: #7c3aed; }
+.tool-card-icon.orange { background: #fff7ed; color: #ea580c; }
+.tool-card-icon.emerald { background: #ecfdf5; color: #059669; }
+.tool-card-icon.rose { background: #fff1f2; color: #e11d48; }
+.tool-card-icon.amber { background: #fffbeb; color: #d97706; }
+
+.tool-card-title {
+  font-size: 18px;
+  font-weight: 700;
+  color: #0f172a;
+  margin-bottom: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.tool-card-desc {
+  font-size: 13px;
+  color: #64748b;
+  line-height: 1.5;
+  margin-bottom: 20px;
+  flex: 1;
+}
+
+.tool-card-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  color: #1e293b;
+  font-size: 13px;
+  font-weight: 600;
+  padding: 9px 16px;
+  border-radius: 8px;
+  transition: all 0.15s ease;
+}
+
+.tool-card:hover .tool-card-btn {
+  background: #2563eb;
+  border-color: #2563eb;
+  color: #ffffff;
+}
+
+/* --------------------------------------------------------------------------
+   Features & Trust Section
+   -------------------------------------------------------------------------- */
+.features-section {
+  background: #ffffff;
+  border-top: 1px solid #e2e8f0;
+  border-bottom: 1px solid #e2e8f0;
+  padding: 50px 20px;
+}
+
+.features-inner {
+  max-width: 1080px;
+  margin: 0 auto;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 32px;
+}
+
+.feature-box {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.feature-icon {
+  width: 40px;
+  height: 40px;
+  border-radius: 10px;
+  background: #f1f5f9;
+  color: #2563eb;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 4px;
+}
+
+.feature-box h3 {
+  font-size: 16px;
+  font-weight: 700;
+  color: #0f172a;
+}
+
+.feature-box p {
+  font-size: 13.5px;
+  color: #64748b;
+  line-height: 1.5;
+}
+
+/* --------------------------------------------------------------------------
+   Portal Footer
+   -------------------------------------------------------------------------- */
+.portal-footer {
+  padding: 30px 20px;
+  text-align: center;
+  color: #94a3b8;
+  font-size: 13px;
+}
+
+/* --------------------------------------------------------------------------
+   Back to Home Header Button inside PDF Editor
+   -------------------------------------------------------------------------- */
+.btn-back-home {
+  background: #f8fafc;
+  border: 1px solid #cbd5e1;
+  color: #334155;
+  font-size: 12px;
+  font-weight: 700;
+  padding: 5px 12px;
+  border-radius: 6px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  user-select: none;
+}
+
+.btn-back-home:hover {
+  background: #f1f5f9;
+  color: #0f172a;
+  border-color: #94a3b8;
+}
+
+/* --------------------------------------------------------------------------
+   Interactive Tool Modals (JPG to PDF, Merge, Resize)
+   -------------------------------------------------------------------------- */
+.tool-dialog-backdrop {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(15, 23, 42, 0.65);
+  backdrop-filter: blur(4px);
+  z-index: 2000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  animation: fadeIn 0.15s ease-out;
+}
+
+.tool-dialog {
+  background: #ffffff;
+  border-radius: 16px;
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.25);
+  width: 100%;
+  max-width: 640px;
+  max-height: 90vh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  animation: slideUp 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.tool-dialog-header {
+  padding: 18px 24px;
+  border-bottom: 1px solid #e2e8f0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: #f8fafc;
+}
+
+.tool-dialog-header h3 {
+  font-size: 18px;
+  font-weight: 800;
+  color: #0f172a;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.tool-dialog-body {
+  padding: 24px;
+  overflow-y: auto;
+  flex: 1;
+}
+
+.tool-dialog-footer {
+  padding: 16px 24px;
+  border-top: 1px solid #e2e8f0;
+  background: #f8fafc;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10px;
+}
+
+/* Tool File Items Queue */
+.tool-queue-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 14px;
+  max-height: 240px;
+  overflow-y: auto;
+}
+
+.tool-queue-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 14px;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  font-size: 13px;
+}
+
+.tool-queue-item-info {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  overflow: hidden;
+}
+
+.tool-queue-item-title {
+  font-weight: 600;
+  color: #0f172a;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 280px;
+}
+
+.tool-queue-item-size {
+  font-size: 11px;
+  color: #64748b;
+}
+
+.tool-queue-item-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.tool-queue-btn {
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  color: #64748b;
+  padding: 4px;
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.tool-queue-btn:hover {
+  background: #e2e8f0;
+  color: #0f172a;
+}
+
+.tool-queue-btn.danger:hover {
+  background: #fee2e2;
+  color: #dc2626;
+}
+
+/* Image Resize Controls */
+.resize-preview-box {
+  width: 100%;
+  max-height: 200px;
+  background: #f1f5f9;
+  border: 1px solid #cbd5e1;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  margin-bottom: 18px;
+}
+
+.resize-preview-box img {
+  max-width: 100%;
+  max-height: 190px;
+  object-fit: contain;
+}
+
+.resize-form-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px;
+}
+
+.form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.form-group label {
+  font-size: 12px;
+  font-weight: 700;
+  color: #334155;
+}
+
+.form-input {
+  border: 1px solid #cbd5e1;
+  border-radius: 6px;
+  padding: 8px 12px;
+  font-size: 13px;
+  color: #0f172a;
+  background: #ffffff;
+  outline: none;
+}
+
+.form-input:focus {
+  border-color: #2563eb;
+  box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.15);
+}
+
+/* --------------------------------------------------------------------------
+   Responsive Rules for Portal
+   -------------------------------------------------------------------------- */
+@media (max-width: 840px) {
+  .portal-hero h1 {
+    font-size: 32px;
+  }
+  .portal-hero p.hero-subhead {
+    font-size: 16px;
+  }
+  .tools-grid {
+    grid-template-columns: 1fr;
+  }
+  .features-inner {
+    grid-template-columns: 1fr;
+    gap: 24px;
+  }
+  .portal-nav-links .portal-nav-link:not(.portal-nav-cta) {
+    display: none; /* Keep clean navbar on mobile */
+  }
+}
+
+@media (max-width: 480px) {
+  .portal-hero {
+    padding: 36px 14px 24px 14px;
+  }
+  .portal-hero h1 {
+    font-size: 26px;
+  }
+  .hero-dropzone {
+    padding: 22px 14px;
+  }
+  .tool-dialog {
+    max-width: 95%;
+  }
+  .resize-form-grid {
+    grid-template-columns: 1fr;
+  }
+}
