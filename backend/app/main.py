@@ -252,18 +252,66 @@ def validate_pdf(doc_id: str = Form(...)):
     result = PDFValidator.validate_document(path, expected_page_count=count)
     return result
 
-# Serve static files from workspace root
-WORKSPACE_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
+# Dynamically resolve workspace root for local, Docker, and Vercel serverless deployments
+def resolve_workspace_root() -> str:
+    candidates = [
+        os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..")), # Repo root
+        os.path.abspath(os.path.join(os.path.dirname(__file__), "..")),      # Backend root
+        os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "static")), # Backend static dir
+        os.path.abspath(os.path.dirname(__file__)),                          # App dir
+        os.getcwd(),                                                         # CWD
+        os.path.abspath(os.path.join(os.getcwd(), "..")),
+        "/var/task",
+        "/var/task/backend",
+        "/var/task/backend/static"
+    ]
+    for c in candidates:
+        if os.path.exists(os.path.join(c, "index.html")):
+            return c
+    return os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
+
+WORKSPACE_ROOT = resolve_workspace_root()
+
+def find_static_dir(dir_name: str) -> Optional[str]:
+    candidates = [
+        os.path.join(WORKSPACE_ROOT, dir_name),
+        os.path.abspath(os.path.join(os.path.dirname(__file__), "..", dir_name)),
+        os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "static", dir_name)),
+        os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", dir_name)),
+        os.path.abspath(os.path.join(os.getcwd(), dir_name)),
+        f"/var/task/{dir_name}",
+        f"/var/task/backend/{dir_name}",
+        f"/var/task/backend/static/{dir_name}",
+    ]
+    for c in candidates:
+        if os.path.exists(c) and os.path.isdir(c):
+            return c
+    return None
 
 # Serve vendor, css, js, sample_docs static directories
 for static_dir in ["css", "js", "vendor", "sample_docs"]:
-    full_path = os.path.join(WORKSPACE_ROOT, static_dir)
-    if os.path.exists(full_path):
-        app.mount(f"/{static_dir}", StaticFiles(directory=full_path), name=static_dir)
+    dir_path = find_static_dir(static_dir)
+    if dir_path:
+        app.mount(f"/{static_dir}", StaticFiles(directory=dir_path), name=static_dir)
 
 @app.api_route("/", methods=["GET", "HEAD"])
+@app.api_route("/index.html", methods=["GET", "HEAD"])
 def serve_index():
     index_path = os.path.join(WORKSPACE_ROOT, "index.html")
     if os.path.exists(index_path):
         return FileResponse(index_path, media_type="text/html")
+    
+    # Check alternate possible locations
+    for candidate in [
+        os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "index.html")),
+        os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "static", "index.html")),
+        os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "index.html")),
+        os.path.abspath(os.path.join(os.getcwd(), "index.html")),
+        "/var/task/index.html",
+        "/var/task/backend/index.html",
+        "/var/task/backend/static/index.html",
+    ]:
+        if os.path.exists(candidate):
+            return FileResponse(candidate, media_type="text/html")
+
     return {"message": "OpenPDF Studio backend running. Place index.html in the workspace."}

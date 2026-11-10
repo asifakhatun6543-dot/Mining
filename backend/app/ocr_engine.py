@@ -9,14 +9,28 @@ from .schemas import OCRWord, OCRPageResult
 class OCREngine:
     """High-resolution OCR pipeline using PyMuPDF embedded Tesseract with skew detection."""
 
-    TESSDATA_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "tessdata"))
+    @classmethod
+    def get_tessdata_dir(cls) -> str:
+        candidates = [
+            os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "tessdata")),
+            os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "tessdata")),
+            os.path.abspath(os.path.join(os.getcwd(), "tessdata")),
+            os.path.abspath(os.path.join(os.getcwd(), "backend", "tessdata")),
+            "/var/task/tessdata",
+            "/var/task/backend/tessdata"
+        ]
+        for candidate in candidates:
+            if os.path.exists(candidate) and os.path.isdir(candidate):
+                return candidate
+        return os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "tessdata"))
 
     @classmethod
     def get_installed_languages(cls) -> List[str]:
         """Returns list of installed Tesseract languages found in tessdata."""
         languages = []
-        if os.path.exists(cls.TESSDATA_DIR):
-            for f in os.listdir(cls.TESSDATA_DIR):
+        tessdata_dir = cls.get_tessdata_dir()
+        if os.path.exists(tessdata_dir):
+            for f in os.listdir(tessdata_dir):
                 if f.endswith(".traineddata"):
                     lang_code = f.replace(".traineddata", "")
                     languages.append(lang_code)
@@ -83,7 +97,8 @@ class OCREngine:
             )
 
         page = doc[page_number]
-        os.environ["TESSDATA_PREFIX"] = cls.TESSDATA_DIR
+        tessdata_dir = cls.get_tessdata_dir()
+        os.environ["TESSDATA_PREFIX"] = tessdata_dir
 
         # Step 1: Render page at requested DPI to check skew
         zoom = dpi / 72.0
@@ -96,7 +111,7 @@ class OCREngine:
         # Step 2: Run PyMuPDF get_textpage_ocr
         try:
             tp = page.get_textpage_ocr(
-                tessdata=cls.TESSDATA_DIR,
+                tessdata=tessdata_dir,
                 language=language,
                 dpi=dpi,
                 full=True

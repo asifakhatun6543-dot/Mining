@@ -1,0 +1,329 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>OpenPDF Studio - Professional In-Place PDF Editor</title>
+  <meta name="description" content="Professional PDF editor with in-place text editing, accurate font matching, Tesseract OCR with OpenCV inpainting, secure redactions, and verified export.">
+  
+  <!-- Google Fonts for High-Fidelity Typography -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Caveat:wght@400..700&family=Dancing+Script:wght@400..700&family=Fira+Code:wght@400..700&family=Inter:wght@400..700&family=Kalam:wght@400..700&family=Lora:ital,wght@0,400..700;1,400..700&family=Merriweather:ital,wght@0,400..700;1,400..700&family=Montserrat:wght@400..700&family=Open+Sans:wght@400..700&family=Oswald:wght@400..700&family=Pacifico&family=Playfair+Display:ital,wght@0,400..700;1,400..700&family=Poppins:wght@400..700&family=Roboto:wght@400..700&family=JetBrains+Mono:wght@400;700&family=IBM+Plex+Mono:wght@400;700&family=IBM+Plex+Sans:wght@400;700&family=IBM+Plex+Serif:wght@400;700&family=Lato:wght@400;700&family=Nunito:wght@400;700&family=Nunito+Sans:wght@400;700&family=PT+Sans:wght@400;700&family=PT+Serif:wght@400;700&family=Frank+Ruhl+Libre:wght@400;700&family=Noto+Sans:wght@400;700&family=Noto+Serif:wght@400;700&family=Noto+Sans+Devanagari:wght@400;700&family=Noto+Serif+Devanagari:wght@400;700&family=Noto+Sans+Bengali:wght@400;700&family=Noto+Sans+Arabic:wght@400;700&display=swap">
+
+  <!-- CSS Stylesheets -->
+  <link rel="stylesheet" href="/vendor/pdfjs/pdf_viewer.css">
+  <link rel="stylesheet" href="/css/styles.css">
+  <link rel="stylesheet" href="/css/editor.css">
+  <link rel="stylesheet" href="/css/responsive.css">
+
+  <!-- PDF.js Vendor Script -->
+  <script src="/vendor/pdfjs/pdf.js"></script>
+</head>
+<body>
+
+  <!-- Top Navigation Bar -->
+  <header class="app-header" role="banner">
+    <div class="header-left">
+      <div class="brand-badge">
+        <div class="brand-icon">P</div>
+        <span>OpenPDF Studio</span>
+      </div>
+      <div class="toolbar-separator"></div>
+      
+      <div style="display: flex; align-items: center; gap: 6px;">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#64748b" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+        <input type="text" id="document-title-input" class="document-title-input" value="Untitled.pdf" title="Document Name">
+      </div>
+      
+      <span id="header-status-badge" class="doc-status-badge">No Document</span>
+    </div>
+
+    <div class="header-center">
+      <div style="display: flex; background: #f1f5f9; padding: 2px; border-radius: 6px; border: 1px solid #e2e8f0; font-size: 12px; font-weight: 600;">
+        <button type="button" class="mini-btn active" style="padding: 4px 10px;">Edit & fill</button>
+        <button type="button" class="mini-btn" style="padding: 4px 10px;">Invite to sign</button>
+        <button type="button" class="mini-btn" style="padding: 4px 10px;">Create form</button>
+      </div>
+    </div>
+
+    <div class="header-right">
+      <button class="btn-icon" id="header-open-btn" title="Open PDF">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>
+      </button>
+      <button class="btn-icon" id="header-save-btn" title="Save Project Snapshot">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
+      </button>
+      <button class="btn-icon" id="header-print-btn" title="Print Document">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>
+      </button>
+      <button class="btn-primary" id="header-download-btn" title="Export Modified PDF">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+        Download
+      </button>
+      <button class="btn-done-orange" id="header-done-btn" title="Apply changes and finish">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg>
+        DONE
+      </button>
+    </div>
+  </header>
+
+  <!-- Main Ribbon Toolbar (Exact Match to Reference Screenshot) -->
+  <nav class="main-toolbar" role="navigation" aria-label="Editor Tools">
+    <div class="toolbar-group">
+      <!-- Toggle Pages Sidebar -->
+      <button class="tool-btn" id="btn-toggle-pages" title="Manage Pages">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="4" y="2" width="16" height="20" rx="2"/><line x1="9" y1="6" x2="15" y2="6"/><line x1="9" y1="10" x2="15" y2="10"/></svg>
+        <span>Pages</span>
+      </button>
+
+      <!-- Undo / Redo -->
+      <button class="tool-btn" id="header-undo-btn" title="Undo (Ctrl+Z)" disabled>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 7v6h6"/><path d="M21 17a9 9 0 0 0-9-9 9 9 0 0 0-6 2.3L3 13"/></svg>
+        <span>Undo</span>
+      </button>
+      <button class="tool-btn" id="header-redo-btn" title="Redo (Ctrl+Y)" disabled>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 7v6h-6"/><path d="M3 17a9 9 0 0 1 9-9 9 9 0 0 1 6 2.3l3 2.7"/></svg>
+        <span>Redo</span>
+      </button>
+
+      <div class="toolbar-separator"></div>
+
+      <!-- Select -->
+      <button class="tool-btn" data-tool="select" title="Selection Mode">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m3 3 7.07 16.97 2.51-7.39 7.39-2.51L3 3z"/></svg>
+        <span>Select</span>
+      </button>
+
+      <!-- Text: In-place text edit & add text (Active by default like in screenshot) -->
+      <button class="tool-btn active highlight-feature" data-tool="edit-text" id="tool-edit-text" title="Edit Existing Text (In-Place WYSIWYG)">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="4 7 4 4 20 4 20 7"/><line x1="12" y1="4" x2="12" y2="20"/></svg>
+        <span>Text</span>
+      </button>
+
+      <!-- Sign -->
+      <button class="tool-btn" data-tool="signature" title="Insert Signature">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m18 2 4 4"/><path d="M19 9 8.7 19.3a1 1 0 0 1-.7.3H4v-4a1 1 0 0 1 .3-.7L14.6 4.6"/><path d="m2 22 5-1-4-4-1 5Z"/></svg>
+        <span>Sign</span>
+      </button>
+
+      <!-- Erase / Whiteout -->
+      <button class="tool-btn" data-tool="whiteout" title="Erase / Whiteout Area">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m7 21-4.3-4.3c-1-1-1-2.5 0-3.4l9.6-9.6c1-1 2.5-1 3.4 0l5.6 5.6c1 1 1 2.5 0 3.4L13 21"/><path d="M22 21H7"/><path d="m5 11 9 9"/></svg>
+        <span>Erase</span>
+      </button>
+
+      <!-- Image -->
+      <button class="tool-btn" data-tool="image" title="Insert Image">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+        <span>Image</span>
+      </button>
+
+      <!-- Check -->
+      <button class="tool-btn" data-tool="check" title="Add Checkmark">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>
+        <span>Check</span>
+      </button>
+
+      <!-- Cross -->
+      <button class="tool-btn" data-tool="cross" title="Add Cross">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+        <span>Cross</span>
+      </button>
+
+      <!-- Shapes -->
+      <button class="tool-btn" data-tool="rect" title="Add Shapes (Rect, Circle, Line)">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/></svg>
+        <span>Shapes</span>
+      </button>
+
+      <!-- Blackout (Secure Redact) -->
+      <button class="tool-btn danger-action" data-tool="redact" title="Blackout / Secure Redact">
+        <svg viewBox="0 0 24 24" fill="currentColor"><rect x="3" y="3" width="18" height="18" rx="2"/></svg>
+        <span>Blackout</span>
+      </button>
+
+      <!-- Highlight -->
+      <button class="tool-btn" data-tool="highlight" title="Highlight Text">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m9 11-6 6v3h3l6-6"/><path d="m22 12-4.6 4.6a2 2 0 0 1-2.8 0l-5.2-5.2a2 2 0 0 1 0-2.8L14 4"/></svg>
+        <span>Highlight</span>
+      </button>
+
+      <!-- Draw -->
+      <button class="tool-btn" data-tool="draw" title="Draw Freehand">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 19l7-7 3 3-7 7-3-3z"/><path d="M18 13l-1.5-7.5L2 2l3.5 14.5L13 18l5-5z"/></svg>
+        <span>Draw</span>
+      </button>
+
+      <!-- Sticky Notes -->
+      <button class="tool-btn" data-tool="sticky" title="Add Sticky Note / Comment">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+        <span>Sticky</span>
+      </button>
+
+      <!-- Watermark -->
+      <button class="tool-btn" data-tool="watermark" title="Add Watermark">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+        <span>Watermark</span>
+      </button>
+
+      <!-- OCR Scanned -->
+      <button class="tool-btn highlight-feature" data-tool="ocr" id="tool-ocr-btn" title="Run OCR on Scanned Document">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+        <span>OCR</span>
+      </button>
+    </div>
+
+    <!-- Right Side Ribbon Badges -->
+    <div style="margin-left: auto; display: flex; align-items: center; gap: 8px;">
+      <button class="mini-btn" id="tool-find-btn" title="Search text (Ctrl+F)" style="height: 32px; gap: 6px;">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+        Search
+      </button>
+      <div style="background: #e0f2fe; color: #0284c7; padding: 4px 12px; border-radius: 9999px; font-size: 11px; font-weight: 700; border: 1px solid #bae6fd;">
+        Edit PDF
+      </div>
+    </div>
+  </nav>
+
+  <!-- App Main Body Layout -->
+  <main class="app-body">
+    
+    <!-- Left Sidebar: Pages & Thumbnails (like screenshot) -->
+    <aside class="left-sidebar" id="left-sidebar" role="complementary" aria-label="Page Thumbnails">
+      <div class="sidebar-header">
+        <span>Manage pages</span>
+        <button class="btn-icon" id="sidebar-close-btn" title="Close Pages Panel" style="width: 24px; height: 24px;">&times;</button>
+      </div>
+
+      <div class="sidebar-tools-bar">
+        <button id="sidebar-rotate-btn" title="Rotate Page 90°">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/></svg>
+        </button>
+        <button id="sidebar-duplicate-btn" title="Duplicate Page">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+        </button>
+        <button id="sidebar-delete-btn" title="Delete Page" style="color: #ef4444;">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+        </button>
+        <button id="sidebar-insert-btn" title="Insert Blank Page" style="color: #2563eb;">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+        </button>
+      </div>
+
+      <div class="thumbnails-container" id="thumbnails-container">
+        <!-- Rendered progressively by pdf-renderer.js -->
+      </div>
+    </aside>
+
+    <!-- Center Workspace -->
+    <section class="center-workspace" id="center-workspace" role="main">
+      
+      <!-- Find and Replace Floating Drawer -->
+      <div class="find-replace-drawer" id="find-replace-drawer" style="display: none;">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+        <input type="text" class="find-input" id="find-search-input" placeholder="Find text in document...">
+        <span class="find-match-badge" id="find-match-badge">0 matches</span>
+        <button class="popover-close-btn" id="find-close-btn">&times;</button>
+      </div>
+
+      <!-- Viewport containing rendered PDF pages -->
+      <div class="pages-viewport" id="pages-viewport">
+        <!-- Injected dynamically -->
+      </div>
+    </section>
+
+  </main>
+
+  <!-- Floating Bottom Navigation Pill (Exact Match to Reference Screenshot) -->
+  <div class="floating-bottom-pill">
+    <button id="btn-prev-page" title="Previous Page">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="18 15 12 9 6 15"/></svg>
+    </button>
+    <span style="font-weight: 600;">
+      <span id="page-num-display">1</span> / <span id="total-pages-label">1</span>
+    </span>
+    <button id="btn-next-page" title="Next Page">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
+    </button>
+
+    <div class="pill-separator"></div>
+
+    <button id="btn-zoom-out" title="Zoom Out (-)">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="5" y1="12" x2="19" y2="12"/></svg>
+    </button>
+    <span id="zoom-percentage-label" style="font-weight: 600; min-width: 44px; text-align: center;">100%</span>
+    <button id="btn-zoom-in" title="Zoom In (+)">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+    </button>
+
+    <div class="pill-separator"></div>
+
+    <button id="btn-fit-page" title="Fit to Screen" style="padding: 2px 8px; width: auto; border-radius: 4px; font-size: 12px; font-weight: 600; gap: 4px;">
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><polyline points="9 9 9 15 15 15"/></svg>
+      Fit
+    </button>
+  </div>
+
+  <!-- Welcome / File Dropzone Modal -->
+  <div class="modal-backdrop" id="welcome-modal">
+    <div class="modal-dialog">
+      <div class="modal-header">
+        <div class="modal-title">Welcome to OpenPDF Studio</div>
+        <button class="btn-icon" id="welcome-close-btn">&times;</button>
+      </div>
+      <div class="modal-body">
+        <div class="dropzone-box" id="welcome-dropzone">
+          <svg class="dropzone-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+            <polyline points="14 2 14 8 20 8"/>
+            <line x1="12" y1="18" x2="12" y2="12"/>
+            <polyline points="9 15 12 12 15 15"/>
+          </svg>
+          <div style="font-size: 16px; font-weight: 700; color: #0f172a; margin-bottom: 6px;">
+            Drag & Drop your PDF here
+          </div>
+          <div style="font-size: 12px; color: #64748b; margin-bottom: 14px;">
+            or click to select a document from your computer
+          </div>
+          <button class="btn-primary" type="button">Select PDF File</button>
+        </div>
+
+        <div style="margin-top: 24px;">
+          <div style="font-size: 12px; font-weight: 700; text-transform: uppercase; color: #64748b; margin-bottom: 8px;">
+            Or Explore Demo Documents
+          </div>
+          <div class="sample-docs-grid">
+            <div class="sample-doc-card" id="load-sample-digital">
+              <div class="sample-card-title">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#2563eb" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+                Digital Contract PDF
+              </div>
+              <div class="sample-card-desc">Click & modify existing text, test redactions & font matching.</div>
+            </div>
+
+            <div class="sample-doc-card" id="load-sample-scanned">
+              <div class="sample-card-title">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#ea580c" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+                Scanned Receipt PDF
+              </div>
+              <div class="sample-card-desc">Scanned image invoice. Test Tesseract OCR & OpenCV inpainting.</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Hidden File Pickers -->
+  <input type="file" id="pdf-file-picker" accept="application/pdf" style="display: none;">
+  <input type="file" id="image-upload-input" accept="image/*" style="display: none;">
+
+  <!-- Toast Notification Container -->
+  <div class="toast-container" id="toast-container"></div>
+
+  <!-- Main ES Module Bootstrap -->
+  <script type="module" src="/js/app.js"></script>
+
+</body>
+</html>
