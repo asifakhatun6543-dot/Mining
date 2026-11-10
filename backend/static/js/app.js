@@ -164,6 +164,12 @@ class OpenPDFStudioApp {
     document.getElementById("sidebar-close-btn")?.addEventListener("click", () => {
       if (sidebar) sidebar.style.display = "none";
     });
+    // On mobile, tap on workspace automatically closes the sidebar drawer
+    document.getElementById("center-workspace")?.addEventListener("click", (e) => {
+      if (window.innerWidth <= 768 && sidebar && sidebar.style.display !== "none" && !sidebar.contains(e.target) && !e.target.closest("#btn-toggle-pages")) {
+        sidebar.style.display = "none";
+      }
+    });
     document.getElementById("tool-find-btn")?.addEventListener("click", () => {
       this._toggleFindDrawer();
     });

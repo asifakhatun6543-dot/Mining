@@ -1,68 +1,451 @@
-/* OpenPDF Studio - Responsive & Accessibility Rules */
+/* ==========================================================================
+   OpenPDF Studio - Comprehensive Mobile & Responsive Design System
+   ========================================================================== */
 
-@media (max-width: 1200px) {
-  .right-sidebar {
-    width: 240px;
-  }
-  .left-sidebar {
+/* --------------------------------------------------------------------------
+   Touch-Friendly & Base Responsive Optimizations
+   -------------------------------------------------------------------------- */
+html, body {
+  -webkit-text-size-adjust: 100%;
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* Smooth Touch Scrolling for Horizontal Bars */
+.main-toolbar,
+.sidebar-tools-bar,
+.floating-mini-toolbar,
+.comparison-container,
+.sample-docs-grid {
+  -webkit-overflow-scrolling: touch;
+}
+
+/* Hide scrollbars on toolbars for clean mobile appearance while keeping scrollable */
+.main-toolbar::-webkit-scrollbar {
+  display: none;
+  height: 0;
+}
+.main-toolbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+/* --------------------------------------------------------------------------
+   Breakpoints: Large Tablets & Laptops (<= 1024px)
+   -------------------------------------------------------------------------- */
+@media (max-width: 1024px) {
+  .document-title-input {
     width: 180px;
   }
-}
 
-@media (max-width: 900px) {
-  .right-sidebar {
-    position: absolute;
-    right: 0;
-    top: 0;
-    bottom: 0;
-    box-shadow: var(--shadow-sheet);
-    transform: translateX(100%);
-    transition: transform 0.2s ease;
+  .header-center .mini-btn {
+    padding: 3px 8px;
+    font-size: 11px;
   }
-  .right-sidebar.open {
-    transform: translateX(0);
-  }
-}
 
-@media (max-width: 768px) {
   .left-sidebar {
-    position: absolute;
-    left: 0;
-    top: 0;
-    bottom: 0;
-    box-shadow: var(--shadow-sheet);
-    transform: translateX(-100%);
-    transition: transform 0.2s ease;
+    width: 200px;
   }
-  .left-sidebar.open {
-    transform: translateX(0);
-  }
-  .toolbar-group .tool-btn span {
+}
+
+/* --------------------------------------------------------------------------
+   Breakpoints: Medium Tablets & Small Screens (<= 840px)
+   -------------------------------------------------------------------------- */
+@media (max-width: 840px) {
+  /* Hide the 3 mode buttons in header center to save room for title & actions */
+  .header-center {
     display: none;
   }
+
+  .document-title-input {
+    width: 150px;
+  }
+
+  /* Make Main Ribbon Toolbar compact */
+  .tool-btn {
+    min-width: 42px;
+    height: 42px;
+    padding: 2px 4px;
+    font-size: 10px;
+  }
+
+  .tool-btn svg {
+    width: 15px;
+    height: 15px;
+  }
 }
 
-/* Accessibility Focus States */
-button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-visible {
+/* --------------------------------------------------------------------------
+   Breakpoints: Tablets & Phones (<= 768px)
+   -------------------------------------------------------------------------- */
+@media (max-width: 768px) {
+  :root {
+    --header-height: 46px;
+    --toolbar-height: 48px;
+  }
+
+  .app-header {
+    padding: 0 10px;
+  }
+
+  .brand-badge span {
+    font-size: 14px;
+  }
+
+  .document-title-input {
+    width: 120px;
+    font-size: 12px;
+    padding: 3px 6px;
+  }
+
+  .doc-status-badge {
+    display: none; /* Hide status badge to prevent header overlap */
+  }
+
+  /* Header action buttons */
+  #header-print-btn {
+    display: none; /* Hide print on touch devices */
+  }
+
+  .btn-primary {
+    padding: 5px 10px;
+    font-size: 12px;
+  }
+
+  .btn-done-orange {
+    padding: 5px 12px;
+    font-size: 12px;
+  }
+
+  /* Ribbon Toolbar */
+  .main-toolbar {
+    padding: 0 8px;
+    gap: 1px;
+    background: #ffffff;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+  }
+
+  .tool-btn {
+    min-width: 44px;
+    height: 44px;
+    padding: 2px 4px;
+    font-size: 9.5px;
+  }
+
+  .toolbar-separator {
+    height: 20px;
+    margin: 0 3px;
+  }
+
+  /* Slide-Over Drawer for Left Sidebar (Page Thumbnails) */
+  .left-sidebar {
+    position: fixed;
+    top: calc(var(--header-height) + var(--toolbar-height));
+    left: 0;
+    bottom: 0;
+    width: 250px;
+    max-width: 82vw;
+    background: #ffffff;
+    box-shadow: 4px 0 24px rgba(0, 0, 0, 0.2);
+    z-index: 200;
+    transform: translateX(0);
+    transition: transform 0.25s ease, opacity 0.2s ease;
+  }
+
+  .left-sidebar[style*="display: none"] {
+    display: none !important;
+  }
+
+  /* Center Workspace - Maximize space for PDF document */
+  .center-workspace {
+    padding: 12px 6px 85px 6px;
+  }
+
+  .pages-viewport {
+    width: 100%;
+    gap: 20px;
+  }
+
+  .pdf-page-container {
+    max-width: 100% !important;
+    height: auto !important;
+    box-shadow: 0 2px 12px rgba(0, 0, 0, 0.15);
+  }
+
+  .pdf-page-container canvas {
+    max-width: 100%;
+    height: auto;
+  }
+
+  /* Bottom Floating Pill Navigation */
+  .floating-bottom-pill {
+    bottom: 14px;
+    padding: 4px 12px;
+    gap: 8px;
+    font-size: 12px;
+    transform: translateX(-50%) scale(0.95);
+  }
+
+  .floating-bottom-pill button {
+    width: 32px;
+    height: 32px;
+  }
+
+  /* Modals: Mobile Optimized */
+  .modal-dialog {
+    width: 95%;
+    max-width: 95%;
+    max-height: 92vh;
+    border-radius: var(--radius-lg);
+    margin: 10px auto;
+  }
+
+  .modal-header {
+    padding: 12px 16px;
+  }
+
+  .modal-title {
+    font-size: 15px;
+  }
+
+  .modal-body {
+    padding: 14px 16px;
+  }
+
+  .modal-footer {
+    padding: 10px 16px;
+  }
+
+  .sample-docs-grid {
+    grid-template-columns: 1fr;
+    gap: 10px;
+    margin-top: 14px;
+  }
+
+  .dropzone-box {
+    padding: 24px 14px;
+  }
+
+  .dropzone-icon {
+    width: 38px;
+    height: 38px;
+    margin-bottom: 8px;
+  }
+
+  /* Comparison modal: Stack before/after images */
+  .comparison-container {
+    grid-template-columns: 1fr;
+    gap: 12px;
+  }
+
+  .comparison-img-wrapper {
+    min-height: 100px;
+  }
+
+  /* Floating In-Place Mini-Toolbar */
+  .floating-mini-toolbar {
+    max-width: calc(100vw - 20px);
+    overflow-x: auto;
+    height: 36px;
+    padding: 0 4px;
+    gap: 2px;
+  }
+
+  .floating-mini-toolbar .mini-btn {
+    height: 26px;
+    padding: 0 5px;
+    font-size: 11px;
+  }
+
+  /* Toasts */
+  .toast-container {
+    bottom: 65px;
+    left: 12px;
+    right: 12px;
+  }
+
+  .toast {
+    min-width: 0;
+    max-width: 100%;
+    width: 100%;
+    font-size: 12px;
+    padding: 8px 12px;
+  }
+}
+
+/* --------------------------------------------------------------------------
+   Breakpoints: Standard Mobile Phones (<= 480px)
+   -------------------------------------------------------------------------- */
+@media (max-width: 480px) {
+  /* Brand: show only icon on small phones */
+  .brand-badge span {
+    display: none;
+  }
+
+  .brand-badge {
+    gap: 0;
+  }
+
+  .document-title-input {
+    width: 95px;
+    font-size: 11.5px;
+    padding: 2px 4px;
+  }
+
+  .header-left {
+    gap: 6px;
+  }
+
+  .header-right {
+    gap: 4px;
+  }
+
+  .btn-icon {
+    width: 28px;
+    height: 28px;
+  }
+
+  .btn-primary {
+    padding: 4px 8px;
+    font-size: 11px;
+    gap: 4px;
+  }
+
+  .btn-primary span,
+  .btn-primary svg + span {
+    font-size: 11px;
+  }
+
+  .btn-done-orange {
+    padding: 4px 10px;
+    font-size: 11px;
+  }
+
+  /* Toolbar buttons: touch friendly */
+  .tool-btn {
+    min-width: 44px;
+    height: 44px;
+    font-size: 9px;
+  }
+
+  .tool-btn svg {
+    width: 14px;
+    height: 14px;
+    margin-bottom: 1px;
+  }
+
+  /* Bottom Pill: Compact Floating Bar */
+  .floating-bottom-pill {
+    bottom: 10px;
+    padding: 3px 8px;
+    gap: 6px;
+    font-size: 11px;
+  }
+
+  .floating-bottom-pill button {
+    width: 28px;
+    height: 28px;
+  }
+
+  .pill-separator {
+    height: 12px;
+  }
+
+  /* Modals: Full-width sheet */
+  .modal-dialog {
+    width: 96%;
+    max-width: 96%;
+    margin: 8px auto;
+  }
+
+  .dropzone-box {
+    padding: 18px 10px;
+  }
+}
+
+/* --------------------------------------------------------------------------
+   Breakpoints: Small Mobile Phones (<= 360px)
+   -------------------------------------------------------------------------- */
+@media (max-width: 360px) {
+  .document-title-input {
+    width: 80px;
+  }
+
+  .btn-primary {
+    padding: 4px 6px;
+    font-size: 10px;
+  }
+
+  .btn-done-orange {
+    padding: 4px 8px;
+    font-size: 10px;
+  }
+
+  .tool-btn {
+    min-width: 40px;
+    height: 42px;
+  }
+}
+
+/* --------------------------------------------------------------------------
+   Landscape Orientation on Mobile Devices (<= 500px height)
+   -------------------------------------------------------------------------- */
+@media (max-height: 500px) and (orientation: landscape) {
+  :root {
+    --header-height: 38px;
+    --toolbar-height: 40px;
+  }
+
+  .center-workspace {
+    padding: 8px 6px 50px 6px;
+  }
+
+  .floating-bottom-pill {
+    bottom: 6px;
+    padding: 2px 10px;
+    transform: translateX(-50%) scale(0.88);
+  }
+
+  .tool-btn {
+    height: 36px;
+    min-width: 38px;
+    font-size: 8.5px;
+  }
+
+  .tool-btn svg {
+    width: 13px;
+    height: 13px;
+    margin-bottom: 0;
+  }
+}
+
+/* --------------------------------------------------------------------------
+   Accessibility Focus States
+   -------------------------------------------------------------------------- */
+button:focus-visible, 
+input:focus-visible, 
+select:focus-visible, 
+textarea:focus-visible {
   outline: 2px solid var(--accent-primary);
   outline-offset: 1px;
 }
 
-/* Scrollbar Customization */
+/* --------------------------------------------------------------------------
+   Desktop Custom Scrollbars
+   -------------------------------------------------------------------------- */
 ::-webkit-scrollbar {
-  width: 8px;
-  height: 8px;
+  width: 7px;
+  height: 7px;
 }
 
 ::-webkit-scrollbar-track {
-  background: rgba(0, 0, 0, 0.15);
+  background: rgba(0, 0, 0, 0.05);
 }
 
 ::-webkit-scrollbar-thumb {
-  background: var(--border-subtle);
+  background: #cbd5e1;
   border-radius: var(--radius-full);
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: var(--text-dim);
+  background: #94a3b8;
 }
