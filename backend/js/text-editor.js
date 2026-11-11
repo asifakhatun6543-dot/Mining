@@ -16,7 +16,7 @@ import { HistoryManager } from "./history.js";
 
 export const FONT_DEFINITIONS = [
   // Standard & System
-  { key: "times-roman", label: "Times New Roman", group: "Standard & System", css: '"Times New Roman", Times, "Liberation Serif", serif' },
+  { key: "times-roman", label: "Times New Roman", group: "Standard & System", css: '"Times New Roman", Times, Tinos, "Liberation Serif", "Nimbus Roman No9 L", serif' },
   { key: "calibri", label: "Calibri", group: "Standard & System", css: 'Calibri, Carlito, "Segoe UI", Arial, sans-serif' },
   { key: "arial", label: "Arial", group: "Standard & System", css: 'Arial, "Helvetica Neue", Helvetica, sans-serif' },
   { key: "helvetica", label: "Helvetica", group: "Standard & System", css: 'Helvetica, Arial, "Helvetica Neue", sans-serif' },
@@ -442,36 +442,41 @@ export class InlineTextEditor {
   }
 
   _detectAndSelectFont(fontName, flags = 0) {
-    const clean = (fontName || "").replace(/^[A-Z]{6}\+/, "").trim();
+    const clean = (fontName || "").replace(/^[A-Za-z0-9]{6}\+/, "").trim();
     // Normalize string: strip all non-alphanumeric chars
     const normClean = clean.toLowerCase().replace(/[^a-z0-9]/g, "");
 
-    const isSerif = (flags & 4) !== 0;
-    const isMono = (flags & 8) !== 0;
+    const isSerif = (flags & 4) !== 0 || /times|roman|tmsrmn|serif|cambria|georgia|garamond|baskerville|palatino|minion|century|bookman|lora|merriweather|nimbusrom|freeserif|liberationserif|tinos/.test(normClean);
+    const isMono = (flags & 8) !== 0 || /courier|mono|consolas|code|typewriter|menlo|fira|jetbrains/.test(normClean);
 
     let matchedKey = "";
 
-    // Sort definitions by length of normalized label descending to prioritize specific matches
-    // e.g. "DejaVu Sans Mono" or "DejaVu Sans Condensed" matched before "DejaVu Sans"
-    const sortedDefs = [...FONT_DEFINITIONS].sort((a, b) => {
-      const aNorm = a.label.toLowerCase().replace(/[^a-z0-9]/g, "").length;
-      const bNorm = b.label.toLowerCase().replace(/[^a-z0-9]/g, "").length;
-      return bNorm - aNorm;
-    });
+    // 1. Direct fast-path: Times New Roman & common Serif font aliases
+    if (/times|roman|tmsrmn|nimbusrom|tinos|liberationserif|freeserif/.test(normClean)) {
+      matchedKey = "times-roman";
+    }
 
-    // 1. Check normalized label or key containment
-    for (const def of sortedDefs) {
-      const defKeyNorm = def.key.toLowerCase().replace(/[^a-z0-9]/g, "");
-      const defLabelNorm = def.label.toLowerCase().replace(/[^a-z0-9]/g, "");
+    // 2. Check normalized label or key containment
+    if (!matchedKey) {
+      const sortedDefs = [...FONT_DEFINITIONS].sort((a, b) => {
+        const aNorm = a.label.toLowerCase().replace(/[^a-z0-9]/g, "").length;
+        const bNorm = b.label.toLowerCase().replace(/[^a-z0-9]/g, "").length;
+        return bNorm - aNorm;
+      });
 
-      if (normClean === defKeyNorm || normClean === defLabelNorm ||
-          normClean.includes(defKeyNorm) || normClean.includes(defLabelNorm)) {
-        matchedKey = def.key;
-        break;
+      for (const def of sortedDefs) {
+        const defKeyNorm = def.key.toLowerCase().replace(/[^a-z0-9]/g, "");
+        const defLabelNorm = def.label.toLowerCase().replace(/[^a-z0-9]/g, "");
+
+        if (normClean === defKeyNorm || normClean === defLabelNorm ||
+            normClean.includes(defKeyNorm) || normClean.includes(defLabelNorm)) {
+          matchedKey = def.key;
+          break;
+        }
       }
     }
 
-    // 2. Comprehensive pattern & alias fallbacks
+    // 3. Comprehensive pattern & alias fallbacks
     if (!matchedKey) {
       if (/times|roman|tmsrmn/.test(normClean)) matchedKey = "times-roman";
       else if (/calibri|carlito/.test(normClean)) matchedKey = "calibri";
@@ -548,7 +553,12 @@ export class InlineTextEditor {
       else if (/lato/.test(normClean)) matchedKey = "lato";
       else if (isMono) matchedKey = "courier";
       else if (isSerif) matchedKey = "times-roman";
-      else matchedKey = "arial";
+      else {
+        // If document uses serif fonts, prefer Times New Roman for ambiguous text
+        const docFonts = State.documentInfo?.detected_fonts || [];
+        const hasSerifInDoc = docFonts.some(f => /times|roman|serif|georgia|cambria|tinos/i.test(f));
+        matchedKey = hasSerifInDoc ? "times-roman" : "arial";
+      }
     }
 
     const fontSelect = this.miniToolbarEl.querySelector("#mt-font-select");
@@ -573,6 +583,9 @@ export class InlineTextEditor {
   }
 
   _getCssFontFamily(fontKey) {
+    if (fontKey === "times-roman" || /times|roman|tinos/i.test(fontKey)) {
+      return '"Times New Roman", Times, Tinos, "Liberation Serif", "Nimbus Roman No9 L", serif';
+    }
     const found = FONT_DEFINITIONS.find(f => f.key === fontKey);
     if (found) return found.css;
     return `"${fontKey}", Arial, sans-serif`;
@@ -638,10 +651,24 @@ export class InlineTextEditor {
     const textToShow = span.currentText !== undefined ? span.currentText : span.text;
 
     // Auto-detect and select original font
-    const fontToUse = span.currentFont || span.font || "Helvetica";
-    this._detectAndSelectFont(fontToUse, span.flags || 0);
-
     const flags = span.flags || 0;
+    const isSerifFlag = (flags & 4) !== 0;
+
+    // Check if document has detected serif fonts
+    const docFonts = State.documentInfo?.detected_fonts || [];
+    const docHasSerif = docFonts.some(f => /times|roman|serif|georgia|cambria|tinos|lora/i.test(f));
+
+    let fontToUse = span.currentFont || span.font;
+    if (!fontToUse || fontToUse === "Helvetica" || fontToUse === "Standard Base-14" || fontToUse.toLowerCase() === "unknown") {
+      if (isSerifFlag || docHasSerif) {
+        fontToUse = "times-roman";
+      } else {
+        fontToUse = "arial";
+      }
+    }
+
+    this._detectAndSelectFont(fontToUse, flags);
+
     const fontLower = (fontToUse || "").toLowerCase();
 
     // AUTOMATIC FONT SIZE: Use exact original font size rounded to 1 decimal place (e.g. 14, 13.5, 18, 12)

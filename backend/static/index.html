@@ -6,17 +6,17 @@
   <title>OpenPDF Studio - Every tool you need to work with PDFs in one place</title>
   <meta name="description" content="100% Free online PDF tools: PDF Editor with in-place text editing, Merge PDF, Split PDF, JPG to PDF, PDF to JPG, Image Resize, and OCR.">
   
-  <!-- Google Fonts: Plus Jakarta Sans & Inter for World-Class SaaS Aesthetic -->
+  <!-- Google Fonts: Plus Jakarta Sans & Inter & Tinos for World-Class SaaS Aesthetic & Serif Accuracy -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;600&display=swap">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;600&family=Tinos:ital,wght@0,400;0,700;1,400;1,700&display=swap">
 
   <!-- CSS Stylesheets (with cache-busting) -->
   <link rel="stylesheet" href="./vendor/pdfjs/pdf_viewer.css">
-  <link rel="stylesheet" href="./css/styles.css?v=2.1">
-  <link rel="stylesheet" href="./css/editor.css?v=2.1">
-  <link rel="stylesheet" href="./css/portal.css?v=2.1">
-  <link rel="stylesheet" href="./css/responsive.css?v=2.1">
+  <link rel="stylesheet" href="./css/styles.css?v=2.2">
+  <link rel="stylesheet" href="./css/editor.css?v=2.2">
+  <link rel="stylesheet" href="./css/portal.css?v=2.2">
+  <link rel="stylesheet" href="./css/responsive.css?v=2.2">
 
   <!-- PDF.js & PDF-Lib Vendor Scripts -->
   <script src="./vendor/pdfjs/pdf.js"></script>
@@ -42,10 +42,6 @@
         <button type="button" class="portal-nav-item" id="nav-btn-jpg-to-pdf">JPG to PDF</button>
         <button type="button" class="portal-nav-item" id="nav-btn-pdf-to-jpg">PDF to JPG</button>
         <button type="button" class="portal-nav-item" id="nav-btn-resize">Resize Image</button>
-        <button type="button" class="portal-nav-cta open-editor-cta">
-          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="4 7 4 4 20 4 20 7"/><line x1="12" y1="4" x2="12" y2="20"/></svg>
-          Open PDF Editor
-        </button>
       </nav>
     </header>
 
@@ -208,28 +204,6 @@
           <div class="tool-card-action">Blackout text <span>&rarr;</span></div>
         </div>
 
-      </div>
-    </section>
-
-    <!-- Trust & Statistics Banner -->
-    <section class="trust-banner">
-      <div class="trust-inner">
-        <div class="trust-stat-item">
-          <div class="trust-stat-number">100<span>%</span></div>
-          <div class="trust-stat-label">Free & Unlimited Online Tools</div>
-        </div>
-        <div class="trust-stat-item">
-          <div class="trust-stat-number">25<span>M+</span></div>
-          <div class="trust-stat-label">Documents Processed Privately</div>
-        </div>
-        <div class="trust-stat-item">
-          <div class="trust-stat-number">4.9<span>/5</span></div>
-          <div class="trust-stat-label">Trusted User Satisfaction</div>
-        </div>
-        <div class="trust-stat-item">
-          <div class="trust-stat-number">0<span>s</span></div>
-          <div class="trust-stat-label">Instant Client-Side Processing</div>
-        </div>
       </div>
     </section>
 
@@ -700,85 +674,6 @@
         <div class="pages-viewport" id="pages-viewport"></div>
       </main>
 
-      <!-- Right Sidebar: Properties & Formatting Inspector -->
-      <aside class="right-sidebar" id="right-sidebar" aria-label="Properties Panel">
-        <div class="inspector-header">
-          <span style="font-weight: 700; font-size: 13px;">Format & Properties</span>
-          <button class="btn-icon" id="inspector-close-btn" style="width: 22px; height: 22px;">&times;</button>
-        </div>
-
-        <div class="inspector-body">
-          <!-- Text Styling Group -->
-          <div class="inspector-group" id="inspector-text-group">
-            <div class="inspector-title">Typography & Style</div>
-            
-            <div style="margin-bottom: 10px;">
-              <label style="font-size: 11px; color: #64748b; font-weight: 600;">FONT FAMILY</label>
-              <select class="inspector-select" id="prop-font-family">
-                <option value="Helvetica">Helvetica / Arial (Standard)</option>
-                <option value="Times-Roman">Times New Roman (Serif)</option>
-                <option value="Courier">Courier New (Monospace)</option>
-                <option value="Inter">Inter</option>
-                <option value="Roboto">Roboto</option>
-                <option value="Open Sans">Open Sans</option>
-                <option value="Playfair Display">Playfair Display (Editorial)</option>
-                <option value="Lora">Lora (Literary Serif)</option>
-                <option value="Fira Code">Fira Code (Code)</option>
-                <option value="Caveat">Caveat (Handwritten)</option>
-              </select>
-            </div>
-
-            <div style="display: flex; gap: 8px; margin-bottom: 12px;">
-              <div style="flex: 1;">
-                <label style="font-size: 11px; color: #64748b; font-weight: 600;">SIZE (PT)</label>
-                <input type="number" class="inspector-input" id="prop-font-size" value="12" min="6" max="144">
-              </div>
-              <div style="flex: 1;">
-                <label style="font-size: 11px; color: #64748b; font-weight: 600;">WEIGHT</label>
-                <select class="inspector-select" id="prop-font-weight">
-                  <option value="normal">Regular</option>
-                  <option value="bold">Bold</option>
-                </select>
-              </div>
-            </div>
-
-            <!-- Color Palette Swatches -->
-            <label style="font-size: 11px; color: #64748b; font-weight: 600; margin-bottom: 6px; display: block;">COLOR</label>
-            <div class="color-swatch-grid">
-              <div class="color-swatch-btn selected" style="background: #000000;" data-color="#000000"></div>
-              <div class="color-swatch-btn" style="background: #475569;" data-color="#475569"></div>
-              <div class="color-swatch-btn" style="background: #dc2626;" data-color="#dc2626"></div>
-              <div class="color-swatch-btn" style="background: #ea580c;" data-color="#ea580c"></div>
-              <div class="color-swatch-btn" style="background: #d97706;" data-color="#d97706"></div>
-              <div class="color-swatch-btn" style="background: #16a34a;" data-color="#16a34a"></div>
-              <div class="color-swatch-btn" style="background: #2563eb;" data-color="#2563eb"></div>
-              <div class="color-swatch-btn" style="background: #9333ea;" data-color="#9333ea"></div>
-            </div>
-            <input type="color" id="custom-color-picker" style="margin-top: 8px; width: 100%; height: 26px; border: 1px solid #cbd5e1; border-radius: 4px; cursor: pointer;">
-          </div>
-
-          <!-- Document Classification & Diagnostics -->
-          <div class="inspector-group">
-            <div class="inspector-title">Document Intelligence</div>
-            <div style="font-size: 12px; line-height: 1.6; color: #334155;">
-              <div><strong>Type:</strong> <span id="prop-doc-type">Digital Text</span></div>
-              <div><strong>Encrypted:</strong> <span id="prop-encrypted">No</span></div>
-              <div style="margin-top: 6px;"><strong>Detected Fonts:</strong></div>
-              <ul id="prop-fonts-list" style="margin-left: 16px; font-size: 11px; color: #64748b; margin-top: 4px;">
-                <li>Standard Base-14</li>
-              </ul>
-            </div>
-            
-            <div id="ocr-offer-banner" style="display: none; margin-top: 12px; padding: 10px; background: #fffbeb; border: 1px solid #fde68a; border-radius: 6px; font-size: 12px; color: #92400e;">
-              This page appears to be a scanned image with minimal selectable text.
-              <button class="btn-primary" id="btn-trigger-page-ocr" style="margin-top: 6px; font-size: 11px; padding: 4px 10px; background: #d97706;">
-                Run OCR on This Page
-              </button>
-            </div>
-          </div>
-        </div>
-      </aside>
-
     </section>
 
     <!-- Floating Bottom Navigation Pill (Zoom & Page Stepper) -->
@@ -870,8 +765,8 @@
   <div class="toast-container" id="toast-container"></div>
 
   <!-- Main ES Module Bootstrap (with cache-busting) -->
-  <script type="module" src="./js/portal.js?v=2.1"></script>
-  <script type="module" src="./js/app.js?v=2.1"></script>
+  <script type="module" src="./js/portal.js?v=2.2"></script>
+  <script type="module" src="./js/app.js?v=2.2"></script>
 
 </body>
 </html>

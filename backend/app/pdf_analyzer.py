@@ -1,5 +1,6 @@
 import fitz
 import os
+import re
 import uuid
 from typing import Dict, Any, List, Tuple
 from .schemas import DocumentInfo, PageAnalysis, TextBlock, TextLine, TextSpan
@@ -46,6 +47,28 @@ class PDFAnalyzer:
             image_list = page.get_images(full=True)
             has_images = len(image_list) > 0
             
+            # Build intelligent font resolution dictionary for this page from PDF font resources
+            page_font_map: Dict[str, str] = {}
+            has_serif_in_page = False
+            try:
+                for f_info in page.get_fonts():
+                    # f_info format: (xref, ext, type, basefont, name, encoding)
+                    xref, ext, ftype, basefont, fname, enc = f_info[:6]
+                    clean_base = re.sub(r'^[A-Za-z0-9]{6}\+', '', str(basefont or '')).strip()
+                    if fname:
+                        page_font_map[fname] = clean_base
+                    if basefont:
+                        page_font_map[basefont] = clean_base
+                    page_font_map[str(xref)] = clean_base
+                    if any(k in clean_base.lower() for k in [
+                        "times", "roman", "serif", "cambria", "georgia", "garamond",
+                        "baskerville", "palatino", "minion", "century", "bookman", "lora",
+                        "merriweather", "nimbusrom", "freeserif", "liberationserif", "ptserif", "tinos"
+                    ]):
+                        has_serif_in_page = True
+            except Exception:
+                pass
+
             blocks: List[TextBlock] = []
             page_fonts = set()
             page_word_count = 0
@@ -69,11 +92,40 @@ class PDFAnalyzer:
                                 continue
 
                             s_bbox = [round(v, 2) for v in span.get("bbox", [0, 0, 0, 0])]
-                            s_font = span.get("font", "Helvetica")
+                            raw_font = span.get("font") or ""
+                            resolved_font = page_font_map.get(raw_font, raw_font)
+                            if not resolved_font or resolved_font.lower() in ("unknown", "none"):
+                                resolved_font = raw_font or ("Times-Roman" if has_serif_in_page else "Helvetica")
+
+                            clean_font = re.sub(r'^[A-Za-z0-9]{6}\+', '', resolved_font).strip()
+                            s_font = clean_font or "Helvetica"
+
                             s_size = round(span.get("size", 12.0), 2)
                             s_color = span.get("color", 0)
                             s_flags = span.get("flags", 0)
                             s_origin = [round(v, 2) for v in span.get("origin", [s_bbox[0], s_bbox[3]])]
+
+                            # Intelligent Serif and Monospace classification
+                            font_lower = s_font.lower()
+                            is_serif = (s_flags & 4 != 0) or any(k in font_lower for k in [
+                                "times", "roman", "serif", "cambria", "georgia", "garamond",
+                                "baskerville", "palatino", "minion", "century", "bookman", "lora",
+                                "merriweather", "nimbusrom", "freeserif", "liberationserif", "ptserif", "tinos"
+                            ])
+                            is_mono = (s_flags & 8 != 0) or any(k in font_lower for k in [
+                                "courier", "mono", "consolas", "code", "typewriter", "menlo", "fira", "jetbrains"
+                            ])
+
+                            if is_serif:
+                                s_flags = s_flags | 4
+                                if "times" in font_lower or "roman" in font_lower:
+                                    s_font = "Times-Roman"
+                            elif is_mono:
+                                s_flags = s_flags | 8
+                            elif has_serif_in_page and (s_font.lower() in ("helvetica", "arial", "f1", "t1_0", "tt0", "")):
+                                # If page is predominantly serif circular/document, default to Times-Roman
+                                s_flags = s_flags | 4
+                                s_font = "Times-Roman"
 
                             page_fonts.add(s_font)
                             all_detected_fonts.add(s_font)
