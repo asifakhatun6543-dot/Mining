@@ -96,8 +96,11 @@ class OpenPDFStudioApp {
       this.showToast("success", "Project state saved successfully.");
     });
 
-    // Done button
+    // Done button (Desktop & Mobile)
     document.getElementById("header-done-btn")?.addEventListener("click", () => {
+      this.exportClient.exportCurrentDocument();
+    });
+    document.getElementById("mobile-toolbar-done-btn")?.addEventListener("click", () => {
       this.exportClient.exportCurrentDocument();
     });
 
@@ -154,20 +157,47 @@ class OpenPDFStudioApp {
       State.addPageOperation(op);
       this.showToast("info", `Blank page inserted after Page ${State.currentPage + 1}.`);
     });
-    // Sidebar Toggle
+    // Sidebar Toggle with mobile drawer & backdrop
     const sidebar = document.getElementById("left-sidebar");
-    document.getElementById("btn-toggle-pages")?.addEventListener("click", () => {
+    const backdrop = document.getElementById("sidebar-backdrop");
+
+    const closeSidebarMobile = () => {
       if (sidebar) {
-        sidebar.style.display = sidebar.style.display === "none" ? "flex" : "none";
+        sidebar.style.display = "none";
+        sidebar.classList.remove("mobile-open");
+      }
+      if (backdrop) backdrop.style.display = "none";
+    };
+
+    const toggleSidebar = () => {
+      if (!sidebar) return;
+      const isOpen = sidebar.style.display !== "none" || sidebar.classList.contains("mobile-open");
+      if (isOpen) {
+        closeSidebarMobile();
+      } else {
+        sidebar.style.display = "flex";
+        sidebar.classList.add("mobile-open");
+        if (backdrop && window.innerWidth <= 768) {
+          backdrop.style.display = "block";
+        }
+      }
+    };
+
+    document.getElementById("btn-toggle-pages")?.addEventListener("click", toggleSidebar);
+    document.getElementById("sidebar-close-btn")?.addEventListener("click", closeSidebarMobile);
+    backdrop?.addEventListener("click", closeSidebarMobile);
+
+    // On mobile, tap on thumbnail closes the sidebar so user can edit right away
+    sidebar?.addEventListener("click", (e) => {
+      if (window.innerWidth <= 768 && e.target.closest(".thumb-item")) {
+        closeSidebarMobile();
       }
     });
-    document.getElementById("sidebar-close-btn")?.addEventListener("click", () => {
-      if (sidebar) sidebar.style.display = "none";
-    });
+
     // On mobile, tap on workspace automatically closes the sidebar drawer
     document.getElementById("center-workspace")?.addEventListener("click", (e) => {
-      if (window.innerWidth <= 768 && sidebar && sidebar.style.display !== "none" && !sidebar.contains(e.target) && !e.target.closest("#btn-toggle-pages")) {
-        sidebar.style.display = "none";
+      if (window.innerWidth <= 768 && sidebar && (sidebar.style.display !== "none" || sidebar.classList.contains("mobile-open")) && !sidebar.contains(e.target) && !e.target.closest("#btn-toggle-pages")) {
+        closeSidebarMobile();
       }
     });
     document.getElementById("tool-find-btn")?.addEventListener("click", () => {
@@ -372,6 +402,15 @@ class OpenPDFStudioApp {
 
       // Step 4: Register in State
       State.setDocument(docInfo, pdfJsDoc, arrayBuffer);
+
+      // Auto-fit to screen width on mobile devices so document is fully readable without horizontal scrolling
+      if (window.innerWidth <= 768) {
+        const firstPageWidth = docInfo.page_dimensions?.[0]?.width || 612;
+        const availableWidth = window.innerWidth - 20;
+        const mobileScale = Math.min(1.0, Math.max(0.4, Math.round((availableWidth / firstPageWidth) * 100) / 100));
+        State.setZoom(mobileScale);
+        this._updateZoomUI();
+      }
 
       // Register page analysis blocks in selection manager
       pages.forEach((p, idx) => {

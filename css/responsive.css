@@ -29,6 +29,14 @@ html, body {
   scrollbar-width: none;
 }
 
+/* Hide mobile-specific elements on desktop */
+.mobile-toolbar-done {
+  display: none;
+}
+.sidebar-backdrop {
+  display: none;
+}
+
 /* --------------------------------------------------------------------------
    Breakpoints: Large Tablets & Laptops (<= 1024px)
    -------------------------------------------------------------------------- */
@@ -79,110 +87,225 @@ html, body {
    -------------------------------------------------------------------------- */
 @media (max-width: 768px) {
   :root {
-    --header-height: 46px;
-    --toolbar-height: 48px;
+    --header-height: 48px;
+    --toolbar-height: 0px; /* Toolbar is now docked at the bottom */
   }
 
+  /* Slim, Clean App Header */
   .app-header {
-    padding: 0 10px;
+    height: 48px !important;
+    padding: 0 8px !important;
+    background: #ffffff !important;
+    border-bottom: 1px solid #e2e8f0 !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: space-between !important;
   }
 
-  .brand-badge span {
-    font-size: 14px;
-  }
-
-  .document-title-input {
-    width: 120px;
-    font-size: 12px;
-    padding: 3px 6px;
-  }
-
-  .doc-status-badge {
-    display: none; /* Hide status badge to prevent header overlap */
-  }
-
-  /* Header action buttons */
-  #header-print-btn {
-    display: none; /* Hide print on touch devices */
-  }
-
-  .btn-primary {
-    padding: 5px 10px;
-    font-size: 12px;
-  }
-
-  .btn-done-orange {
-    padding: 5px 12px;
-    font-size: 12px;
-  }
-
-  /* Ribbon Toolbar */
-  .main-toolbar {
-    padding: 0 8px;
-    gap: 1px;
-    background: #ffffff;
-    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
-  }
-
-  .tool-btn {
-    min-width: 44px;
-    height: 44px;
-    padding: 2px 4px;
-    font-size: 9.5px;
-  }
-
-  .toolbar-separator {
-    height: 20px;
-    margin: 0 3px;
-  }
-
-  /* Slide-Over Drawer for Left Sidebar (Page Thumbnails) */
-  .left-sidebar {
-    position: fixed;
-    top: calc(var(--header-height) + var(--toolbar-height));
-    left: 0;
-    bottom: 0;
-    width: 250px;
-    max-width: 82vw;
-    background: #ffffff;
-    box-shadow: 4px 0 24px rgba(0, 0, 0, 0.2);
-    z-index: 200;
-    transform: translateX(0);
-    transition: transform 0.25s ease, opacity 0.2s ease;
-  }
-
-  .left-sidebar[style*="display: none"] {
+  .brand-badge {
     display: none !important;
   }
 
-  /* Center Workspace - Maximize space for PDF document */
+  .btn-back-home {
+    padding: 6px 10px !important;
+    font-size: 12px !important;
+  }
+
+  .document-title-input {
+    width: 125px !important;
+    max-width: 36vw !important;
+    font-size: 12.5px !important;
+    padding: 4px 6px !important;
+  }
+
+  .doc-status-badge,
+  .header-center,
+  #header-print-btn,
+  #header-save-btn,
+  #header-open-btn,
+  #header-done-btn {
+    display: none !important;
+  }
+
+  .header-right {
+    gap: 6px !important;
+  }
+
+  #header-download-btn {
+    padding: 6px 12px !important;
+    font-size: 12px !important;
+  }
+
+  /* Docked Bottom Toolbar (PDFfiller Style) */
+  .main-toolbar {
+    position: fixed !important;
+    bottom: 0 !important;
+    left: 0 !important;
+    right: 0 !important;
+    top: auto !important;
+    height: 62px !important;
+    background: #ffffff !important;
+    border-top: 1px solid #e2e8f0 !important;
+    border-bottom: none !important;
+    box-shadow: 0 -4px 18px rgba(0, 0, 0, 0.08) !important;
+    z-index: 1000 !important;
+    display: flex !important;
+    align-items: center !important;
+    padding: 0 8px !important;
+    overflow-x: auto !important;
+    -webkit-overflow-scrolling: touch !important;
+    scrollbar-width: none !important;
+  }
+
+  .main-toolbar::-webkit-scrollbar {
+    display: none !important;
+  }
+
+  .main-toolbar .toolbar-group {
+    display: flex !important;
+    align-items: center !important;
+    gap: 5px !important;
+    flex-shrink: 0 !important;
+  }
+
+  /* Tool Buttons: Touch-Friendly Rounded Cards */
+  .tool-btn {
+    min-width: 52px !important;
+    height: 50px !important;
+    padding: 4px 5px !important;
+    border-radius: 8px !important;
+    background: #f8fafc !important;
+    border: 1px solid #e2e8f0 !important;
+    color: #475569 !important;
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: center !important;
+    justify-content: center !important;
+    gap: 2px !important;
+    flex-shrink: 0 !important;
+    transition: all 0.15s ease !important;
+  }
+
+  .tool-btn svg {
+    width: 19px !important;
+    height: 19px !important;
+    stroke-width: 2 !important;
+  }
+
+  .tool-btn span {
+    font-size: 10px !important;
+    font-weight: 600 !important;
+    line-height: 1 !important;
+    display: block !important;
+  }
+
+  .tool-btn.active {
+    background: #eff6ff !important;
+    border-color: #3b82f6 !important;
+    color: #1d4ed8 !important;
+  }
+
+  .tool-btn.highlight-feature.active {
+    background: #fef2f2 !important;
+    border-color: #ef4444 !important;
+    color: #dc2626 !important;
+  }
+
+  .toolbar-separator {
+    height: 24px !important;
+    margin: 0 2px !important;
+  }
+
+  /* Mobile Prominent DONE Button (PDFfiller Style) */
+  .mobile-toolbar-done {
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    gap: 4px !important;
+    background: #ff6b00 !important;
+    color: #ffffff !important;
+    font-weight: 800 !important;
+    font-size: 13px !important;
+    padding: 0 16px !important;
+    height: 48px !important;
+    border-radius: 8px !important;
+    border: none !important;
+    box-shadow: 0 2px 10px rgba(255, 107, 0, 0.35) !important;
+    flex-shrink: 0 !important;
+    margin-left: 6px !important;
+    cursor: pointer !important;
+  }
+
+  /* Page Thumbnails Sidebar: Drawer Closed by Default on Mobile */
+  .left-sidebar {
+    display: none !important;
+    position: fixed !important;
+    top: 0 !important;
+    left: 0 !important;
+    bottom: 0 !important;
+    width: 280px !important;
+    max-width: 82vw !important;
+    height: 100vh !important;
+    height: 100dvh !important;
+    background: #ffffff !important;
+    box-shadow: 4px 0 24px rgba(0, 0, 0, 0.25) !important;
+    z-index: 2500 !important;
+    transform: none !important;
+  }
+
+  .left-sidebar.mobile-open {
+    display: flex !important;
+  }
+
+  .sidebar-backdrop {
+    display: none;
+    position: fixed !important;
+    inset: 0 !important;
+    background: rgba(15, 23, 42, 0.5) !important;
+    backdrop-filter: blur(2px) !important;
+    -webkit-backdrop-filter: blur(2px) !important;
+    z-index: 2400 !important;
+  }
+
+  /* Center Workspace: Full Screen Width with Bottom Toolbar Clearance */
   .center-workspace {
-    padding: 12px 6px 85px 6px;
+    padding: 10px 6px 90px 6px !important; /* Bottom clearance for docked toolbar */
+    width: 100% !important;
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: center !important;
+    overflow-x: auto !important;
   }
 
   .pages-viewport {
-    width: 100%;
-    gap: 20px;
+    width: 100% !important;
+    max-width: 100% !important;
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: center !important;
+    gap: 16px !important;
   }
 
   .pdf-page-container {
-    max-width: 100% !important;
-    height: auto !important;
-    box-shadow: 0 2px 12px rgba(0, 0, 0, 0.15);
+    max-width: calc(100vw - 12px) !important;
+    margin: 0 auto !important;
+    box-shadow: 0 2px 14px rgba(0, 0, 0, 0.12) !important;
+    border-radius: 4px !important;
   }
 
   .pdf-page-container canvas {
-    max-width: 100%;
-    height: auto;
+    max-width: 100% !important;
+    height: auto !important;
   }
 
-  /* Bottom Floating Pill Navigation */
+  /* Bottom Floating Pill Navigation: Elevated Above Docked Toolbar */
   .floating-bottom-pill {
-    bottom: 14px;
+    bottom: 74px !important; /* Floats above bottom toolbar */
     padding: 4px 12px;
     gap: 8px;
     font-size: 12px;
-    transform: translateX(-50%) scale(0.95);
+    transform: translateX(-50%) scale(0.92);
+    z-index: 950 !important;
   }
 
   .floating-bottom-pill button {

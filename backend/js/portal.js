@@ -33,6 +33,7 @@ export class PortalManager {
     this._bindFilterTabs();
     this._bindHeroDropzone();
     this._bindToolCards();
+    this._bindEditPdfModal();
     this._bindJpgToPdfModal();
     this._bindMergePdfModal();
     this._bindImageResizeModal();
@@ -170,7 +171,7 @@ export class PortalManager {
   // ------------------------------------------------------------------------
   _bindToolCards() {
     document.getElementById("card-tool-editor")?.addEventListener("click", () => {
-      this.switchView("editor");
+      this.openEditModal();
     });
 
     document.getElementById("card-tool-merge-pdf")?.addEventListener("click", () => {
@@ -225,6 +226,71 @@ export class PortalManager {
       this.switchView("editor");
       if (window.app && window.app.toolbar) {
         window.app.toolbar.setTool("redact");
+      }
+    });
+  }
+
+  // ------------------------------------------------------------------------
+  // TOOL: Edit PDF Upload
+  // ------------------------------------------------------------------------
+  openEditModal() {
+    const modal = document.getElementById("modal-edit-pdf");
+    if (!modal) return;
+    modal.style.display = "flex";
+  }
+
+  _bindEditPdfModal() {
+    const modal = document.getElementById("modal-edit-pdf");
+    const closeBtn = document.getElementById("close-edit-pdf");
+    const picker = document.getElementById("edit-modal-file-picker");
+    const dropzone = document.getElementById("edit-pdf-dropzone");
+    const chooseBtn = document.getElementById("btn-choose-edit-pdf");
+    if (!modal) return;
+
+    closeBtn?.addEventListener("click", () => {
+      modal.style.display = "none";
+    });
+
+    modal.addEventListener("click", (e) => {
+      if (e.target === modal) modal.style.display = "none";
+    });
+
+    const triggerPick = () => picker?.click();
+    chooseBtn?.addEventListener("click", (e) => {
+      e.stopPropagation();
+      triggerPick();
+    });
+    dropzone?.addEventListener("click", triggerPick);
+
+    picker?.addEventListener("change", (e) => {
+      const files = Array.from(e.target.files || []);
+      if (files.length > 0) {
+        modal.style.display = "none";
+        this.switchView("editor");
+        if (window.app && window.app.loadPDFFile) {
+          window.app.loadPDFFile(files[0]);
+        }
+      }
+      picker.value = "";
+    });
+
+    dropzone?.addEventListener("dragover", (e) => {
+      e.preventDefault();
+      dropzone.classList.add("drag-over");
+    });
+    dropzone?.addEventListener("dragleave", () => {
+      dropzone.classList.remove("drag-over");
+    });
+    dropzone?.addEventListener("drop", (e) => {
+      e.preventDefault();
+      dropzone.classList.remove("drag-over");
+      const files = Array.from(e.dataTransfer.files || []).filter(f => f.name.toLowerCase().endsWith(".pdf") || f.type === "application/pdf");
+      if (files.length > 0) {
+        modal.style.display = "none";
+        this.switchView("editor");
+        if (window.app && window.app.loadPDFFile) {
+          window.app.loadPDFFile(files[0]);
+        }
       }
     });
   }
