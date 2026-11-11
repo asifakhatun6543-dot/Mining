@@ -1,24 +1,40 @@
 /* ==========================================================================
-   OpenPDF Studio - Landing Portal & Multi-Tool Suite CSS
+   OpenPDF Studio - Ultra-Aesthetic iLovePDF Style Design System
    ========================================================================== */
 
+:root {
+  --portal-bg: #f8fafc;
+  --portal-card-bg: #ffffff;
+  --portal-primary: #e5322d; /* iLovePDF signature vibrant red/coral */
+  --portal-primary-hover: #c9231f;
+  --portal-primary-light: #fef2f2;
+  --portal-primary-glow: rgba(229, 50, 45, 0.2);
+  --portal-text-dark: #1e293b;
+  --portal-text-muted: #64748b;
+  --portal-border: #e2e8f0;
+  --portal-card-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -2px rgba(0, 0, 0, 0.05);
+  --portal-card-hover-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.08), 0 8px 10px -6px rgba(0, 0, 0, 0.04);
+}
+
 /* --------------------------------------------------------------------------
-   Layout Containers & View Switching
+   View Switching & Layout
    -------------------------------------------------------------------------- */
 #landing-view {
   flex: 1;
   height: 100vh;
   height: 100dvh;
-  background: #f8fafc;
-  color: #0f172a;
+  background: radial-gradient(circle at 50% 0%, rgba(229, 50, 45, 0.03) 0%, transparent 60%), #f8fafc;
+  color: var(--portal-text-dark);
   display: flex;
   flex-direction: column;
   overflow-y: auto;
   -webkit-overflow-scrolling: touch;
+  font-family: 'Plus Jakarta Sans', var(--font-sans);
 }
 
 #editor-view {
-  display: none; /* Hidden until user chooses PDF Editor */
+  display: none;
+  flex: 1;
   height: 100vh;
   height: 100dvh;
   overflow: hidden;
@@ -26,97 +42,127 @@
 }
 
 /* --------------------------------------------------------------------------
-   Portal Navigation Bar
+   Top Navigation Bar (iLovePDF Clean Style)
    -------------------------------------------------------------------------- */
 .portal-navbar {
-  height: 64px;
-  background: rgba(255, 255, 255, 0.95);
-  backdrop-filter: blur(10px);
-  border-bottom: 1px solid #e2e8f0;
+  height: 68px;
+  background: rgba(255, 255, 255, 0.94);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border-bottom: 1px solid rgba(226, 232, 240, 0.8);
   position: sticky;
   top: 0;
   z-index: 100;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 0 24px;
+  padding: 0 32px;
 }
 
 .portal-brand {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 12px;
   text-decoration: none;
-  font-weight: 800;
-  font-size: 18px;
-  color: #0f172a;
   cursor: pointer;
+  user-select: none;
 }
 
-.portal-brand .brand-icon {
-  width: 34px;
-  height: 34px;
-  background: linear-gradient(135deg, #ea580c 0%, #f97316 100%);
-  border-radius: 8px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: #ffffff;
-  font-weight: 800;
-  font-size: 18px;
-  box-shadow: 0 4px 10px rgba(234, 88, 12, 0.3);
-}
-
-.portal-nav-links {
+.portal-brand .brand-logo-wrap {
   display: flex;
   align-items: center;
   gap: 6px;
 }
 
-.portal-nav-link {
+.portal-brand .brand-icon {
+  width: 36px;
+  height: 36px;
+  background: linear-gradient(135deg, #e5322d 0%, #ff4b4b 100%);
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #ffffff;
+  font-weight: 800;
+  font-size: 20px;
+  box-shadow: 0 4px 12px rgba(229, 50, 45, 0.35);
+  transition: transform 0.2s ease;
+}
+
+.portal-brand:hover .brand-icon {
+  transform: rotate(-6deg) scale(1.05);
+}
+
+.portal-brand .brand-text {
+  font-size: 20px;
+  font-weight: 800;
+  letter-spacing: -0.03em;
+  color: #0f172a;
+}
+
+.portal-brand .brand-text span {
+  color: #e5322d;
+}
+
+.portal-nav-links {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.portal-nav-item {
   color: #475569;
   font-size: 14px;
   font-weight: 600;
   padding: 8px 14px;
-  border-radius: 6px;
+  border-radius: 8px;
   text-decoration: none;
   cursor: pointer;
   transition: all 0.15s ease;
   background: transparent;
   border: none;
+  display: flex;
+  align-items: center;
+  gap: 6px;
 }
 
-.portal-nav-link:hover {
-  color: #0f172a;
-  background: #f1f5f9;
+.portal-nav-item:hover {
+  color: #e5322d;
+  background: #fef2f2;
 }
 
-.portal-nav-link.active {
-  color: #2563eb;
-  background: #eff6ff;
+.portal-nav-item.active {
+  color: #e5322d;
+  background: #fef2f2;
 }
 
 .portal-nav-cta {
-  background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
+  background: linear-gradient(135deg, #e5322d 0%, #dc2626 100%);
   color: #ffffff !important;
   font-weight: 700;
-  padding: 8px 18px;
-  border-radius: 8px;
-  box-shadow: 0 4px 12px rgba(37, 99, 235, 0.25);
+  padding: 9px 20px;
+  border-radius: 9999px;
+  box-shadow: 0 4px 14px rgba(229, 50, 45, 0.3);
+  margin-left: 8px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  transition: all 0.2s ease;
 }
 
 .portal-nav-cta:hover {
-  background: linear-gradient(135deg, #1d4ed8 0%, #1e40af 100%);
-  color: #ffffff !important;
+  background: linear-gradient(135deg, #dc2626 0%, #b91c1c 100%);
+  box-shadow: 0 6px 18px rgba(229, 50, 45, 0.45);
+  transform: translateY(-1px);
 }
 
 /* --------------------------------------------------------------------------
-   Hero Section
+   Hero Section (Clean, Vibrant & Focused)
    -------------------------------------------------------------------------- */
 .portal-hero {
-  padding: 56px 20px 36px 20px;
+  padding: 48px 24px 20px 24px;
   text-align: center;
-  max-width: 960px;
+  max-width: 880px;
   margin: 0 auto;
   display: flex;
   flex-direction: column;
@@ -127,142 +173,136 @@
   display: inline-flex;
   align-items: center;
   gap: 8px;
-  padding: 6px 14px;
+  padding: 6px 16px;
   border-radius: 9999px;
-  background: #eff6ff;
-  border: 1px solid #bfdbfe;
-  color: #1d4ed8;
+  background: #fef2f2;
+  border: 1px solid #fee2e2;
+  color: #e5322d;
   font-size: 13px;
   font-weight: 700;
-  margin-bottom: 20px;
+  margin-bottom: 22px;
+  box-shadow: 0 2px 6px rgba(229, 50, 45, 0.06);
 }
 
-.hero-pill-badge svg {
-  color: #2563eb;
+.hero-pill-badge .pulse-dot {
+  width: 7px;
+  height: 7px;
+  background: #e5322d;
+  border-radius: 50%;
+  box-shadow: 0 0 0 3px rgba(229, 50, 45, 0.25);
+  animation: pulseDot 2s infinite;
+}
+
+@keyframes pulseDot {
+  0% { box-shadow: 0 0 0 0 rgba(229, 50, 45, 0.4); }
+  70% { box-shadow: 0 0 0 6px rgba(229, 50, 45, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(229, 50, 45, 0); }
 }
 
 .portal-hero h1 {
-  font-size: 44px;
+  font-size: 46px;
   font-weight: 800;
   color: #0f172a;
-  line-height: 1.15;
-  letter-spacing: -0.02em;
+  line-height: 1.18;
+  letter-spacing: -0.03em;
   margin-bottom: 16px;
-}
-
-.portal-hero h1 span.gradient-text {
-  background: linear-gradient(135deg, #2563eb 0%, #7c3aed 100%);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
 }
 
 .portal-hero p.hero-subhead {
   font-size: 18px;
   color: #475569;
-  max-width: 680px;
-  line-height: 1.5;
-  margin-bottom: 32px;
+  max-width: 700px;
+  line-height: 1.55;
+  margin-bottom: 28px;
 }
 
-/* Quick Universal Drop Area in Hero */
-.hero-dropzone {
-  width: 100%;
-  max-width: 720px;
+/* Category Filter Tabs (Like iLovePDF Tool Filter) */
+.portal-filter-tabs {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 36px;
   background: #ffffff;
-  border: 2px dashed #93c5fd;
-  border-radius: 16px;
-  padding: 32px 24px;
-  box-shadow: 0 10px 30px rgba(37, 99, 235, 0.08);
-  cursor: pointer;
-  transition: all 0.2s ease;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 12px;
+  padding: 6px;
+  border-radius: 9999px;
+  border: 1px solid #e2e8f0;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
 }
 
-.hero-dropzone:hover,
-.hero-dropzone.drag-over {
-  border-color: #2563eb;
-  background: #f0f7ff;
-  transform: translateY(-2px);
-  box-shadow: 0 14px 35px rgba(37, 99, 235, 0.15);
-}
-
-.hero-dropzone-icon {
-  width: 52px;
-  height: 52px;
-  background: #eff6ff;
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: #2563eb;
-}
-
-.hero-dropzone-title {
-  font-size: 17px;
-  font-weight: 700;
-  color: #0f172a;
-}
-
-.hero-dropzone-subtitle {
-  font-size: 13px;
+.filter-tab-btn {
+  background: transparent;
+  border: none;
+  padding: 7px 18px;
+  border-radius: 9999px;
+  font-size: 13.5px;
+  font-weight: 600;
   color: #64748b;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  user-select: none;
+}
+
+.filter-tab-btn:hover {
+  color: #0f172a;
+  background: #f1f5f9;
+}
+
+.filter-tab-btn.active {
+  background: #e5322d;
+  color: #ffffff;
+  box-shadow: 0 3px 10px rgba(229, 50, 45, 0.3);
 }
 
 /* --------------------------------------------------------------------------
-   Tools Grid Section
+   Tools Grid Section (The iLovePDF Signature Aesthetic)
    -------------------------------------------------------------------------- */
 .tools-section {
-  max-width: 1140px;
+  max-width: 1240px;
   margin: 0 auto;
-  padding: 30px 20px 60px 20px;
+  padding: 0 24px 60px 24px;
   width: 100%;
-}
-
-.section-title-wrap {
-  text-align: center;
-  margin-bottom: 36px;
-}
-
-.section-title {
-  font-size: 28px;
-  font-weight: 800;
-  color: #0f172a;
-  margin-bottom: 8px;
-}
-
-.section-subtitle {
-  font-size: 15px;
-  color: #64748b;
 }
 
 .tools-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
-  gap: 22px;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 20px;
 }
 
+/* Aesthetic Card Design */
 .tool-card {
   background: #ffffff;
   border: 1px solid #e2e8f0;
-  border-radius: 14px;
-  padding: 24px;
+  border-radius: 16px;
+  padding: 24px 22px;
   cursor: pointer;
-  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  transition: all 0.22s cubic-bezier(0.16, 1, 0.3, 1);
   display: flex;
   flex-direction: column;
   position: relative;
   overflow: hidden;
-  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.04);
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.03);
+  text-decoration: none;
+  user-select: none;
 }
 
 .tool-card:hover {
-  transform: translateY(-4px);
-  border-color: #3b82f6;
-  box-shadow: 0 12px 24px -4px rgba(37, 99, 235, 0.12), 0 4px 8px -2px rgba(0, 0, 0, 0.04);
+  transform: translateY(-6px);
+  border-color: #cbd5e1;
+  box-shadow: var(--portal-card-hover-shadow);
+}
+
+/* Top Accent Highlight for Featured Cards */
+.tool-card.featured::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+  background: linear-gradient(90deg, #e5322d, #ff4b4b);
 }
 
 .tool-card-badge {
@@ -271,144 +311,185 @@
   right: 14px;
   font-size: 11px;
   font-weight: 700;
-  padding: 3px 8px;
+  padding: 3px 9px;
   border-radius: 9999px;
-  background: #eff6ff;
-  color: #2563eb;
-  border: 1px solid #bfdbfe;
+  background: #fef2f2;
+  color: #e5322d;
+  border: 1px solid #fee2e2;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
 }
 
 .tool-card-badge.popular {
-  background: #fef3c7;
-  color: #b45309;
-  border-color: #fde68a;
+  background: #eff6ff;
+  color: #2563eb;
+  border-color: #bfdbfe;
 }
 
+.tool-card-badge.new {
+  background: #ecfdf5;
+  color: #059669;
+  border-color: #a7f3d0;
+}
+
+/* Tool Icon Container */
 .tool-card-icon {
-  width: 48px;
-  height: 48px;
-  border-radius: 12px;
+  width: 54px;
+  height: 54px;
+  border-radius: 14px;
   display: flex;
   align-items: center;
   justify-content: center;
   margin-bottom: 16px;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
-.tool-card-icon.blue { background: #eff6ff; color: #2563eb; }
-.tool-card-icon.purple { background: #f5f3ff; color: #7c3aed; }
-.tool-card-icon.orange { background: #fff7ed; color: #ea580c; }
-.tool-card-icon.emerald { background: #ecfdf5; color: #059669; }
-.tool-card-icon.rose { background: #fff1f2; color: #e11d48; }
-.tool-card-icon.amber { background: #fffbeb; color: #d97706; }
+.tool-card:hover .tool-card-icon {
+  transform: scale(1.08);
+}
 
+/* Signature Color Palettes for Tools */
+.tool-card-icon.red { background: #fef2f2; color: #e5322d; box-shadow: 0 4px 12px rgba(229, 50, 45, 0.15); }
+.tool-card-icon.orange { background: #fff7ed; color: #ff6b00; box-shadow: 0 4px 12px rgba(255, 107, 0, 0.15); }
+.tool-card-icon.green { background: #ecfdf5; color: #10b981; box-shadow: 0 4px 12px rgba(16, 185, 129, 0.15); }
+.tool-card-icon.indigo { background: #eef2ff; color: #4f46e5; box-shadow: 0 4px 12px rgba(79, 70, 229, 0.15); }
+.tool-card-icon.amber { background: #fffbeb; color: #f59e0b; box-shadow: 0 4px 12px rgba(245, 158, 11, 0.15); }
+.tool-card-icon.purple { background: #faf5ff; color: #9333ea; box-shadow: 0 4px 12px rgba(147, 51, 234, 0.15); }
+.tool-card-icon.cyan { background: #ecfeff; color: #06b6d4; box-shadow: 0 4px 12px rgba(6, 182, 212, 0.15); }
+.tool-card-icon.blue { background: #eff6ff; color: #2563eb; box-shadow: 0 4px 12px rgba(37, 99, 235, 0.15); }
+.tool-card-icon.pink { background: #fdf2f8; color: #ec4899; box-shadow: 0 4px 12px rgba(236, 72, 153, 0.15); }
+.tool-card-icon.violet { background: #f5f3ff; color: #7c3aed; box-shadow: 0 4px 12px rgba(124, 58, 237, 0.15); }
+.tool-card-icon.crimson { background: #fff1f2; color: #dc2626; box-shadow: 0 4px 12px rgba(220, 38, 38, 0.15); }
+.tool-card-icon.sky { background: #f0f9ff; color: #0ea5e9; box-shadow: 0 4px 12px rgba(14, 165, 233, 0.15); }
+
+/* Card Content */
 .tool-card-title {
-  font-size: 18px;
-  font-weight: 700;
+  font-size: 19px;
+  font-weight: 800;
   color: #0f172a;
   margin-bottom: 8px;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
+  letter-spacing: -0.02em;
 }
 
 .tool-card-desc {
-  font-size: 13px;
+  font-size: 13.5px;
   color: #64748b;
-  line-height: 1.5;
-  margin-bottom: 20px;
+  line-height: 1.48;
+  margin-bottom: 14px;
   flex: 1;
 }
 
-.tool-card-btn {
-  display: inline-flex;
+.tool-card-action {
+  font-size: 12.5px;
+  font-weight: 700;
+  color: #94a3b8;
+  display: flex;
   align-items: center;
-  justify-content: center;
   gap: 6px;
-  background: #f8fafc;
-  border: 1px solid #e2e8f0;
-  color: #1e293b;
-  font-size: 13px;
-  font-weight: 600;
-  padding: 9px 16px;
-  border-radius: 8px;
   transition: all 0.15s ease;
 }
 
-.tool-card:hover .tool-card-btn {
-  background: #2563eb;
-  border-color: #2563eb;
-  color: #ffffff;
+.tool-card:hover .tool-card-action {
+  color: #e5322d;
+  gap: 8px;
 }
 
 /* --------------------------------------------------------------------------
-   Features & Trust Section
+   Quick Drop Floating Bar (Hero Centerpiece)
    -------------------------------------------------------------------------- */
-.features-section {
-  background: #ffffff;
-  border-top: 1px solid #e2e8f0;
-  border-bottom: 1px solid #e2e8f0;
-  padding: 50px 20px;
-}
-
-.features-inner {
-  max-width: 1080px;
-  margin: 0 auto;
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 32px;
-}
-
-.feature-box {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-}
-
-.feature-icon {
-  width: 40px;
-  height: 40px;
-  border-radius: 10px;
-  background: #f1f5f9;
-  color: #2563eb;
+.hero-quick-drop {
   display: flex;
   align-items: center;
   justify-content: center;
-  margin-bottom: 4px;
+  gap: 14px;
+  margin-top: 12px;
+  margin-bottom: 24px;
 }
 
-.feature-box h3 {
-  font-size: 16px;
+.quick-upload-pill {
+  background: #ffffff;
+  border: 1.5px dashed #cbd5e1;
+  padding: 12px 24px;
+  border-radius: 9999px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 14px;
   font-weight: 700;
-  color: #0f172a;
+  color: #334155;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.04);
+  transition: all 0.2s ease;
 }
 
-.feature-box p {
+.quick-upload-pill:hover,
+.quick-upload-pill.drag-over {
+  border-color: #e5322d;
+  color: #e5322d;
+  background: #fef2f2;
+  transform: translateY(-2px);
+  box-shadow: 0 8px 20px rgba(229, 50, 45, 0.12);
+}
+
+.quick-upload-pill svg {
+  color: #e5322d;
+}
+
+/* --------------------------------------------------------------------------
+   Trust & Metrics Banner
+   -------------------------------------------------------------------------- */
+.trust-banner {
+  background: #ffffff;
+  border-top: 1px solid #e2e8f0;
+  border-bottom: 1px solid #e2e8f0;
+  padding: 42px 24px;
+  margin-top: 20px;
+}
+
+.trust-inner {
+  max-width: 1140px;
+  margin: 0 auto;
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 24px;
+  text-align: center;
+}
+
+.trust-stat-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+}
+
+.trust-stat-number {
+  font-size: 32px;
+  font-weight: 800;
+  color: #0f172a;
+  letter-spacing: -0.02em;
+}
+
+.trust-stat-number span {
+  color: #e5322d;
+}
+
+.trust-stat-label {
   font-size: 13.5px;
   color: #64748b;
-  line-height: 1.5;
+  font-weight: 600;
 }
 
 /* --------------------------------------------------------------------------
-   Portal Footer
-   -------------------------------------------------------------------------- */
-.portal-footer {
-  padding: 30px 20px;
-  text-align: center;
-  color: #94a3b8;
-  font-size: 13px;
-}
-
-/* --------------------------------------------------------------------------
-   Back to Home Header Button inside PDF Editor
+   Back to Home Header Button in Editor
    -------------------------------------------------------------------------- */
 .btn-back-home {
-  background: #f8fafc;
+  background: #ffffff;
   border: 1px solid #cbd5e1;
-  color: #334155;
-  font-size: 12px;
+  color: #1e293b;
+  font-size: 12.5px;
   font-weight: 700;
-  padding: 5px 12px;
-  border-radius: 6px;
+  padding: 6px 14px;
+  border-radius: 8px;
   display: inline-flex;
   align-items: center;
   gap: 6px;
@@ -418,13 +499,13 @@
 }
 
 .btn-back-home:hover {
-  background: #f1f5f9;
-  color: #0f172a;
-  border-color: #94a3b8;
+  background: #fef2f2;
+  color: #e5322d;
+  border-color: #fca5a5;
 }
 
 /* --------------------------------------------------------------------------
-   Interactive Tool Modals (JPG to PDF, Merge, Resize)
+   Aesthetic Tool Dialogs & Modals
    -------------------------------------------------------------------------- */
 .tool-dialog-backdrop {
   position: fixed;
@@ -433,7 +514,8 @@
   right: 0;
   bottom: 0;
   background: rgba(15, 23, 42, 0.65);
-  backdrop-filter: blur(4px);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
   z-index: 2000;
   display: flex;
   align-items: center;
@@ -444,28 +526,29 @@
 
 .tool-dialog {
   background: #ffffff;
-  border-radius: 16px;
-  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.25);
+  border-radius: 20px;
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
   width: 100%;
-  max-width: 640px;
+  max-width: 600px;
   max-height: 90vh;
   display: flex;
   flex-direction: column;
   overflow: hidden;
-  animation: slideUp 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  animation: slideUp 0.22s cubic-bezier(0.16, 1, 0.3, 1);
+  border: 1px solid #e2e8f0;
 }
 
 .tool-dialog-header {
-  padding: 18px 24px;
+  padding: 20px 24px;
   border-bottom: 1px solid #e2e8f0;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  background: #f8fafc;
+  background: #fafbfc;
 }
 
 .tool-dialog-header h3 {
-  font-size: 18px;
+  font-size: 19px;
   font-weight: 800;
   color: #0f172a;
   display: flex;
@@ -482,19 +565,56 @@
 .tool-dialog-footer {
   padding: 16px 24px;
   border-top: 1px solid #e2e8f0;
-  background: #f8fafc;
+  background: #fafbfc;
   display: flex;
   align-items: center;
   justify-content: flex-end;
   gap: 10px;
 }
 
-/* Tool File Items Queue */
+/* Modern Dropzone inside Modals */
+.tool-dropzone {
+  border: 2px dashed #cbd5e1;
+  border-radius: 14px;
+  padding: 34px 20px;
+  text-align: center;
+  background: #fafbfc;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+}
+
+.tool-dropzone:hover,
+.tool-dropzone.drag-over {
+  border-color: #e5322d;
+  background: #fef2f2;
+}
+
+.tool-dropzone-icon {
+  width: 46px;
+  height: 46px;
+  border-radius: 12px;
+  background: #f1f5f9;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 4px;
+}
+
+.tool-dropzone:hover .tool-dropzone-icon {
+  background: #fee2e2;
+  color: #e5322d;
+}
+
+/* Queue List */
 .tool-queue-list {
   display: flex;
   flex-direction: column;
   gap: 8px;
-  margin-top: 14px;
+  margin-top: 16px;
   max-height: 240px;
   overflow-y: auto;
 }
@@ -506,7 +626,7 @@
   padding: 10px 14px;
   background: #f8fafc;
   border: 1px solid #e2e8f0;
-  border-radius: 8px;
+  border-radius: 10px;
   font-size: 13px;
 }
 
@@ -518,12 +638,12 @@
 }
 
 .tool-queue-item-title {
-  font-weight: 600;
+  font-weight: 700;
   color: #0f172a;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  max-width: 280px;
+  max-width: 260px;
 }
 
 .tool-queue-item-size {
@@ -547,6 +667,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
+  transition: all 0.15s ease;
 }
 
 .tool-queue-btn:hover {
@@ -563,20 +684,22 @@
 .resize-preview-box {
   width: 100%;
   max-height: 200px;
-  background: #f1f5f9;
+  background: #f8fafc;
   border: 1px solid #cbd5e1;
-  border-radius: 8px;
+  border-radius: 12px;
   display: flex;
   align-items: center;
   justify-content: center;
   overflow: hidden;
   margin-bottom: 18px;
+  padding: 12px;
 }
 
 .resize-preview-box img {
   max-width: 100%;
-  max-height: 190px;
+  max-height: 180px;
   object-fit: contain;
+  border-radius: 6px;
 }
 
 .resize-form-grid {
@@ -599,55 +722,68 @@
 
 .form-input {
   border: 1px solid #cbd5e1;
-  border-radius: 6px;
-  padding: 8px 12px;
-  font-size: 13px;
+  border-radius: 8px;
+  padding: 9px 12px;
+  font-size: 13.5px;
   color: #0f172a;
   background: #ffffff;
   outline: none;
+  transition: all 0.15s ease;
 }
 
 .form-input:focus {
-  border-color: #2563eb;
-  box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.15);
+  border-color: #e5322d;
+  box-shadow: 0 0 0 3px rgba(229, 50, 45, 0.15);
 }
 
 /* --------------------------------------------------------------------------
-   Responsive Rules for Portal
+   Responsive Rules
    -------------------------------------------------------------------------- */
-@media (max-width: 840px) {
+@media (max-width: 1200px) {
+  .tools-grid {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+
+@media (max-width: 900px) {
+  .tools-grid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 16px;
+  }
   .portal-hero h1 {
-    font-size: 32px;
+    font-size: 36px;
+  }
+  .trust-inner {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 20px;
+  }
+}
+
+@media (max-width: 640px) {
+  .portal-navbar {
+    padding: 0 16px;
+  }
+  .portal-nav-links .portal-nav-item:not(.portal-nav-cta) {
+    display: none;
+  }
+  .portal-hero {
+    padding: 32px 16px 16px 16px;
+  }
+  .portal-hero h1 {
+    font-size: 28px;
   }
   .portal-hero p.hero-subhead {
-    font-size: 16px;
+    font-size: 15px;
   }
   .tools-grid {
     grid-template-columns: 1fr;
   }
-  .features-inner {
+  .trust-inner {
     grid-template-columns: 1fr;
-    gap: 24px;
+    gap: 18px;
   }
-  .portal-nav-links .portal-nav-link:not(.portal-nav-cta) {
-    display: none; /* Keep clean navbar on mobile */
-  }
-}
-
-@media (max-width: 480px) {
-  .portal-hero {
-    padding: 36px 14px 24px 14px;
-  }
-  .portal-hero h1 {
-    font-size: 26px;
-  }
-  .hero-dropzone {
-    padding: 22px 14px;
-  }
-  .tool-dialog {
-    max-width: 95%;
-  }
-  .resize-form-grid {
-    grid-template-columns: 1fr;
+  .filter-tab-btn {
+    padding: 6px 14px;
+    font-size: 12.5px;
   }
 }
