@@ -87,6 +87,7 @@
   font-size: 20px;
   box-shadow: 0 4px 12px rgba(229, 50, 45, 0.35);
   transition: transform 0.2s ease;
+}
 
 .portal-brand:hover .brand-icon {
   transform: rotate(-6deg) scale(1.05);
