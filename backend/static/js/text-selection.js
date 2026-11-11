@@ -87,10 +87,18 @@ export class TextSelectionManager {
 
           boxEl.title = `Click to edit: "${span.text}"`;
 
-          boxEl.addEventListener("click", (e) => {
+          let lastTrigger = 0;
+          const triggerSelect = (e) => {
+            const now = Date.now();
+            if (now - lastTrigger < 250) return;
+            lastTrigger = now;
             e.stopPropagation();
+            e.preventDefault();
             this.handleSpanClick(pageIndex, span, boxEl, e);
-          });
+          };
+
+          boxEl.addEventListener("pointerup", triggerSelect);
+          boxEl.addEventListener("click", triggerSelect);
 
           overlayLayer.appendChild(boxEl);
         });

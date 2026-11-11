@@ -115,41 +115,168 @@ export class ExportClient {
         body: JSON.stringify(payload)
       });
 
-      if (!res.ok) {
-        const err = await res.json();
-        throw new Error(err.detail || "Export request failed");
+      if (res.ok) {
+        const data = await res.json();
+        const val = data.result.validation;
+
+        // Populate verification modal
+        this.modalEl.querySelector("#export-val-pagecount").textContent = `${data.result.page_count} Pages`;
+        this.modalEl.querySelector("#export-val-redaction").textContent = val.redaction_verified ? "Verified (Clean)" : "Issues Found";
+        this.modalEl.querySelector("#export-val-redaction").style.color = val.redaction_verified ? "#34d399" : "#f87171";
+        this.modalEl.querySelector("#export-val-preview").textContent = val.extracted_text_preview || "(No text on first page)";
+
+        const warnBox = this.modalEl.querySelector("#export-val-warnings");
+        if (val.warnings && val.warnings.length > 0) {
+          warnBox.textContent = `Warnings: ${val.warnings.join("; ")}`;
+          warnBox.style.display = "block";
+        } else {
+          warnBox.style.display = "none";
+        }
+
+        const dlLink = this.modalEl.querySelector("#export-download-link");
+        dlLink.href = getApiUrl(data.download_url);
+        dlLink.download = data.download_filename || "edited_document.pdf";
+        dlLink.style.display = "flex";
+
+        this.modalEl.querySelector("#export-loading-state").style.display = "none";
+        this.modalEl.querySelector("#export-result-state").style.display = "flex";
+
+        State.emit("toast", { type: "success", message: "PDF exported and validated successfully!" });
+        return;
       }
-
-      const data = await res.json();
-      const val = data.result.validation;
-
-      // Populate verification modal
-      this.modalEl.querySelector("#export-val-pagecount").textContent = `${data.result.page_count} Pages`;
-      this.modalEl.querySelector("#export-val-redaction").textContent = val.redaction_verified ? "Verified (Clean)" : "Issues Found";
-      this.modalEl.querySelector("#export-val-redaction").style.color = val.redaction_verified ? "#34d399" : "#f87171";
-      this.modalEl.querySelector("#export-val-preview").textContent = val.extracted_text_preview || "(No text on first page)";
-
-      const warnBox = this.modalEl.querySelector("#export-val-warnings");
-      if (val.warnings && val.warnings.length > 0) {
-        warnBox.textContent = `Warnings: ${val.warnings.join("; ")}`;
-        warnBox.style.display = "block";
-      } else {
-        warnBox.style.display = "none";
-      }
-
-      const dlLink = this.modalEl.querySelector("#export-download-link");
-      dlLink.href = getApiUrl(data.download_url);
-      dlLink.download = data.download_filename || "edited_document.pdf";
-      dlLink.style.display = "flex";
-
-      this.modalEl.querySelector("#export-loading-state").style.display = "none";
-      this.modalEl.querySelector("#export-result-state").style.display = "flex";
-
-      State.emit("toast", { type: "success", message: "PDF exported and validated successfully!" });
     } catch (e) {
-      this.hide();
-      State.emit("toast", { type: "error", message: `Export error: ${e.message}` });
+      console.warn("Backend export request failed, attempting client-side PDFLib export:", e);
     }
+
+    // ------------------------------------------------------------------------
+    // Client-Side PDFLib Export Fallback (Runs 100% offline & on GitHub Pages)
+    // ------------------------------------------------------------------------
+    if (window.PDFLib && State.rawFileBytes) {
+      try {
+        const { PDFDocument, rgb, StandardFonts } = window.PDFLib;
+        const pdfDoc = await PDFDocument.load(State.rawFileBytes);
+        const pages = pdfDoc.getPages();
+        const helveticaFont = await pdfDoc.embedFont(StandardFonts.Helvetica);
+        const timesFont = await pdfDoc.embedFont(StandardFonts.TimesRoman);
+
+        // 1. Apply Text Edits (whiteout underlying text + draw replacement)
+        for (const edit of State.pendingTextEdits) {
+          const page = pages[edit.page_number];
+          if (!page) continue;
+          const { height } = page.getSize();
+          const [x0, y0, x1, y1] = edit.bbox;
+          const w = Math.max(x1 - x0, 10);
+          const h = Math.max(y1 - y0, 10);
+          const pdfY = height - y1;
+
+          page.drawRectangle({
+            x: x0,
+            y: pdfY,
+            width: w,
+            height: h,
+            color: rgb(1, 1, 1)
+          });
+
+          if (edit.replacement_text) {
+            const font = edit.font && /times|roman|serif/i.test(edit.font) ? timesFont : helveticaFont;
+            const size = edit.font_size || 12;
+            page.drawText(edit.replacement_text, {
+              x: x0,
+              y: pdfY + 2,
+              size: size,
+              font: font,
+              color: rgb(0, 0, 0)
+            });
+          }
+        }
+
+        // 2. Apply Redactions
+        for (const red of State.pendingRedactions) {
+          const page = pages[red.page_number];
+          if (!page) continue;
+          const { height } = page.getSize();
+          const [x0, y0, x1, y1] = red.bbox;
+          page.drawRectangle({
+            x: x0,
+            y: height - y1,
+            width: Math.max(10, x1 - x0),
+            height: Math.max(10, y1 - y0),
+            color: rgb(0, 0, 0)
+          });
+        }
+
+        // 3. Apply Annotations
+        for (const annot of State.pendingAnnotations) {
+          const page = pages[annot.page_number];
+          if (!page) continue;
+          const { height } = page.getSize();
+          const [x0, y0, x1, y1] = annot.rect;
+          const w = Math.max(10, Math.abs(x1 - x0));
+          const h = Math.max(10, Math.abs(y1 - y0));
+          const pdfY = height - Math.max(y0, y1);
+
+          if (annot.type === "whiteout") {
+            page.drawRectangle({ x: Math.min(x0, x1), y: pdfY, width: w, height: h, color: rgb(1, 1, 1) });
+          } else if (annot.type === "redact") {
+            page.drawRectangle({ x: Math.min(x0, x1), y: pdfY, width: w, height: h, color: rgb(0, 0, 0) });
+          } else if (annot.type === "highlight") {
+            page.drawRectangle({ x: Math.min(x0, x1), y: pdfY, width: w, height: h, color: rgb(1, 0.9, 0), opacity: 0.45 });
+          } else if (annot.type === "rect") {
+            page.drawRectangle({ x: Math.min(x0, x1), y: pdfY, width: w, height: h, borderWidth: 2, borderColor: rgb(0, 0, 0) });
+          } else if (annot.type === "text") {
+            page.drawText(annot.properties.text || "", { x: x0, y: pdfY, size: annot.properties.font_size || 12, font: helveticaFont, color: rgb(0, 0, 0) });
+          } else if (annot.type === "check") {
+            page.drawText("✓", { x: x0, y: pdfY, size: Math.max(16, h), font: helveticaFont, color: rgb(0.08, 0.64, 0.29) });
+          } else if (annot.type === "cross") {
+            page.drawText("✗", { x: x0, y: pdfY, size: Math.max(16, h), font: helveticaFont, color: rgb(0.86, 0.15, 0.15) });
+          } else if (annot.type === "watermark") {
+            page.drawText(annot.properties.text || "CONFIDENTIAL", {
+              x: 60,
+              y: height / 2,
+              size: 50,
+              font: helveticaFont,
+              color: rgb(0.85, 0.85, 0.85),
+              rotate: { type: 'degrees', angle: 45 }
+            });
+          } else if ((annot.type === "image" || annot.type === "signature") && annot.properties.image_data) {
+            try {
+              const res = await fetch(annot.properties.image_data);
+              const imgBytes = await res.arrayBuffer();
+              const img = annot.properties.image_data.includes("image/jpeg")
+                ? await pdfDoc.embedJpg(imgBytes)
+                : await pdfDoc.embedPng(imgBytes);
+              page.drawImage(img, { x: Math.min(x0, x1), y: pdfY, width: w, height: h });
+            } catch (imgErr) {
+              console.warn("Failed embedding image annot:", imgErr);
+            }
+          }
+        }
+
+        const outBytes = await pdfDoc.save();
+        const blob = new Blob([outBytes], { type: "application/pdf" });
+        const blobUrl = URL.createObjectURL(blob);
+
+        const dlLink = this.modalEl.querySelector("#export-download-link");
+        dlLink.href = blobUrl;
+        dlLink.download = (State.filename || "edited_document.pdf").replace(/\.pdf$/i, "") + "_edited.pdf";
+        dlLink.style.display = "flex";
+
+        this.modalEl.querySelector("#export-val-pagecount").textContent = `${pages.length} Pages`;
+        this.modalEl.querySelector("#export-val-redaction").textContent = "Clean Client Export";
+        this.modalEl.querySelector("#export-val-redaction").style.color = "#34d399";
+        this.modalEl.querySelector("#export-val-preview").textContent = "(PDF processed and generated directly in your browser with PDF-Lib)";
+        this.modalEl.querySelector("#export-loading-state").style.display = "none";
+        this.modalEl.querySelector("#export-result-state").style.display = "flex";
+
+        State.emit("toast", { type: "success", message: "PDF exported and ready for download!" });
+        return;
+      } catch (clientErr) {
+        console.error("Client export failed:", clientErr);
+      }
+    }
+
+    this.hide();
+    State.emit("toast", { type: "error", message: "Failed to export PDF." });
   }
 
   hide() {

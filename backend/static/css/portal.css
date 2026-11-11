@@ -788,3 +788,167 @@
     font-size: 12.5px;
   }
 }
+
+/* --------------------------------------------------------------------------
+   Uploading & Processing PDF Popup Animations & Styles
+   -------------------------------------------------------------------------- */
+.loading-modal-dialog {
+  animation: modalScaleIn 0.28s cubic-bezier(0.16, 1, 0.3, 1);
+  background: #ffffff;
+}
+
+@keyframes modalScaleIn {
+  from { opacity: 0; transform: scale(0.92) translateY(14px); }
+  to { opacity: 1; transform: scale(1) translateY(0); }
+}
+
+.loading-icon-wrapper {
+  position: relative;
+  width: 84px;
+  height: 84px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.loading-pulse-ring {
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  background: rgba(229, 50, 45, 0.16);
+  animation: pulseRing 1.8s cubic-bezier(0.24, 0, 0.38, 1) infinite;
+}
+
+.loading-pdf-icon-box {
+  width: 70px;
+  height: 70px;
+  border-radius: 20px;
+  background: #fef2f2;
+  border: 2px solid #fecaca;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 10px 22px rgba(229, 50, 45, 0.18);
+  position: relative;
+  z-index: 2;
+}
+
+.arrow-up-stem, .arrow-up-head {
+  animation: bounceUp 1.2s ease-in-out infinite;
+}
+
+@keyframes bounceUp {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-3px); }
+}
+
+@keyframes pulseRing {
+  0% { transform: scale(0.75); opacity: 0.9; }
+  50% { transform: scale(1.3); opacity: 0; }
+  100% { transform: scale(0.75); opacity: 0; }
+}
+
+.loading-progress-fill {
+  position: relative;
+  overflow: hidden;
+}
+
+.loading-progress-fill::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  bottom: 0;
+  right: 0;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.45), transparent);
+  animation: shimmerTrack 1.3s infinite;
+}
+
+@keyframes shimmerTrack {
+  0% { transform: translateX(-100%); }
+  100% { transform: translateX(100%); }
+}
+
+.loading-spinner-circle {
+  width: 14px;
+  height: 14px;
+  border: 2px solid rgba(229, 50, 45, 0.25);
+  border-top-color: #e5322d;
+  border-radius: 50%;
+  animation: spinCircle 0.8s linear infinite;
+  display: inline-block;
+}
+
+@keyframes spinCircle {
+  to { transform: rotate(360deg); }
+}
+
+/* Annotation Rendered Elements & Interactions */
+.custom-rendered-annot {
+  box-sizing: border-box;
+  transition: box-shadow 0.15s ease;
+  user-select: none;
+}
+
+.custom-rendered-annot.selected {
+  outline: 2px dashed #2563eb !important;
+  outline-offset: 2px;
+}
+
+.custom-rendered-annot .annot-delete-btn {
+  position: absolute;
+  top: -10px;
+  right: -10px;
+  width: 20px;
+  height: 20px;
+  background: #ef4444;
+  color: #fff;
+  border: none;
+  border-radius: 50%;
+  font-size: 13px;
+  font-weight: bold;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  box-shadow: 0 2px 5px rgba(0,0,0,0.25);
+  z-index: 10;
+}
+
+.custom-rendered-annot.selected .annot-delete-btn,
+.custom-rendered-annot:hover .annot-delete-btn {
+  display: flex;
+}
+
+/* Sticky note styling */
+.sticky-note-annot {
+  background: #fef08a !important;
+  border: 1px solid #fde047 !important;
+  border-radius: 6px;
+  padding: 8px 10px;
+  box-shadow: 0 6px 14px rgba(0,0,0,0.12);
+  color: #854d0e;
+  font-family: var(--font-sans);
+  font-size: 12px;
+  line-height: 1.4;
+  overflow: hidden;
+  word-break: break-word;
+}
+
+/* Watermark styling */
+.watermark-annot {
+  position: absolute;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+  user-select: none;
+  transform: rotate(-35deg);
+  opacity: 0.25;
+  font-weight: 900;
+  color: #e5322d;
+  text-transform: uppercase;
+  letter-spacing: 0.15em;
+  white-space: nowrap;
+}

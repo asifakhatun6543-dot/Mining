@@ -6,17 +6,17 @@
   <title>OpenPDF Studio - Every tool you need to work with PDFs in one place</title>
   <meta name="description" content="100% Free online PDF tools: PDF Editor with in-place text editing, Merge PDF, Split PDF, JPG to PDF, PDF to JPG, Image Resize, and OCR.">
   
-  <!-- Google Fonts: Plus Jakarta Sans & Inter & Tinos for World-Class SaaS Aesthetic & Serif Accuracy -->
+  <!-- Google Fonts: Plus Jakarta Sans, Inter, Tinos, Dancing Script, Caveat, Great Vibes -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;600&family=Tinos:ital,wght@0,400;0,700;1,400;1,700&display=swap">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;600&family=Tinos:ital,wght@0,400;0,700;1,400;1,700&family=Dancing+Script:wght@600;700&family=Caveat:wght@600;700&family=Great+Vibes&display=swap">
 
   <!-- CSS Stylesheets (with cache-busting) -->
   <link rel="stylesheet" href="./vendor/pdfjs/pdf_viewer.css">
-  <link rel="stylesheet" href="./css/styles.css?v=2.3">
-  <link rel="stylesheet" href="./css/editor.css?v=2.3">
-  <link rel="stylesheet" href="./css/portal.css?v=2.3">
-  <link rel="stylesheet" href="./css/responsive.css?v=2.3">
+  <link rel="stylesheet" href="./css/styles.css?v=2.5">
+  <link rel="stylesheet" href="./css/editor.css?v=2.5">
+  <link rel="stylesheet" href="./css/portal.css?v=2.5">
+  <link rel="stylesheet" href="./css/responsive.css?v=2.5">
 
   <!-- PDF.js & PDF-Lib Vendor Scripts -->
   <script src="./vendor/pdfjs/pdf.js"></script>
@@ -216,6 +216,120 @@
   <!-- ======================================================================
        INTERACTIVE MODALS FOR TOOLS
        ====================================================================== -->
+
+  <!-- MODAL: Uploading & Processing PDF (Popup with status & progress) -->
+  <div class="tool-dialog-backdrop" id="modal-loading-pdf" style="display: none; z-index: 100000;">
+    <div class="tool-dialog loading-modal-dialog" style="max-width: 460px; text-align: center; border-radius: 24px; padding: 36px 30px; box-shadow: 0 25px 60px -15px rgba(0, 0, 0, 0.35);">
+      <!-- Glowing Animated Icon -->
+      <div class="loading-icon-wrapper" style="margin: 0 auto 20px;">
+        <div class="loading-pulse-ring"></div>
+        <div class="loading-pdf-icon-box">
+          <svg width="44" height="44" viewBox="0 0 24 24" fill="none" stroke="#e5322d" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+            <polyline points="14 2 14 8 20 8"></polyline>
+            <line x1="12" y1="18" x2="12" y2="12" class="arrow-up-stem"></line>
+            <polyline points="9 15 12 12 15 15" class="arrow-up-head"></polyline>
+          </svg>
+        </div>
+      </div>
+
+      <h3 id="loading-pdf-title" style="margin: 0 0 8px; font-size: 21px; font-weight: 800; color: #0f172a; letter-spacing: -0.02em;">Uploading PDF...</h3>
+      <p id="loading-pdf-desc" style="margin: 0 0 22px; font-size: 13px; color: #64748b; line-height: 1.5;">Uploading document, detecting original fonts, and preparing live editor. Please wait...</p>
+
+      <!-- Animated Progress Bar -->
+      <div class="loading-progress-track" style="background: #e2e8f0; height: 10px; border-radius: 999px; overflow: hidden; position: relative; margin-bottom: 14px;">
+        <div id="loading-pdf-bar" class="loading-progress-fill" style="width: 25%; height: 100%; background: linear-gradient(90deg, #e5322d, #f97316); border-radius: 999px; transition: width 0.35s ease;"></div>
+      </div>
+
+      <!-- Live status text -->
+      <div id="loading-pdf-status" style="font-size: 13px; font-weight: 600; color: #e5322d; display: flex; align-items: center; justify-content: center; gap: 8px;">
+        <span class="loading-spinner-circle"></span>
+        <span id="loading-pdf-status-text">Uploading file, please wait...</span>
+      </div>
+
+      <!-- Feature Badges -->
+      <div style="display: flex; justify-content: center; gap: 16px; margin-top: 24px; padding-top: 20px; border-top: 1px solid #f1f5f9; font-size: 11.5px; color: #64748b; font-weight: 500;">
+        <span style="display: flex; align-items: center; gap: 4px;">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#16a34a" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+          100% Private
+        </span>
+        <span style="display: flex; align-items: center; gap: 4px;">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#16a34a" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+          Original Fonts
+        </span>
+        <span style="display: flex; align-items: center; gap: 4px;">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#16a34a" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+          Instant WYSIWYG
+        </span>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: Digital Signature (Draw or Type) -->
+  <div class="tool-dialog-backdrop" id="modal-signature" style="display: none; z-index: 99990;">
+    <div class="tool-dialog" style="max-width: 520px; width: 92%;">
+      <div class="tool-dialog-header">
+        <div class="tool-dialog-title" style="display: flex; align-items: center; gap: 8px; font-weight: 800; font-size: 18px; color: #0f172a;">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#2563eb" stroke-width="2"><path d="m18 2 4 4"/><path d="M19 9 8.7 19.3a1 1 0 0 1-.7.3H4v-4a1 1 0 0 1 .3-.7L14.6 4.6"/><path d="m2 22 5-1-4-4-1 5Z"/></svg>
+          Create & Place Signature
+        </div>
+        <button type="button" class="btn-icon" id="close-signature-modal">&times;</button>
+      </div>
+
+      <div class="tool-dialog-body" style="padding: 20px 24px;">
+        <!-- Tabs: Draw / Type -->
+        <div class="sig-tabs" style="display: flex; gap: 8px; margin-bottom: 16px; border-bottom: 1px solid #e2e8f0; padding-bottom: 8px;">
+          <button type="button" class="btn-secondary sig-tab-btn active" id="tab-btn-sig-draw" data-tab="draw" style="padding: 6px 14px; font-size: 13px; font-weight: 700; background: #e5322d; color: #fff; border-color: #e5322d;">✏️ Draw</button>
+          <button type="button" class="btn-secondary sig-tab-btn" id="tab-btn-sig-type" data-tab="type" style="padding: 6px 14px; font-size: 13px; font-weight: 700;">⌨️ Type</button>
+        </div>
+
+        <!-- Tab 1: Draw Pad -->
+        <div id="sig-panel-draw">
+          <div style="font-size: 12px; color: #64748b; margin-bottom: 8px;">Draw your signature using mouse or finger touch:</div>
+          <div style="border: 2px dashed #cbd5e1; border-radius: 8px; background: #ffffff; position: relative;">
+            <canvas id="sig-pad-canvas" width="460" height="150" style="display: block; width: 100%; height: 150px; touch-action: none; cursor: crosshair;"></canvas>
+            <div style="position: absolute; bottom: 8px; left: 14px; right: 14px; border-bottom: 1px solid #e2e8f0; pointer-events: none;"></div>
+            <div style="position: absolute; bottom: 12px; left: 16px; font-size: 11px; color: #94a3b8; pointer-events: none;">Sign above the line</div>
+          </div>
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 10px;">
+            <div style="display: flex; gap: 8px; align-items: center;">
+              <span style="font-size: 12px; color: #64748b;">Ink Color:</span>
+              <button type="button" class="sig-color-btn active" data-color="#1e3a8a" style="width: 22px; height: 22px; border-radius: 50%; background: #1e3a8a; border: 2px solid #fff; box-shadow: 0 0 0 2px #1e3a8a; cursor: pointer;"></button>
+              <button type="button" class="sig-color-btn" data-color="#000000" style="width: 22px; height: 22px; border-radius: 50%; background: #000000; border: 2px solid #fff; cursor: pointer;"></button>
+              <button type="button" class="sig-color-btn" data-color="#991b1b" style="width: 22px; height: 22px; border-radius: 50%; background: #991b1b; border: 2px solid #fff; cursor: pointer;"></button>
+            </div>
+            <button type="button" class="btn-secondary" id="btn-sig-clear" style="padding: 4px 10px; font-size: 12px;">Clear Pad</button>
+          </div>
+        </div>
+
+        <!-- Tab 2: Type Signature -->
+        <div id="sig-panel-type" style="display: none;">
+          <div style="font-size: 12px; color: #64748b; margin-bottom: 8px;">Type your full name:</div>
+          <input type="text" id="sig-type-input" placeholder="e.g. Asif Ali" value="Your Signature" style="width: 100%; padding: 10px 12px; border: 1px solid #cbd5e1; border-radius: 6px; font-size: 15px; margin-bottom: 14px;">
+          <div style="font-size: 12px; color: #64748b; margin-bottom: 8px;">Select handwriting style:</div>
+          <div style="display: flex; flex-direction: column; gap: 8px;" id="sig-type-styles-list">
+            <div class="sig-style-option active" data-font="'Dancing Script', cursive" style="border: 2px solid #2563eb; background: #eff6ff; padding: 10px 14px; border-radius: 6px; cursor: pointer; font-size: 26px; font-family: 'Dancing Script', cursive; color: #1e3a8a;">
+              <span class="sig-preview-text">Your Signature</span>
+            </div>
+            <div class="sig-style-option" data-font="'Caveat', cursive" style="border: 1px solid #cbd5e1; padding: 10px 14px; border-radius: 6px; cursor: pointer; font-size: 26px; font-family: 'Caveat', cursive; color: #1e3a8a;">
+              <span class="sig-preview-text">Your Signature</span>
+            </div>
+            <div class="sig-style-option" data-font="'Great Vibes', cursive" style="border: 1px solid #cbd5e1; padding: 10px 14px; border-radius: 6px; cursor: pointer; font-size: 26px; font-family: 'Great Vibes', cursive; color: #1e3a8a;">
+              <span class="sig-preview-text">Your Signature</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="tool-dialog-footer" style="padding: 14px 24px;">
+        <button type="button" class="btn-secondary" id="btn-sig-cancel">Cancel</button>
+        <button type="button" class="btn-primary" id="btn-sig-place" style="background: #2563eb; padding: 8px 18px; font-size: 13px;">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+          Adopt & Place Signature
+        </button>
+      </div>
+    </div>
+  </div>
 
   <!-- MODAL: Edit PDF File Upload -->
   <div class="tool-dialog-backdrop" id="modal-edit-pdf" style="display: none;">
@@ -803,8 +917,8 @@
   <div class="toast-container" id="toast-container"></div>
 
   <!-- Main ES Module Bootstrap (with cache-busting) -->
-  <script type="module" src="./js/portal.js?v=2.2"></script>
-  <script type="module" src="./js/app.js?v=2.2"></script>
+  <script type="module" src="./js/portal.js?v=2.5"></script>
+  <script type="module" src="./js/app.js?v=2.5"></script>
 
 </body>
 </html>

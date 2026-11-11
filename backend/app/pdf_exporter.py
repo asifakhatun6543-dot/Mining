@@ -132,14 +132,42 @@ class PDFExporter:
                 if "color" in props:
                     s.set_colors(stroke=tuple(props["color"]))
                 s.update()
-            elif atype == "rect":
+            elif atype in ("rect", "whiteout", "redact"):
                 shape = page.new_shape()
                 shape.draw_rect(r)
-                color = tuple(props.get("color", [0, 0, 0]))
-                fill = tuple(props.get("fill", [1, 1, 1])) if props.get("fill") else None
-                width = props.get("stroke_width", 1.5)
+                if atype == "whiteout":
+                    color = (1, 1, 1)
+                    fill = (1, 1, 1)
+                    width = 0
+                elif atype == "redact":
+                    color = (0, 0, 0)
+                    fill = (0, 0, 0)
+                    width = 0
+                else:
+                    color = tuple(props.get("color", [0, 0, 0]))
+                    fill = tuple(props.get("fill", [1, 1, 1])) if props.get("fill") else None
+                    width = props.get("stroke_width", 1.5)
                 shape.finish(color=color, fill=fill, width=width)
                 shape.commit()
+            elif atype == "draw" and "points" in props:
+                pts = props.get("points", [])
+                if len(pts) > 1:
+                    shape = page.new_shape()
+                    for idx in range(len(pts) - 1):
+                        p1 = fitz.Point(pts[idx][0], pts[idx][1])
+                        p2 = fitz.Point(pts[idx + 1][0], pts[idx + 1][1])
+                        shape.draw_line(p1, p2)
+                    color = tuple(props.get("color", [0, 0, 0]))
+                    width = props.get("stroke_width", 2.0)
+                    shape.finish(color=color, width=width)
+                    shape.commit()
+            elif atype == "check":
+                page.insert_textbox(r, "✓", fontsize=r.height * 0.9, color=(0.08, 0.64, 0.29), align=fitz.TEXT_ALIGN_CENTER)
+            elif atype == "cross":
+                page.insert_textbox(r, "✗", fontsize=r.height * 0.9, color=(0.86, 0.15, 0.15), align=fitz.TEXT_ALIGN_CENTER)
+            elif atype == "sticky":
+                comment_text = props.get("text", "")
+                page.add_text_annot(fitz.Point(r.x0, r.y0), comment_text, icon="Note")
             elif atype == "circle":
                 shape = page.new_shape()
                 shape.draw_oval(r)

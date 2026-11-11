@@ -369,38 +369,206 @@ class OpenPDFStudioApp {
     }
   }
 
+  // ------------------------------------------------------------------------
+  // Loading Modal System
+  // ------------------------------------------------------------------------
+  _showLoadingModal(title, desc, status, pct) {
+    const modal = document.getElementById("modal-loading-pdf");
+    if (!modal) return;
+    const titleEl = document.getElementById("loading-pdf-title");
+    const descEl = document.getElementById("loading-pdf-desc");
+    const statusEl = document.getElementById("loading-pdf-status-text");
+    const barEl = document.getElementById("loading-pdf-bar");
+
+    if (titleEl && title) titleEl.textContent = title;
+    if (descEl && desc) descEl.textContent = desc;
+    if (statusEl && status) statusEl.textContent = status;
+    if (barEl && pct !== undefined) barEl.style.width = `${pct}%`;
+
+    modal.style.display = "flex";
+  }
+
+  _updateLoadingProgress(status, pct) {
+    const statusEl = document.getElementById("loading-pdf-status-text");
+    const barEl = document.getElementById("loading-pdf-bar");
+    if (statusEl && status) statusEl.textContent = status;
+    if (barEl && pct !== undefined) barEl.style.width = `${pct}%`;
+  }
+
+  _hideLoadingModal() {
+    const modal = document.getElementById("modal-loading-pdf");
+    if (!modal) return;
+    modal.style.opacity = "0";
+    modal.style.transition = "opacity 0.25s ease";
+    setTimeout(() => {
+      modal.style.display = "none";
+      modal.style.opacity = "1";
+    }, 250);
+  }
+
+  // ------------------------------------------------------------------------
+  // Ultra-Fast Client-Side PDF Text & Typography Extractor
+  // Powered by PDF.js (Zero backend dependency / 100% offline & fast)
+  // ------------------------------------------------------------------------
+  async _extractClientSidePages(pdfJsDoc, filename) {
+    const pages = [];
+    const detectedFonts = new Set();
+    const pageDimensions = [];
+
+    for (let pageNum = 1; pageNum <= pdfJsDoc.numPages; pageNum++) {
+      const page = await pdfJsDoc.getPage(pageNum);
+      const viewport = page.getViewport({ scale: 1.0 });
+      const pageW = viewport.width;
+      const pageH = viewport.height;
+      pageDimensions.push({ width: pageW, height: pageH });
+
+      const textContent = await page.getTextContent();
+      const rawSpans = [];
+
+      textContent.items.forEach((item, itemIdx) => {
+        const text = item.str;
+        if (!text || !text.trim()) return;
+
+        const tx = item.transform[4];
+        const ty = item.transform[5];
+        const fontH = Math.hypot(item.transform[2], item.transform[3]) || item.height || 12;
+
+        // Top-left coordinate conversion
+        const baselineY = pageH - ty;
+        const topY = Math.max(0, baselineY - fontH);
+        const bottomY = baselineY + fontH * 0.25;
+        const x0 = tx;
+        const x1 = tx + item.width;
+
+        // Detect typography
+        const style = textContent.styles?.[item.fontName];
+        const fontFam = (style?.fontFamily || "").toLowerCase();
+        const rawFontName = (item.fontName || "").toLowerCase();
+
+        let detectedFamily = "Helvetica";
+        let flags = 0;
+
+        if (fontFam.includes("serif") || /times|roman|georgia|cambria|serif|tinos/i.test(rawFontName)) {
+          detectedFamily = "Times-Roman";
+          flags |= 4; // Serif flag
+          detectedFonts.add("Times New Roman / Serif");
+        } else if (fontFam.includes("mono") || /courier|mono|fixed|consolas/i.test(rawFontName)) {
+          detectedFamily = "Courier";
+          flags |= 1; // Monospace flag
+          detectedFonts.add("Courier New / Monospace");
+        } else {
+          detectedFamily = "Helvetica";
+          detectedFonts.add("Helvetica / Arial (Standard)");
+        }
+
+        if (/bold|black|heavy|semibold/i.test(rawFontName)) {
+          flags |= 16; // Bold flag
+        }
+        if (/italic|oblique/i.test(rawFontName)) {
+          flags |= 2; // Italic flag
+        }
+
+        rawSpans.push({
+          id: `span_${pageNum - 1}_${itemIdx}`,
+          text: text,
+          currentText: text,
+          bbox: [
+            Math.round(x0 * 100) / 100,
+            Math.round(topY * 100) / 100,
+            Math.round(x1 * 100) / 100,
+            Math.round(bottomY * 100) / 100
+          ],
+          size: Math.round(fontH * 10) / 10,
+          font: detectedFamily,
+          fontName: item.fontName,
+          flags: flags,
+          color: 0
+        });
+      });
+
+      // Group spans by line for structural navigation
+      rawSpans.sort((a, b) => a.bbox[1] - b.bbox[1] || a.bbox[0] - b.bbox[0]);
+      const lines = [];
+      let currentLine = null;
+
+      rawSpans.forEach(span => {
+        if (!currentLine) {
+          currentLine = { bbox: [...span.bbox], spans: [span] };
+          lines.push(currentLine);
+        } else {
+          const lastSpan = currentLine.spans[currentLine.spans.length - 1];
+          if (Math.abs(span.bbox[1] - lastSpan.bbox[1]) < 4) {
+            currentLine.spans.push(span);
+            currentLine.bbox[0] = Math.min(currentLine.bbox[0], span.bbox[0]);
+            currentLine.bbox[1] = Math.min(currentLine.bbox[1], span.bbox[1]);
+            currentLine.bbox[2] = Math.max(currentLine.bbox[2], span.bbox[2]);
+            currentLine.bbox[3] = Math.max(currentLine.bbox[3], span.bbox[3]);
+          } else {
+            currentLine = { bbox: [...span.bbox], spans: [span] };
+            lines.push(currentLine);
+          }
+        }
+      });
+
+      const blocks = lines.map((line, lineIdx) => ({
+        number: lineIdx,
+        type: 0,
+        bbox: line.bbox,
+        lines: [line]
+      }));
+
+      pages.push({
+        page_number: pageNum - 1,
+        width: pageW,
+        height: pageH,
+        blocks: blocks
+      });
+    }
+
+    const docInfo = {
+      document_id: `doc_${Date.now()}`,
+      filename: filename || "document.pdf",
+      page_count: pdfJsDoc.numPages,
+      page_dimensions: pageDimensions,
+      is_scanned: pages.every(p => p.blocks.length === 0),
+      is_mixed: false,
+      is_encrypted: false,
+      detected_fonts: Array.from(detectedFonts),
+      has_insufficient_text: pages.every(p => p.blocks.length === 0),
+      unsupportedFeatures: []
+    };
+
+    return { docInfo, pages };
+  }
+
   async loadPDFFile(file) {
-    this.showToast("info", `Analyzing ${file.name}...`);
     const welcomeModal = document.getElementById("welcome-modal");
     if (welcomeModal) welcomeModal.style.display = "none";
 
-    try {
-      // Step 1: Read raw array buffer
-      const arrayBuffer = await file.arrayBuffer();
+    // Step 1: Open popup loading dialog immediately
+    this._showLoadingModal(
+      "Uploading PDF...",
+      `Uploading "${file.name}" and preparing live editor. Please wait...`,
+      "Reading document file...",
+      18
+    );
 
-      // Step 2: Initialize PDF.js document
+    try {
+      // Step 2: Read raw array buffer
+      const arrayBuffer = await file.arrayBuffer();
+      this._updateLoadingProgress("Extracting pages & vector text content...", 42);
+
+      // Step 3: Initialize PDF.js document
       const loadingTask = window.pdfjsLib.getDocument({ data: arrayBuffer });
       const pdfJsDoc = await loadingTask.promise;
+      this._updateLoadingProgress("Analyzing typography and detecting original fonts...", 68);
 
-      // Step 3: Send to local backend for structure & font analysis
-      const formData = new FormData();
-      formData.append("file", file);
+      // Step 4: Extract text spans & layout client-side immediately
+      const clientAnalysis = await this._extractClientSidePages(pdfJsDoc, file.name);
+      const docInfo = clientAnalysis.docInfo;
+      const pages = clientAnalysis.pages;
 
-      const apiRes = await fetch(getApiUrl("/api/documents/analyze"), {
-        method: "POST",
-        body: formData
-      });
-
-      if (!apiRes.ok) {
-        const err = await apiRes.json();
-        throw new Error(err.detail || "PDF analysis failed");
-      }
-
-      const analysisData = await apiRes.json();
-      const docInfo = analysisData.document_info;
-      const pages = analysisData.pages;
-
-      // Step 4: Register in State
+      // Register in State
       State.setDocument(docInfo, pdfJsDoc, arrayBuffer);
 
       // Auto-fit to screen width on mobile devices so document is fully readable without horizontal scrolling
@@ -430,12 +598,50 @@ class OpenPDFStudioApp {
       const totalPagesEl = document.getElementById("total-pages-label");
       if (totalPagesEl) totalPagesEl.textContent = docInfo.page_count;
 
-      // Step 5: Render Document
+      // Step 5: Render Document on Canvas
+      this._updateLoadingProgress("Rendering high-resolution page canvas...", 88);
       await this.renderer.renderDocument();
 
-      this.showToast("success", `Loaded "${file.name}" (${docInfo.page_count} pages). Ready for editing.`);
+      // Ensure overlays and annotations are active immediately
+      this.selectionManager.updateSelectionOverlays(State.activeTool);
+      this.toolbar.renderAnnotationsOnPage(State.currentPage);
+
+      // Concurrently query backend to enrich if available
+      (async () => {
+        try {
+          const controller = new AbortController();
+          const timer = setTimeout(() => controller.abort(), 2500);
+          const formData = new FormData();
+          formData.append("file", file);
+          const apiRes = await fetch(getApiUrl("/api/documents/analyze"), {
+            method: "POST",
+            body: formData,
+            signal: controller.signal
+          });
+          clearTimeout(timer);
+          if (apiRes.ok) {
+            const analysisData = await apiRes.json();
+            if (analysisData && analysisData.pages && analysisData.pages.length > 0) {
+              analysisData.pages.forEach((p, idx) => {
+                this.selectionManager.setPageAnalysis(idx, p);
+              });
+              this.selectionManager.updateSelectionOverlays(State.activeTool);
+            }
+          }
+        } catch (_) {
+          // Gracefully continue with client-side extraction
+        }
+      })();
+
+      this._updateLoadingProgress("Ready! Opening document in editor...", 100);
+      setTimeout(() => {
+        this._hideLoadingModal();
+        this.showToast("success", `Loaded "${file.name}" (${docInfo.page_count} pages). Ready for editing.`);
+      }, 350);
+
     } catch (err) {
       console.error(err);
+      this._hideLoadingModal();
       this.showToast("error", `Failed to load PDF: ${err.message}`);
     }
   }
