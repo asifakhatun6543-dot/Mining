@@ -85,6 +85,7 @@ export class PortalManager {
     });
 
     // Nav Tool buttons
+    document.getElementById("nav-btn-editor")?.addEventListener("click", () => this.openEditModal());
     document.getElementById("nav-btn-merge")?.addEventListener("click", () => this.openMergeModal());
     document.getElementById("nav-btn-split")?.addEventListener("click", () => this.openSplitModal());
     document.getElementById("nav-btn-compress")?.addEventListener("click", () => this.openCompressModal());
@@ -159,15 +160,31 @@ export class PortalManager {
     });
   }
 
+  _loadPDFIntoApp(file) {
+    if (window.app && typeof window.app.loadPDFFile === "function") {
+      window.app.loadPDFFile(file);
+      return;
+    }
+    let attempts = 0;
+    const interval = setInterval(() => {
+      attempts++;
+      if (window.app && typeof window.app.loadPDFFile === "function") {
+        clearInterval(interval);
+        window.app.loadPDFFile(file);
+      } else if (attempts > 30) {
+        clearInterval(interval);
+        console.error("OpenPDFStudioApp failed to initialize in time.");
+      }
+    }, 50);
+  }
+
   _handleUniversalFiles(files) {
     const pdfFiles = files.filter(f => f.type === "application/pdf" || f.name.toLowerCase().endsWith(".pdf"));
     const imgFiles = files.filter(f => f.type.startsWith("image/") || /\.(jpe?g|png|webp|gif|bmp)$/i.test(f.name));
 
     if (pdfFiles.length === 1 && imgFiles.length === 0) {
       this.switchView("editor");
-      if (window.app && window.app.loadPDFFile) {
-        window.app.loadPDFFile(pdfFiles[0]);
-      }
+      this._loadPDFIntoApp(pdfFiles[0]);
     } else if (pdfFiles.length > 1) {
       this.openMergeModal(pdfFiles);
     } else if (imgFiles.length > 0) {
@@ -179,59 +196,45 @@ export class PortalManager {
   // Tool Cards Click Handlers
   // ------------------------------------------------------------------------
   _bindToolCards() {
-    document.getElementById("card-tool-editor")?.addEventListener("click", () => {
-      this.openEditModal();
-    });
+    const bindCard = (id, fn) => {
+      const el = document.getElementById(id);
+      if (!el) return;
+      el.addEventListener("click", (e) => {
+        e.preventDefault();
+        fn();
+      });
+    };
 
-    document.getElementById("card-tool-merge-pdf")?.addEventListener("click", () => {
-      this.openMergeModal();
-    });
+    bindCard("card-tool-editor", () => this.openEditModal());
+    bindCard("card-tool-merge-pdf", () => this.openMergeModal());
+    bindCard("card-tool-split-pdf", () => this.openSplitModal());
+    bindCard("card-tool-compress-pdf", () => this.openCompressModal());
+    bindCard("card-tool-jpg-to-pdf", () => this.openJpgToPdfModal());
+    bindCard("card-tool-pdf-to-jpg", () => this.openPdfToJpgModal());
+    bindCard("card-tool-image-resize", () => this.openImageResizeModal());
+    bindCard("card-tool-rotate-pdf", () => this.openRotateModal());
 
-    document.getElementById("card-tool-split-pdf")?.addEventListener("click", () => {
-      this.openSplitModal();
-    });
-
-    document.getElementById("card-tool-compress-pdf")?.addEventListener("click", () => {
-      this.openCompressModal();
-    });
-
-    document.getElementById("card-tool-jpg-to-pdf")?.addEventListener("click", () => {
-      this.openJpgToPdfModal();
-    });
-
-    document.getElementById("card-tool-pdf-to-jpg")?.addEventListener("click", () => {
-      this.openPdfToJpgModal();
-    });
-
-    document.getElementById("card-tool-image-resize")?.addEventListener("click", () => {
-      this.openImageResizeModal();
-    });
-
-    document.getElementById("card-tool-rotate-pdf")?.addEventListener("click", () => {
-      this.openRotateModal();
-    });
-
-    document.getElementById("card-tool-sign-pdf")?.addEventListener("click", () => {
+    bindCard("card-tool-sign-pdf", () => {
       this.switchView("editor");
       if (window.app && window.app.toolbar) {
         window.app.toolbar.setTool("signature");
       }
     });
 
-    document.getElementById("card-tool-watermark-pdf")?.addEventListener("click", () => {
+    bindCard("card-tool-watermark-pdf", () => {
       this.switchView("editor");
       if (window.app && window.app.toolbar) {
         window.app.toolbar.setTool("watermark");
       }
     });
 
-    document.getElementById("card-tool-ocr")?.addEventListener("click", () => {
+    bindCard("card-tool-ocr", () => {
       this.switchView("editor");
       const scannedBtn = document.getElementById("load-sample-scanned");
       if (scannedBtn) scannedBtn.click();
     });
 
-    document.getElementById("card-tool-redact")?.addEventListener("click", () => {
+    bindCard("card-tool-redact", () => {
       this.switchView("editor");
       if (window.app && window.app.toolbar) {
         window.app.toolbar.setTool("redact");
@@ -283,9 +286,7 @@ export class PortalManager {
       if (files.length > 0) {
         modal.style.display = "none";
         this.switchView("editor");
-        if (window.app && window.app.loadPDFFile) {
-          window.app.loadPDFFile(files[0]);
-        }
+        this._loadPDFIntoApp(files[0]);
       }
     });
 
@@ -303,9 +304,7 @@ export class PortalManager {
       if (files.length > 0) {
         modal.style.display = "none";
         this.switchView("editor");
-        if (window.app && window.app.loadPDFFile) {
-          window.app.loadPDFFile(files[0]);
-        }
+        this._loadPDFIntoApp(files[0]);
       }
     });
   }
@@ -1166,22 +1165,19 @@ export class PortalManager {
       }
     });
   }
-          URL.revokeObjectURL(url);
-        }
+}
 
-        modal.style.display = "none";
-        alert("PDF pages converted to JPG images! Downloads complete.");
-      } catch (err) {
-        alert("Conversion error: " + err.message);
-      } finally {
-        convertBtn.disabled = false;
-        convertBtn.innerHTML = "Convert & Download JPGs";
-      }
-    });
+// Robust bootstrap handling both 'loading' and already 'interactive'/'complete' readyStates
+function initPortal() {
+  if (typeof window !== "undefined" && !window.portal) {
+    window.portal = new PortalManager();
   }
 }
 
-// Instantiate on DOM load
-document.addEventListener("DOMContentLoaded", () => {
-  window.portal = new PortalManager();
-});
+if (typeof document !== "undefined") {
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", initPortal);
+  } else {
+    initPortal();
+  }
+}

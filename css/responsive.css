@@ -629,6 +629,50 @@ html, body {
 }
 
 /* --------------------------------------------------------------------------
+   Mobile & Responsive Portal Modals (Edit PDF, Merge, Split, etc.)
+   -------------------------------------------------------------------------- */
+@media (max-width: 768px) {
+  .tool-dialog-backdrop {
+    z-index: 99999 !important;
+    padding: 12px !important;
+  }
+
+  .tool-dialog {
+    width: 100% !important;
+    max-width: 95vw !important;
+    max-height: 92vh !important;
+    border-radius: 16px !important;
+  }
+
+  .tool-dialog-header {
+    padding: 14px 18px !important;
+  }
+
+  .tool-dialog-header h3 {
+    font-size: 16px !important;
+    gap: 8px !important;
+  }
+
+  .tool-dialog-body {
+    padding: 16px !important;
+  }
+
+  .tool-dropzone {
+    padding: 24px 14px !important;
+    border-radius: 12px !important;
+  }
+
+  .tool-dropzone-icon svg {
+    width: 28px !important;
+    height: 28px !important;
+  }
+
+  .tool-dialog-footer {
+    padding: 12px 16px !important;
+  }
+}
+
+/* --------------------------------------------------------------------------
    Accessibility Focus States
    -------------------------------------------------------------------------- */
 button:focus-visible, 

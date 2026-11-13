@@ -811,8 +811,18 @@ class OpenPDFStudioApp {
   }
 }
 
-// Bootstrap on DOM ready
-document.addEventListener("DOMContentLoaded", () => {
-  const app = new OpenPDFStudioApp();
-  app.init();
-});
+// Bootstrap on DOM ready with robust readyState check and global window.app assignment
+function initApp() {
+  if (typeof window !== "undefined" && !window.app) {
+    window.app = new OpenPDFStudioApp();
+    window.app.init();
+  }
+}
+
+if (typeof document !== "undefined") {
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", initApp);
+  } else {
+    initApp();
+  }
+}
