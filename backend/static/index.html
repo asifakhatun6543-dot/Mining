@@ -13,10 +13,10 @@
 
   <!-- CSS Stylesheets (with cache-busting) -->
   <link rel="stylesheet" href="./vendor/pdfjs/pdf_viewer.css">
-  <link rel="stylesheet" href="./css/styles.css?v=2.5">
-  <link rel="stylesheet" href="./css/editor.css?v=2.5">
-  <link rel="stylesheet" href="./css/portal.css?v=2.5">
-  <link rel="stylesheet" href="./css/responsive.css?v=2.5">
+  <link rel="stylesheet" href="./css/styles.css?v=2.6">
+  <link rel="stylesheet" href="./css/editor.css?v=2.6">
+  <link rel="stylesheet" href="./css/portal.css?v=2.6">
+  <link rel="stylesheet" href="./css/responsive.css?v=2.6">
 
   <!-- PDF.js & PDF-Lib Vendor Scripts -->
   <script src="./vendor/pdfjs/pdf.js"></script>
@@ -623,7 +623,7 @@
       <div class="header-left">
         <!-- Back to All Tools Button -->
         <button type="button" class="btn-back-home" id="btn-back-to-home" title="Back to All Tools">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="15 18 9 12 15 6"/></svg>
+          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="15 18 9 12 15 6"/></svg>
           <span>All Tools</span>
         </button>
         <div class="toolbar-separator"></div>
@@ -799,23 +799,23 @@
     <section class="app-body" id="app-body">
       
       <!-- Left Sidebar: Pages & Thumbnails Management (Starts closed on mobile) -->
-      <aside class="left-sidebar" id="left-sidebar" aria-label="Page Thumbnails" style="display: none;">
+      <aside class="left-sidebar" id="left-sidebar" aria-label="Page Thumbnails">
         <div class="sidebar-header">
           <span>Manage pages</span>
-          <button class="btn-icon" id="sidebar-close-btn" title="Close Pages Panel" style="width: 20px; height: 20px;">&times;</button>
+          <button class="sidebar-close-touch" id="sidebar-close-btn" title="Close Pages Panel" aria-label="Close">&times;</button>
         </div>
         <div class="sidebar-tools-bar">
           <button id="sidebar-rotate-btn" title="Rotate 90° Clockwise">
-            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21.5 2v6h-6"/><path d="M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/></svg>
+            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21.5 2v6h-6"/><path d="M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/></svg>
           </button>
           <button id="sidebar-duplicate-btn" title="Duplicate Current Page">
-            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
           </button>
           <button id="sidebar-delete-btn" title="Delete Page" style="color: #ef4444;">
-            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
           </button>
           <button id="sidebar-add-btn" title="Insert Blank Page">
-            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
           </button>
         </div>
         <div class="thumbnails-container" id="thumbnails-container"></div>
@@ -831,29 +831,29 @@
     <!-- Floating Bottom Navigation Pill (Zoom & Page Stepper) -->
     <div class="floating-bottom-pill">
       <button id="btn-prev-page" title="Previous Page">
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="18 15 12 9 6 15"/></svg>
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="18 15 12 9 6 15"/></svg>
       </button>
       <span style="font-weight: 600;">
         <span id="page-num-display">1</span> / <span id="total-pages-label">1</span>
       </span>
       <button id="btn-next-page" title="Next Page">
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
       </button>
 
       <div class="pill-separator"></div>
 
       <button id="btn-zoom-out" title="Zoom Out (-)">
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="5" y1="12" x2="19" y2="12"/></svg>
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="5" y1="12" x2="19" y2="12"/></svg>
       </button>
       <span id="zoom-percentage-label" style="font-weight: 600; min-width: 44px; text-align: center;">100%</span>
       <button id="btn-zoom-in" title="Zoom In (+)">
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
       </button>
 
       <div class="pill-separator"></div>
 
-      <button id="btn-fit-page" title="Fit to Screen" style="padding: 2px 8px; width: auto; border-radius: 4px; font-size: 12px; font-weight: 600; gap: 4px;">
-        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><polyline points="9 9 9 15 15 15"/></svg>
+      <button id="btn-fit-page" title="Fit to Screen" style="padding: 2px 10px; width: auto; border-radius: 16px; font-size: 12px; font-weight: 600; gap: 4px;">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><polyline points="9 9 9 15 15 15"/></svg>
         Fit
       </button>
     </div>

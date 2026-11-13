@@ -208,46 +208,52 @@ export class InlineTextEditor {
     }
 
     this.miniToolbarEl.innerHTML = `
-      <!-- Drag Icon -->
-      <button type="button" class="mini-btn" id="mt-drag-btn" title="Drag to reposition text box" style="cursor: move;">
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 9l-3 3 3 3M9 5l3-3 3 3M15 19l-3 3-3-3M19 9l3 3-3 3M2 12h20M12 2v20"/></svg>
-      </button>
-
       <!-- Commit OK Button -->
-      <button type="button" class="mini-btn ok-btn" id="mt-ok-btn" title="Confirm and apply edit (Enter)">OK</button>
+      <button type="button" class="mini-btn ok-btn" id="mt-ok-btn" title="Confirm and apply edit (Enter)">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg>
+        <span>OK</span>
+      </button>
 
       <div class="mini-separator"></div>
 
-      <!-- Comprehensive Font Family Dropdown -->
-      <select class="mini-select" id="mt-font-select" title="Font Family" style="max-width: 150px;">
+      <!-- Compact Font Family Dropdown -->
+      <select class="mini-select" id="mt-font-select" title="Font Family" style="max-width: 95px; height: 26px; font-size: 11.5px; padding: 0 4px;">
         ${fontOptionsHtml}
       </select>
 
       <!-- Font Size Input -->
-      <input type="number" class="mini-size-input" id="mt-font-size" value="12" min="4" max="144" step="0.5" title="Font Size (pt)">
+      <input type="number" class="mini-size-input" id="mt-font-size" value="12" min="4" max="144" step="0.5" title="Font Size (pt)" style="width: 38px; height: 26px; font-size: 11.5px; text-align: center; padding: 0 2px;">
 
-      <!-- Bold / Italic / Underline -->
-      <div style="display: flex; gap: 1px;">
-        <button type="button" class="mini-btn" id="mt-bold-btn" title="Bold" style="font-weight: 800; font-family: serif; width: 24px;">B</button>
-        <button type="button" class="mini-btn" id="mt-italic-btn" title="Italic" style="font-style: italic; font-family: serif; width: 24px;">I</button>
-        <button type="button" class="mini-btn" id="mt-underline-btn" title="Underline" style="text-decoration: underline; width: 24px;">U</button>
+      <!-- Style Dropdown (B / I / U inside a dropdown as requested) -->
+      <div style="position: relative;" id="mt-style-dropdown-wrap">
+        <button type="button" class="mini-btn" id="mt-style-btn" title="Text Style (Bold, Italic, Underline)" style="padding: 0 6px; height: 26px; font-weight: 700; font-size: 11px; display: flex; align-items: center; gap: 3px;">
+          <span>B/I/U</span>
+          <svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="6 9 12 15 18 9"/></svg>
+        </button>
+
+        <!-- Style Popover Dropdown -->
+        <div id="mt-style-popover" style="display: none; position: absolute; top: calc(100% + 4px); left: 0; background: #ffffff; border: 1px solid #cbd5e1; border-radius: 6px; box-shadow: 0 4px 14px rgba(0,0,0,0.18); padding: 4px; gap: 4px; z-index: 120; flex-direction: row; align-items: center;">
+          <button type="button" class="mini-btn" id="mt-bold-btn" title="Bold" style="font-weight: 800; font-family: serif; width: 28px; height: 28px; border-radius: 4px;">B</button>
+          <button type="button" class="mini-btn" id="mt-italic-btn" title="Italic" style="font-style: italic; font-family: serif; width: 28px; height: 28px; border-radius: 4px;">I</button>
+          <button type="button" class="mini-btn" id="mt-underline-btn" title="Underline" style="text-decoration: underline; width: 28px; height: 28px; border-radius: 4px;">U</button>
+        </div>
       </div>
 
       <div class="mini-separator"></div>
 
       <!-- Text Color Picker -->
       <div style="display: flex; align-items: center; position: relative;">
-        <input type="color" id="mt-color-picker" class="mini-color-picker" value="#000000" title="Text Color">
+        <input type="color" id="mt-color-picker" class="mini-color-picker" value="#000000" title="Text Color" style="width: 22px; height: 22px; border-radius: 50%; border: 1px solid #cbd5e1; cursor: pointer;">
       </div>
 
       <!-- Delete Button -->
-      <button type="button" class="mini-btn delete-btn" id="mt-delete-btn" title="Delete text">
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+      <button type="button" class="mini-btn delete-btn" id="mt-delete-btn" title="Delete text" style="height: 26px; padding: 0 6px;">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
       </button>
 
       <!-- More Options Button -->
-      <button type="button" class="mini-btn" id="mt-more-btn" title="More formatting options">
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/><circle cx="5" cy="12" r="1"/></svg>
+      <button type="button" class="mini-btn" id="mt-more-btn" title="More formatting options" style="height: 26px; padding: 0 6px;">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/><circle cx="5" cy="12" r="1"/></svg>
       </button>
     `;
 
@@ -297,45 +303,72 @@ export class InlineTextEditor {
     this.miniToolbarEl.querySelector("#mt-ok-btn").addEventListener("click", () => this.applyEdit());
     this.miniToolbarEl.querySelector("#mt-delete-btn").addEventListener("click", () => this.applyDelete());
 
-    // Bold / Italic / Underline
+    // Style Dropdown (B / I / U inside popover dropdown)
+    const styleBtn = this.miniToolbarEl.querySelector("#mt-style-btn");
+    const stylePopover = this.miniToolbarEl.querySelector("#mt-style-popover");
+    if (styleBtn && stylePopover) {
+      styleBtn.addEventListener("click", (e) => {
+        e.stopPropagation();
+        const isShown = stylePopover.style.display === "flex";
+        stylePopover.style.display = isShown ? "none" : "flex";
+        this.moreMenuEl.style.display = "none";
+      });
+      document.addEventListener("click", (e) => {
+        if (!stylePopover.contains(e.target) && e.target !== styleBtn) {
+          stylePopover.style.display = "none";
+        }
+      });
+    }
+
+    const updateStyleBtnState = () => {
+      if (!styleBtn) return;
+      const hasStyle = this.isBold || this.isItalic || this.isUnderline;
+      styleBtn.style.color = hasStyle ? "#2563eb" : "#334155";
+      styleBtn.style.background = hasStyle ? "#eff6ff" : "transparent";
+    };
+
+    // Bold / Italic / Underline inside dropdown
     const boldBtn = this.miniToolbarEl.querySelector("#mt-bold-btn");
-    boldBtn.addEventListener("click", () => {
+    boldBtn?.addEventListener("click", () => {
       this.isBold = !this.isBold;
       boldBtn.classList.toggle("active", this.isBold);
+      updateStyleBtnState();
       this._updateEditableStyle();
     });
 
     const italicBtn = this.miniToolbarEl.querySelector("#mt-italic-btn");
-    italicBtn.addEventListener("click", () => {
+    italicBtn?.addEventListener("click", () => {
       this.isItalic = !this.isItalic;
       italicBtn.classList.toggle("active", this.isItalic);
+      updateStyleBtnState();
       this._updateEditableStyle();
     });
 
     const underlineBtn = this.miniToolbarEl.querySelector("#mt-underline-btn");
-    underlineBtn.addEventListener("click", () => {
+    underlineBtn?.addEventListener("click", () => {
       this.isUnderline = !this.isUnderline;
       underlineBtn.classList.toggle("active", this.isUnderline);
+      updateStyleBtnState();
       this._updateEditableStyle();
     });
 
     // Font Family
     const fontSelect = this.miniToolbarEl.querySelector("#mt-font-select");
-    fontSelect.addEventListener("change", (e) => {
+    fontSelect?.addEventListener("change", (e) => {
       this.currentFont = e.target.value;
       this._updateEditableStyle();
     });
 
     // Font Size
     const sizeInput = this.miniToolbarEl.querySelector("#mt-font-size");
-    sizeInput.addEventListener("input", (e) => {
+    sizeInput?.addEventListener("input", (e) => {
       this.currentFontSize = parseFloat(e.target.value) || 12;
       this._updateEditableStyle();
     });
 
     // Text Color
     const colorPicker = this.miniToolbarEl.querySelector("#mt-color-picker");
-    colorPicker.addEventListener("input", (e) => {
+    colorPicker?.addEventListener("input", (e) => {
       this.currentColorHex = e.target.value;
       this.currentColorRgb = this._hexToRgbArray(e.target.value);
       this._updateEditableStyle();
@@ -343,10 +376,11 @@ export class InlineTextEditor {
 
     // More Options Menu Toggle
     const moreBtn = this.miniToolbarEl.querySelector("#mt-more-btn");
-    moreBtn.addEventListener("click", (e) => {
+    moreBtn?.addEventListener("click", (e) => {
       e.stopPropagation();
       const isVisible = this.moreMenuEl.style.display === "flex";
       this.moreMenuEl.style.display = isVisible ? "none" : "flex";
+      if (stylePopover) stylePopover.style.display = "none";
       if (!isVisible) {
         const rect = moreBtn.getBoundingClientRect();
         this.moreMenuEl.style.top = `${rect.bottom + 6}px`;
@@ -359,11 +393,11 @@ export class InlineTextEditor {
     const alignC = this.moreMenuEl.querySelector("#mt-align-center");
     const alignR = this.moreMenuEl.querySelector("#mt-align-right");
 
-    alignL.addEventListener("click", () => this._setAlignment("left"));
-    alignC.addEventListener("click", () => this._setAlignment("center"));
-    alignR.addEventListener("click", () => this._setAlignment("right"));
+    alignL?.addEventListener("click", () => this._setAlignment("left"));
+    alignC?.addEventListener("click", () => this._setAlignment("center"));
+    alignR?.addEventListener("click", () => this._setAlignment("right"));
 
-    this.moreMenuEl.querySelector("#mt-fit-select").addEventListener("change", (e) => {
+    this.moreMenuEl.querySelector("#mt-fit-select")?.addEventListener("change", (e) => {
       this.currentFitMode = e.target.value;
     });
 
@@ -625,9 +659,23 @@ export class InlineTextEditor {
       this.reRenderPageEdits(pageIndex);
     });
 
+    State.subscribe("zoomChanged", () => {
+      if (this.activeBoxEl && this.currentSpanData) {
+        const { pageIndex, span } = this.currentSpanData;
+        const textToShow = span.currentText !== undefined ? span.currentText : span.text;
+        this._buildInPlaceBox(pageIndex, span, span._origHighlightEl, textToShow);
+      }
+      for (let p = 0; p < State.pageCount; p++) {
+        this.reRenderPageEdits(p);
+      }
+    });
+
     // Close active editor when clicking outside on the viewport
     document.addEventListener("click", (e) => {
       if (!this.activeBoxEl || !this.currentSpanData) return;
+      // Prevent immediate mobile synthesized click from closing freshly opened editor
+      if (Date.now() - (this._openedAt || 0) < 350) return;
+
       // Don't close if clicking on the editor box, mini toolbar, or more menu
       if (this.activeBoxEl.contains(e.target) || 
           this.miniToolbarEl.contains(e.target) || 
@@ -644,6 +692,7 @@ export class InlineTextEditor {
       this.applyEdit();
     }
 
+    this._openedAt = Date.now();
     this.currentSpanData = selectedData;
     const { pageIndex, span, element } = selectedData;
 
@@ -675,8 +724,8 @@ export class InlineTextEditor {
     const rawSize = span.currentFontSize || span.size || 12;
     this.currentFontSize = Math.round(rawSize * 10) / 10;
 
-    this.isBold = span.isBold !== undefined ? span.isBold : ((flags & 16) !== 0 || /bold|black|heavy|semibold|demi/.test(fontLower));
-    this.isItalic = span.isItalic !== undefined ? span.isItalic : ((flags & 2) !== 0 || /italic|oblique/.test(fontLower));
+    this.isBold = span.isBold !== undefined ? span.isBold : ((flags & 16) !== 0 || (flags & 262144) !== 0 || /bold|black|heavy|semibold|demi/.test(fontLower));
+    this.isItalic = span.isItalic !== undefined ? span.isItalic : ((flags & 2) !== 0 || (flags & 64) !== 0 || /italic|oblique/.test(fontLower));
     this.isUnderline = span.isUnderline !== undefined ? span.isUnderline : false;
 
     // Color decoding
@@ -713,13 +762,21 @@ export class InlineTextEditor {
       sizeInput.step = "0.5";
     }
 
-    this.miniToolbarEl.querySelector("#mt-bold-btn").classList.toggle("active", this.isBold);
-    this.miniToolbarEl.querySelector("#mt-italic-btn").classList.toggle("active", this.isItalic);
-    this.miniToolbarEl.querySelector("#mt-underline-btn").classList.toggle("active", this.isUnderline);
-    this.miniToolbarEl.querySelector("#mt-color-picker").value = this.currentColorHex;
+    this.miniToolbarEl.querySelector("#mt-bold-btn")?.classList.toggle("active", this.isBold);
+    this.miniToolbarEl.querySelector("#mt-italic-btn")?.classList.toggle("active", this.isItalic);
+    this.miniToolbarEl.querySelector("#mt-underline-btn")?.classList.toggle("active", this.isUnderline);
+    const styleBtn = this.miniToolbarEl.querySelector("#mt-style-btn");
+    if (styleBtn) {
+      const hasStyle = this.isBold || this.isItalic || this.isUnderline;
+      styleBtn.style.color = hasStyle ? "#2563eb" : "#334155";
+      styleBtn.style.background = hasStyle ? "#eff6ff" : "transparent";
+    }
+
+    const colorPicker = this.miniToolbarEl.querySelector("#mt-color-picker");
+    if (colorPicker) colorPicker.value = this.currentColorHex;
     this._setAlignment(this.currentAlignment);
 
-    // Build In-Place Bounding Box right over the text
+    // Build In-Place Bounding Box right over the text (Word-style)
     this._buildInPlaceBox(pageIndex, span, element, textToShow);
   }
 
@@ -738,26 +795,30 @@ export class InlineTextEditor {
 
     const scale = State.zoomScale;
     const [x0, y0, x1, y1] = span.bbox;
-    const width = Math.max(20, (x1 - x0) * scale);
-    const height = Math.max(16, (y1 - y0) * scale);
+    const width = Math.max(16, (x1 - x0) * scale);
+    const height = Math.max(14, (y1 - y0) * scale);
 
     const box = document.createElement("div");
-    box.className = "inplace-text-box";
-    box.style.left = `${(x0 - 2) * scale}px`;
-    box.style.top = `${(y0 - 2) * scale}px`;
-    box.style.minWidth = `${width + 4}px`;
+    box.className = "inplace-text-box word-style-editor";
+    box.style.position = "absolute";
+    box.style.left = `${(x0 - 1) * scale}px`;
+    box.style.top = `${(y0 - 1) * scale}px`;
+    box.style.minWidth = `${width + 2}px`;
     box.style.width = "max-content";
-    box.style.maxWidth = `calc(100% - ${(x0 - 2) * scale + 10}px)`;
-    box.style.minHeight = `${height + 4}px`;
+    box.style.maxWidth = `calc(100% - ${(x0 - 1) * scale + 6}px)`;
+    box.style.height = `${height + 2}px`;
+    box.style.minHeight = `${height + 2}px`;
+    box.style.boxSizing = "border-box";
+    box.style.background = "#ffffff";
+    box.style.border = "1.5px solid #2563eb";
+    box.style.borderRadius = "2px";
+    box.style.boxShadow = "0 1px 6px rgba(37, 99, 235, 0.22)";
+    box.style.padding = "0 1px";
+    box.style.display = "inline-flex";
+    box.style.alignItems = "center";
+    box.style.zIndex = "80";
 
-    // 8 Resize Handles
-    ["nw", "n", "ne", "w", "e", "sw", "s", "se"].forEach(handlePos => {
-      const handle = document.createElement("div");
-      handle.className = `box-handle handle-${handlePos}`;
-      box.appendChild(handle);
-    });
-
-    // Contenteditable Div right inside
+    // Clean, natural Word-style editing (NO handles obscuring the text!)
     const editableDiv = document.createElement("div");
     editableDiv.className = "inplace-text-editable";
     editableDiv.contentEditable = "true";
@@ -766,6 +827,12 @@ export class InlineTextEditor {
     editableDiv.style.whiteSpace = "pre";
     editableDiv.style.wordBreak = "normal";
     editableDiv.style.minWidth = `${width}px`;
+    editableDiv.style.outline = "none";
+    editableDiv.style.border = "none";
+    editableDiv.style.background = "transparent";
+    editableDiv.style.lineHeight = "1";
+    editableDiv.style.webkitFontSmoothing = "antialiased";
+    editableDiv.style.textRendering = "optimizeLegibility";
 
     box.appendChild(editableDiv);
     overlayLayer.appendChild(box);
@@ -789,6 +856,7 @@ export class InlineTextEditor {
 
     box.addEventListener("click", (e) => e.stopPropagation());
     box.addEventListener("mousedown", (e) => e.stopPropagation());
+    box.addEventListener("touchstart", (e) => e.stopPropagation(), { passive: true });
 
     editableDiv.addEventListener("keydown", (e) => {
       if (e.key === "Enter" && !e.shiftKey) {
@@ -805,19 +873,22 @@ export class InlineTextEditor {
   _positionMiniToolbar(box) {
     if (!box || !this.miniToolbarEl) return;
     const rect = box.getBoundingClientRect();
-    
-    let top = rect.top - 46;
+    const toolbarWidth = Math.min(300, window.innerWidth - 16);
+    const toolbarHeight = 36;
+
+    let top = rect.top - toolbarHeight - 8;
     let left = rect.left;
 
-    if (top < 100) {
+    if (top < 54) {
       top = rect.bottom + 8;
     }
-    if (left + 380 > window.innerWidth) {
-      left = window.innerWidth - 390;
+    if (left + toolbarWidth > window.innerWidth - 8) {
+      left = window.innerWidth - toolbarWidth - 8;
     }
+    left = Math.max(8, left);
 
-    this.miniToolbarEl.style.top = `${Math.max(10, top)}px`;
-    this.miniToolbarEl.style.left = `${Math.max(10, left)}px`;
+    this.miniToolbarEl.style.top = `${Math.round(top)}px`;
+    this.miniToolbarEl.style.left = `${Math.round(left)}px`;
     this.miniToolbarEl.style.display = "flex";
   }
 

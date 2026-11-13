@@ -15,6 +15,11 @@ export class TextSelectionManager {
     this.extractedPages.set(pageIndex, analysis);
   }
 
+  clear() {
+    this.extractedPages.clear();
+    this.selectedSpan = null;
+  }
+
   _initEvents() {
     State.subscribe("toolChanged", (tool) => {
       this.updateSelectionOverlays(tool);

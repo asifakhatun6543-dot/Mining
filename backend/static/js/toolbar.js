@@ -421,8 +421,13 @@ export class ToolbarManager {
       "check", "cross", "sticky", "add-text"
     ];
 
-    // Don't intercept if clicking an existing text span or inside editor
-    if (e.target.closest(".text-span-highlight") || e.target.closest(".inplace-text-editor")) return;
+    if (!interactiveTools.includes(this.currentTool)) return;
+
+    // Don't intercept if clicking an existing text span, editor box, or mini toolbar
+    if (e.target.closest(".text-span-highlight") || 
+        e.target.closest(".inplace-text-box") || 
+        e.target.closest(".floating-mini-toolbar") || 
+        e.target.closest("#mt-style-popover")) return;
 
     const pageContainer = e.target.closest(".pdf-page-container");
     if (!pageContainer) return;

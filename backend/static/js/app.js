@@ -157,28 +157,49 @@ class OpenPDFStudioApp {
       State.addPageOperation(op);
       this.showToast("info", `Blank page inserted after Page ${State.currentPage + 1}.`);
     });
-    // Sidebar Toggle with mobile drawer & backdrop
+    // Sidebar Toggle with smooth mobile slide-in drawer & backdrop
     const sidebar = document.getElementById("left-sidebar");
     const backdrop = document.getElementById("sidebar-backdrop");
 
     const closeSidebarMobile = () => {
       if (sidebar) {
-        sidebar.style.display = "none";
         sidebar.classList.remove("mobile-open");
+        if (window.innerWidth <= 768) {
+          setTimeout(() => {
+            if (!sidebar.classList.contains("mobile-open")) {
+              sidebar.style.display = "none";
+            }
+          }, 280);
+        } else {
+          sidebar.style.display = "none";
+        }
       }
-      if (backdrop) backdrop.style.display = "none";
+      if (backdrop) {
+        backdrop.classList.remove("active");
+        setTimeout(() => {
+          if (!backdrop.classList.contains("active")) {
+            backdrop.style.display = "none";
+          }
+        }, 250);
+      }
     };
 
     const toggleSidebar = () => {
       if (!sidebar) return;
-      const isOpen = sidebar.style.display !== "none" || sidebar.classList.contains("mobile-open");
+      const isOpen = window.innerWidth <= 768
+        ? sidebar.classList.contains("mobile-open")
+        : sidebar.style.display !== "none";
       if (isOpen) {
         closeSidebarMobile();
       } else {
         sidebar.style.display = "flex";
+        // Force reflow for smooth transition
+        void sidebar.offsetWidth;
         sidebar.classList.add("mobile-open");
         if (backdrop && window.innerWidth <= 768) {
           backdrop.style.display = "block";
+          void backdrop.offsetWidth;
+          backdrop.classList.add("active");
         }
       }
     };
@@ -544,6 +565,21 @@ class OpenPDFStudioApp {
   async loadPDFFile(file) {
     const welcomeModal = document.getElementById("welcome-modal");
     if (welcomeModal) welcomeModal.style.display = "none";
+
+    // Clean reset of previous document state, edits, caches, and file inputs
+    if (this.textEditor) this.textEditor.hide();
+    if (this.selectionManager) this.selectionManager.clear();
+    HistoryManager.clear();
+    const viewport = document.getElementById("pages-viewport");
+    if (viewport) viewport.innerHTML = "";
+    const thumbs = document.getElementById("thumbnails-container");
+    if (thumbs) thumbs.innerHTML = "";
+
+    // Clear file inputs so re-uploading the same file triggers onchange properly
+    ["pdf-file-picker", "welcome-file-picker", "edit-modal-file-picker", "hero-universal-input"].forEach(id => {
+      const el = document.getElementById(id);
+      if (el) el.value = "";
+    });
 
     // Step 1: Open popup loading dialog immediately
     this._showLoadingModal(
