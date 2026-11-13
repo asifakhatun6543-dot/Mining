@@ -146,6 +146,45 @@ class OpenPDFStudioApp {
       });
     }
 
+    // 3-Horizontal-Line Hamburger Menu & Dropdown
+    const menuBtn = document.getElementById("header-menu-btn");
+    const dropdownMenu = document.getElementById("header-dropdown-menu");
+
+    menuBtn?.addEventListener("click", (e) => {
+      e.stopPropagation();
+      if (!dropdownMenu) return;
+      const isOpen = dropdownMenu.style.display === "flex";
+      dropdownMenu.style.display = isOpen ? "none" : "flex";
+      menuBtn.setAttribute("aria-expanded", !isOpen);
+    });
+
+    document.addEventListener("click", (e) => {
+      if (dropdownMenu && !dropdownMenu.contains(e.target) && e.target !== menuBtn && !menuBtn?.contains(e.target)) {
+        dropdownMenu.style.display = "none";
+        menuBtn?.setAttribute("aria-expanded", "false");
+      }
+    });
+
+    document.getElementById("menu-opt-download")?.addEventListener("click", () => {
+      if (dropdownMenu) dropdownMenu.style.display = "none";
+      this.exportClient.exportCurrentDocument();
+    });
+
+    document.getElementById("menu-opt-save")?.addEventListener("click", () => {
+      if (dropdownMenu) dropdownMenu.style.display = "none";
+      document.getElementById("header-save-btn")?.click();
+    });
+
+    document.getElementById("menu-opt-print")?.addEventListener("click", () => {
+      if (dropdownMenu) dropdownMenu.style.display = "none";
+      document.getElementById("header-print-btn")?.click();
+    });
+
+    document.getElementById("menu-opt-open")?.addEventListener("click", () => {
+      if (dropdownMenu) dropdownMenu.style.display = "none";
+      document.getElementById("header-open-btn")?.click();
+    });
+
     // Open file button
     document.getElementById("header-open-btn")?.addEventListener("click", () => {
       const picker = document.getElementById("pdf-file-picker");
@@ -158,6 +197,7 @@ class OpenPDFStudioApp {
     document.getElementById("pdf-file-picker")?.addEventListener("change", (e) => {
       const file = e.target.files && e.target.files[0];
       if (file) this.loadPDFFile(file);
+      e.target.value = ""; // Always reset value so selecting same file triggers change
     });
   }
 
@@ -781,41 +821,147 @@ class OpenPDFStudioApp {
     const drawer = document.getElementById("find-replace-drawer");
     const findInput = document.getElementById("find-search-input");
     const matchBadge = document.getElementById("find-match-badge");
+    const prevBtn = document.getElementById("find-prev-btn");
+    const nextBtn = document.getElementById("find-next-btn");
+    const closeBtn = document.getElementById("find-close-btn");
 
-    State.subscribe("toggleFind", () => this._toggleFindDrawer());
+    let matches = [];
+    let currentMatchIndex = -1;
 
-    document.getElementById("find-close-btn")?.addEventListener("click", () => {
-      if (drawer) drawer.style.display = "none";
-    });
+    const clearHighlights = () => {
+      document.querySelectorAll(".text-span-highlight.search-match, .text-span-highlight.search-active-match").forEach(el => {
+        el.classList.remove("search-match", "search-active-match");
+        if (!el.classList.contains("selected") && !el.classList.contains("edited-text-overlay")) {
+          const isTextTool = State.activeTool === "edit-text" || State.activeTool === "select";
+          el.style.display = isTextTool ? "block" : "none";
+        }
+      });
+    };
 
-    findInput?.addEventListener("input", (e) => {
-      const query = e.target.value.trim().toLowerCase();
-      if (!query) {
-        if (matchBadge) matchBadge.textContent = "0 matches";
+    const updateMatchUI = () => {
+      if (!matchBadge) return;
+      if (matches.length === 0) {
+        matchBadge.textContent = "0 / 0";
+      } else {
+        matchBadge.textContent = `${currentMatchIndex + 1} / ${matches.length}`;
+      }
+    };
+
+    const jumpToMatch = (index) => {
+      if (matches.length === 0) return;
+      if (index < 0) index = matches.length - 1;
+      if (index >= matches.length) index = 0;
+      currentMatchIndex = index;
+      updateMatchUI();
+
+      const match = matches[currentMatchIndex];
+      if (!match) return;
+
+      document.querySelectorAll(".text-span-highlight.search-active-match").forEach(el => {
+        el.classList.remove("search-active-match");
+        el.classList.add("search-match");
+      });
+
+      if (match.element) {
+        match.element.classList.remove("search-match");
+        match.element.classList.add("search-active-match");
+        match.element.scrollIntoView({ behavior: "smooth", block: "center", inline: "center" });
+      }
+
+      if (State.currentPage !== match.pageIndex) {
+        State.setCurrentPage(match.pageIndex);
+        this._updatePageNumDisplay();
+      }
+    };
+
+    const performSearch = () => {
+      clearHighlights();
+      matches = [];
+      currentMatchIndex = -1;
+
+      const query = findInput ? findInput.value.trim().toLowerCase() : "";
+      if (!query || !this.selectionManager || !this.selectionManager.extractedPages) {
+        updateMatchUI();
         return;
       }
 
-      // Count occurrences in extracted pages
-      let count = 0;
-      this.selectionManager.extractedPages.forEach(p => {
-        p.blocks.forEach(b => {
-          if (b.text && b.text.toLowerCase().includes(query)) {
-            count++;
-          }
+      this.selectionManager.extractedPages.forEach((analysis, pageIndex) => {
+        const overlayLayer = document.getElementById(`page-overlay-${pageIndex}`);
+        if (!analysis || !analysis.blocks) return;
+
+        analysis.blocks.forEach(block => {
+          if (block.type !== 0 || !block.lines) return;
+          block.lines.forEach(line => {
+            if (!line.spans) return;
+            line.spans.forEach(span => {
+              const text = (span.currentText || span.text || "").toLowerCase();
+              if (text.includes(query)) {
+                let el = span._origHighlightEl || (span._coverEl ? span._coverEl : null);
+                if (!el && overlayLayer) {
+                  const boxes = overlayLayer.querySelectorAll(".text-span-highlight");
+                  for (let b of boxes) {
+                    if (b.title && b.title.toLowerCase().includes(query)) {
+                      el = b;
+                      break;
+                    }
+                  }
+                }
+                if (el) {
+                  el.classList.add("search-match");
+                  el.style.display = "block";
+                }
+                matches.push({ pageIndex, span, element: el });
+              }
+            });
+          });
         });
       });
 
-      if (matchBadge) matchBadge.textContent = `${count} found`;
+      if (matches.length > 0) {
+        jumpToMatch(0);
+      } else {
+        updateMatchUI();
+      }
+    };
+
+    findInput?.addEventListener("input", performSearch);
+
+    findInput?.addEventListener("keydown", (e) => {
+      if (e.key === "Enter") {
+        e.preventDefault();
+        if (e.shiftKey) {
+          jumpToMatch(currentMatchIndex - 1);
+        } else {
+          jumpToMatch(currentMatchIndex + 1);
+        }
+      } else if (e.key === "Escape") {
+        this._toggleFindDrawer(false);
+      }
     });
+
+    prevBtn?.addEventListener("click", () => jumpToMatch(currentMatchIndex - 1));
+    nextBtn?.addEventListener("click", () => jumpToMatch(currentMatchIndex + 1));
+    closeBtn?.addEventListener("click", () => this._toggleFindDrawer(false));
   }
 
-  _toggleFindDrawer() {
+  _toggleFindDrawer(force) {
     const drawer = document.getElementById("find-replace-drawer");
     if (!drawer) return;
     const isVisible = drawer.style.display === "flex";
-    drawer.style.display = isVisible ? "none" : "flex";
-    if (!isVisible) {
-      document.getElementById("find-search-input")?.focus();
+    const nextState = force !== undefined ? force : !isVisible;
+    drawer.style.display = nextState ? "flex" : "none";
+    if (nextState) {
+      const input = document.getElementById("find-search-input");
+      input?.focus();
+      input?.select();
+    } else {
+      document.querySelectorAll(".text-span-highlight.search-match, .text-span-highlight.search-active-match").forEach(el => {
+        el.classList.remove("search-match", "search-active-match");
+        if (!el.classList.contains("selected") && !el.classList.contains("edited-text-overlay")) {
+          const isTextTool = State.activeTool === "edit-text" || State.activeTool === "select";
+          el.style.display = isTextTool ? "block" : "none";
+        }
+      });
     }
   }
 

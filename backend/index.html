@@ -16,10 +16,10 @@
 
   <!-- CSS Stylesheets (with cache-busting) -->
   <link rel="stylesheet" href="./vendor/pdfjs/pdf_viewer.css">
-  <link rel="stylesheet" href="./css/styles.css?v=2.9">
-  <link rel="stylesheet" href="./css/editor.css?v=2.9">
-  <link rel="stylesheet" href="./css/portal.css?v=2.9">
-  <link rel="stylesheet" href="./css/responsive.css?v=2.9">
+  <link rel="stylesheet" href="./css/styles.css?v=3.1">
+  <link rel="stylesheet" href="./css/editor.css?v=3.1">
+  <link rel="stylesheet" href="./css/portal.css?v=3.1">
+  <link rel="stylesheet" href="./css/responsive.css?v=3.1">
 
   <!-- PDF.js & PDF-Lib Vendor Scripts -->
   <script src="./vendor/pdfjs/pdf.js"></script>
@@ -859,14 +859,51 @@
             <rect x="6" y="14" width="12" height="8" />
           </svg>
         </button>
-        <button class="btn-primary" id="header-download-btn" title="Export Modified PDF">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
-            <polyline points="7 10 12 15 17 10" />
-            <line x1="12" y1="15" x2="12" y2="3" />
-          </svg>
-          Download
-        </button>
+        <!-- 3 Horizontal Lines Document Options Menu (Replaces direct download button as requested) -->
+        <div class="header-menu-container" style="position: relative;">
+          <button class="btn-icon header-more-btn" id="header-menu-btn" title="Document Options" aria-label="Menu" aria-expanded="false">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round">
+              <line x1="3" y1="6" x2="21" y2="6" />
+              <line x1="3" y1="12" x2="21" y2="12" />
+              <line x1="3" y1="18" x2="21" y2="18" />
+            </svg>
+          </button>
+          <div class="header-dropdown-menu" id="header-dropdown-menu" style="display: none;">
+            <button class="header-menu-item" id="menu-opt-download">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                <polyline points="7 10 12 15 17 10" />
+                <line x1="12" y1="15" x2="12" y2="3" />
+              </svg>
+              <span>Download PDF</span>
+            </button>
+            <button class="header-menu-item" id="menu-opt-save">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z" />
+                <polyline points="17 21 17 13 7 13 7 21" />
+                <polyline points="7 3 7 8 15 8" />
+              </svg>
+              <span>Save Project</span>
+            </button>
+            <button class="header-menu-item" id="menu-opt-print">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <polyline points="6 9 6 2 18 2 18 9" />
+                <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2" />
+                <rect x="6" y="14" width="12" height="8" />
+              </svg>
+              <span>Print Document</span>
+            </button>
+            <div class="header-menu-divider"></div>
+            <button class="header-menu-item" id="menu-opt-open">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z" />
+              </svg>
+              <span>Open Another PDF</span>
+            </button>
+          </div>
+        </div>
+        <!-- Hidden button for backward compatibility -->
+        <button class="btn-primary" id="header-download-btn" style="display: none !important;" title="Export Modified PDF"></button>
         <button class="btn-done-orange" id="header-done-btn" title="Apply changes and finish">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3">
             <polyline points="20 6 9 17 4 12" />
@@ -1103,6 +1140,28 @@
         <div class="pages-viewport" id="pages-viewport"></div>
       </main>
 
+      <!-- Floating Find & Search Bar -->
+      <div class="find-replace-floating" id="find-replace-drawer" style="display: none;">
+        <div class="find-input-wrap">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="11" cy="11" r="8"></circle>
+            <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+          </svg>
+          <input type="text" id="find-search-input" placeholder="Find in document..." autocomplete="off" />
+          <span class="find-match-badge" id="find-match-badge">0 / 0</span>
+        </div>
+        <button id="find-prev-btn" class="find-btn" title="Previous match (Shift+Enter)">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="18 15 12 9 6 15"></polyline></svg>
+        </button>
+        <button id="find-next-btn" class="find-btn" title="Next match (Enter)">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"></polyline></svg>
+        </button>
+        <div class="find-divider"></div>
+        <button id="find-close-btn" class="find-btn find-close" title="Close search (Esc)">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+        </button>
+      </div>
+
     </section>
 
     <!-- Floating Bottom Navigation Pill (Zoom & Page Stepper) -->
@@ -1215,8 +1274,8 @@
   <div class="toast-container" id="toast-container"></div>
 
   <!-- Main ES Module Bootstrap (with cache-busting) -->
-  <script type="module" src="./js/portal.js?v=2.9"></script>
-  <script type="module" src="./js/app.js?v=2.9"></script>
+  <script type="module" src="./js/portal.js?v=3.1"></script>
+  <script type="module" src="./js/app.js?v=3.1"></script>
 
 </body>
 

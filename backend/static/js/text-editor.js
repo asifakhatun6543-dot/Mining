@@ -679,6 +679,10 @@ export class InlineTextEditor {
       this.populateDocumentFonts(docInfo.detected_fonts || []);
     });
 
+    State.subscribe("documentReset", () => {
+      this.hide();
+    });
+
     State.subscribe("pageRendered", ({ pageIndex }) => {
       this.reRenderPageEdits(pageIndex);
     });
@@ -896,24 +900,34 @@ export class InlineTextEditor {
 
   _positionMiniToolbar(box) {
     if (!box || !this.miniToolbarEl) return;
+    this.miniToolbarEl.style.display = "flex";
     const rect = box.getBoundingClientRect();
-    const toolbarWidth = Math.min(300, window.innerWidth - 16);
-    const toolbarHeight = 36;
+    const actualWidth = this.miniToolbarEl.offsetWidth || 330;
+    const actualHeight = this.miniToolbarEl.offsetHeight || 36;
 
-    let top = rect.top - toolbarHeight - 8;
+    let top = rect.top - actualHeight - 8;
     let left = rect.left;
 
     if (top < 54) {
       top = rect.bottom + 8;
     }
-    if (left + toolbarWidth > window.innerWidth - 8) {
-      left = window.innerWidth - toolbarWidth - 8;
-    }
-    left = Math.max(8, left);
+    const maxLeft = window.innerWidth - actualWidth - 8;
+    left = Math.max(8, Math.min(left, maxLeft));
 
     this.miniToolbarEl.style.top = `${Math.round(top)}px`;
     this.miniToolbarEl.style.left = `${Math.round(left)}px`;
-    this.miniToolbarEl.style.display = "flex";
+
+    // Ensure style popover does not get clipped off screen bottom
+    const stylePopover = this.miniToolbarEl.querySelector("#mt-style-popover");
+    if (stylePopover) {
+      if (top + actualHeight + 52 > window.innerHeight) {
+        stylePopover.style.top = "auto";
+        stylePopover.style.bottom = "calc(100% + 4px)";
+      } else {
+        stylePopover.style.top = "calc(100% + 4px)";
+        stylePopover.style.bottom = "auto";
+      }
+    }
   }
 
   applyEdit() {
@@ -1164,27 +1178,35 @@ export class InlineTextEditor {
       origSpan._coverEl = cover;
       overlayLayer.appendChild(cover);
 
-      // Click handler for re-editing — always works regardless of tool
-      cover.addEventListener("click", (e) => {
+      // Re-editing handler with pointerup & click support and debouncing for mobile touch
+      let lastReEdit = 0;
+      const triggerReEdit = (e) => {
+        const now = Date.now();
+        if (now - lastReEdit < 250) return;
+        lastReEdit = now;
         e.stopPropagation();
         e.preventDefault();
-        if (State.activeTool === "edit-text" || State.activeTool === "select") {
+
+        if (State.activeTool === "redact") {
+          this.quickRedactSpan({ pageIndex, span: origSpan, element: cover }, false);
+        } else if (State.activeTool === "whiteout") {
+          this.quickRedactSpan({ pageIndex, span: origSpan, element: cover }, true);
+        } else {
+          State.setActiveTool("edit-text");
           this.openForSpan({
             pageIndex,
             span: origSpan,
             element: cover
           });
-        } else if (State.activeTool === "redact") {
-          this.quickRedactSpan({ pageIndex, span: origSpan, element: cover }, false);
-        } else if (State.activeTool === "whiteout") {
-          this.quickRedactSpan({ pageIndex, span: origSpan, element: cover }, true);
         }
-      });
+      };
 
-      // Prevent mousedown from propagating to avoid interference with canvas/overlay
-      cover.addEventListener("mousedown", (e) => {
-        e.stopPropagation();
-      });
+      cover.addEventListener("pointerup", triggerReEdit);
+      cover.addEventListener("click", triggerReEdit);
+
+      // Prevent pointerdown and mousedown from propagating to canvas tools
+      cover.addEventListener("pointerdown", (e) => e.stopPropagation());
+      cover.addEventListener("mousedown", (e) => e.stopPropagation());
     }
 
     cover.style.position = "absolute";

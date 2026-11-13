@@ -129,11 +129,24 @@ html, body {
 
   .header-right {
     gap: 6px !important;
+    display: flex !important;
+    align-items: center !important;
+  }
+
+  .header-more-btn {
+    width: 36px !important;
+    height: 36px !important;
+    border-radius: 8px !important;
+    background: #f1f5f9 !important;
+    border: 1px solid #cbd5e1 !important;
+    color: #1e293b !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
   }
 
   #header-download-btn {
-    padding: 6px 12px !important;
-    font-size: 12px !important;
+    display: none !important;
   }
 
   /* Docked Bottom Toolbar (PDFfiller Style) */
@@ -384,9 +397,15 @@ html, body {
     font-size: 12px !important;
     transform: translateX(-50%) !important;
     z-index: 950 !important;
-    background: rgba(255, 255, 255, 0.96) !important;
-    box-shadow: 0 4px 18px rgba(0, 0, 0, 0.2) !important;
+    background: #ffffff !important;
+    color: #0f172a !important;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.18) !important;
     border: 1px solid #cbd5e1 !important;
+  }
+
+  .floating-bottom-pill span {
+    color: #0f172a !important;
+    font-weight: 700 !important;
   }
 
   .floating-bottom-pill button {
@@ -396,12 +415,24 @@ html, body {
     display: inline-flex !important;
     align-items: center !important;
     justify-content: center !important;
+    background: #f1f5f9 !important;
+    border: 1px solid #cbd5e1 !important;
+    color: #1e293b !important;
+  }
+
+  .floating-bottom-pill button:hover {
+    background: #e2e8f0 !important;
   }
 
   .floating-bottom-pill button svg {
     width: 16px !important;
     height: 16px !important;
+    stroke: #1e293b !important;
     stroke-width: 2.5 !important;
+  }
+
+  .floating-bottom-pill .pill-separator {
+    background: #cbd5e1 !important;
   }
 
   /* Modals: Mobile Optimized */
@@ -457,17 +488,52 @@ html, body {
 
   /* Floating In-Place Mini-Toolbar */
   .floating-mini-toolbar {
-    max-width: calc(100vw - 20px);
-    overflow-x: auto;
-    height: 36px;
-    padding: 0 4px;
-    gap: 2px;
+    max-width: calc(100vw - 16px) !important;
+    overflow: visible !important;
+    height: auto !important;
+    min-height: 36px !important;
+    padding: 3px 6px !important;
+    gap: 3px !important;
+    z-index: 1050 !important;
+  }
+
+  .floating-mini-toolbar .mini-select {
+    max-width: 80px !important;
+    font-size: 11px !important;
+    padding: 0 2px !important;
+  }
+
+  .floating-mini-toolbar .mini-size-input {
+    width: 32px !important;
+    font-size: 11px !important;
+    padding: 0 1px !important;
   }
 
   .floating-mini-toolbar .mini-btn {
-    height: 26px;
-    padding: 0 5px;
-    font-size: 11px;
+    height: 26px !important;
+    padding: 0 4px !important;
+    font-size: 11px !important;
+  }
+
+  /* Style Popover Dropdown (B/I/U) */
+  #mt-style-popover {
+    z-index: 1150 !important;
+    background: #ffffff !important;
+    box-shadow: 0 4px 18px rgba(0, 0, 0, 0.22) !important;
+  }
+
+  /* Mobile Search Bar */
+  .find-replace-floating {
+    top: 56px !important;
+    left: 8px !important;
+    right: 8px !important;
+    width: auto !important;
+    justify-content: space-between !important;
+  }
+
+  #find-search-input {
+    width: 100% !important;
+    min-width: 80px !important;
   }
 
   /* Toasts */
@@ -550,19 +616,30 @@ html, body {
   /* Bottom Pill: Compact Floating Bar Elevated Above Docked Toolbar */
   .floating-bottom-pill {
     bottom: 72px !important;
-    padding: 3px 10px;
-    gap: 6px;
-    font-size: 12px;
+    padding: 3px 10px !important;
+    gap: 6px !important;
+    font-size: 12px !important;
+    background: #ffffff !important;
+    color: #0f172a !important;
+  }
+
+  .floating-bottom-pill span {
+    color: #0f172a !important;
+    font-weight: 700 !important;
   }
 
   .floating-bottom-pill button {
-    width: 34px;
-    height: 34px;
+    width: 34px !important;
+    height: 34px !important;
+    background: #f1f5f9 !important;
+    color: #1e293b !important;
+    border: 1px solid #cbd5e1 !important;
   }
 
   .floating-bottom-pill button svg {
-    width: 16px;
-    height: 16px;
+    width: 16px !important;
+    height: 16px !important;
+    stroke: #1e293b !important;
   }
 
   .pill-separator {

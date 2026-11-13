@@ -33,48 +33,14 @@ export class ToolbarManager {
         // If button is disabled, ignore
         if (btn.disabled || btn.getAttribute("disabled") !== null) return;
 
-        const tool = btn.dataset.tool || (btn.id === "tool-find-btn" ? "find" : (btn.id === "btn-toggle-pages" ? "pages" : null));
-        if (!tool) return;
+        // Ignore buttons managed directly by app.js (pages sidebar toggle and find drawer toggle)
+        if (btn.id === "btn-toggle-pages" || btn.id === "tool-find-btn") return;
 
-        if (tool === "pages") {
-          const sidebar = document.getElementById("left-sidebar");
-          const backdrop = document.getElementById("sidebar-backdrop");
-          if (sidebar) {
-            const isOpen = window.innerWidth <= 768
-              ? sidebar.classList.contains("mobile-open")
-              : (sidebar.style.display !== "none" && getComputedStyle(sidebar).display !== "none");
-            if (isOpen) {
-              sidebar.classList.remove("mobile-open");
-              if (window.innerWidth <= 768) {
-                setTimeout(() => { if (!sidebar.classList.contains("mobile-open")) sidebar.style.display = "none"; }, 280);
-              } else {
-                sidebar.style.display = "none";
-              }
-              if (backdrop) {
-                backdrop.classList.remove("active");
-                backdrop.style.display = "none";
-              }
-            } else {
-              sidebar.style.display = "flex";
-              void sidebar.offsetWidth;
-              sidebar.classList.add("mobile-open");
-              if (backdrop && window.innerWidth <= 768) {
-                backdrop.style.display = "block";
-                void backdrop.offsetWidth;
-                backdrop.classList.add("active");
-              }
-            }
-          }
-          return;
-        }
+        const tool = btn.dataset.tool;
+        if (!tool) return;
 
         if (tool === "ocr") {
           State.emit("ocrRunRequested", State.currentPage);
-          return;
-        }
-
-        if (tool === "find") {
-          State.emit("toggleFind");
           return;
         }
 
