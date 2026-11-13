@@ -114,11 +114,15 @@ class OpenPDFStudioApp {
 
     // Open file button
     document.getElementById("header-open-btn")?.addEventListener("click", () => {
-      document.getElementById("pdf-file-picker")?.click();
+      const picker = document.getElementById("pdf-file-picker");
+      if (picker) {
+        picker.value = "";
+        picker.click();
+      }
     });
 
     document.getElementById("pdf-file-picker")?.addEventListener("change", (e) => {
-      const file = e.target.files[0];
+      const file = e.target.files && e.target.files[0];
       if (file) this.loadPDFFile(file);
     });
   }
@@ -562,24 +566,41 @@ class OpenPDFStudioApp {
     return { docInfo, pages };
   }
 
-  async loadPDFFile(file) {
-    const welcomeModal = document.getElementById("welcome-modal");
-    if (welcomeModal) welcomeModal.style.display = "none";
-
-    // Clean reset of previous document state, edits, caches, and file inputs
+  resetDocument() {
     if (this.textEditor) this.textEditor.hide();
     if (this.selectionManager) this.selectionManager.clear();
     HistoryManager.clear();
+    State.reset();
     const viewport = document.getElementById("pages-viewport");
     if (viewport) viewport.innerHTML = "";
     const thumbs = document.getElementById("thumbnails-container");
     if (thumbs) thumbs.innerHTML = "";
+    const titleInput = document.getElementById("document-title-input");
+    if (titleInput) titleInput.value = "Untitled.pdf";
+    const statusBadge = document.getElementById("header-status-badge");
+    if (statusBadge) {
+      statusBadge.textContent = "No Document";
+      statusBadge.className = "doc-status-badge";
+    }
+    const pageNumDisplay = document.getElementById("page-num-display");
+    if (pageNumDisplay) pageNumDisplay.textContent = "1";
+    const totalPagesLabel = document.getElementById("total-pages-label");
+    if (totalPagesLabel) totalPagesLabel.textContent = "1";
+  }
 
-    // Clear file inputs so re-uploading the same file triggers onchange properly
-    ["pdf-file-picker", "welcome-file-picker", "edit-modal-file-picker", "hero-universal-input"].forEach(id => {
-      const el = document.getElementById(id);
-      if (el) el.value = "";
-    });
+  async loadPDFFile(file) {
+    if (!file) return;
+
+    const welcomeModal = document.getElementById("welcome-modal");
+    if (welcomeModal) welcomeModal.style.display = "none";
+
+    // Clean reset of previous document state before reading new file
+    this.resetDocument();
+
+    // Ensure editor view is active
+    if (window.portal && window.portal.switchView) {
+      window.portal.switchView("editor");
+    }
 
     // Step 1: Open popup loading dialog immediately
     this._showLoadingModal(
@@ -590,7 +611,7 @@ class OpenPDFStudioApp {
     );
 
     try {
-      // Step 2: Read raw array buffer
+      // Step 2: Read raw array buffer SAFELY (do NOT touch input.value before reading!)
       const arrayBuffer = await file.arrayBuffer();
       this._updateLoadingProgress("Extracting pages & vector text content...", 42);
 

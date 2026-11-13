@@ -60,13 +60,19 @@ export class PortalManager {
   }
 
   _bindNavigation() {
-    // Logo & Home links
+    // Logo & Home links: cleanly reset editor when navigating back to portal
     document.getElementById("portal-logo-link")?.addEventListener("click", () => {
+      if (window.app && window.app.resetDocument) {
+        window.app.resetDocument();
+      }
       this.switchView("landing");
     });
 
     // Back to Home button in editor header
     document.getElementById("btn-back-to-home")?.addEventListener("click", () => {
+      if (window.app && window.app.resetDocument) {
+        window.app.resetDocument();
+      }
       this.switchView("landing");
     });
 
@@ -74,7 +80,7 @@ export class PortalManager {
     document.querySelectorAll(".open-editor-cta").forEach(el => {
       el.addEventListener("click", (e) => {
         e.preventDefault();
-        this.switchView("editor");
+        this.openEditModal();
       });
     });
 
@@ -125,7 +131,11 @@ export class PortalManager {
 
     if (!dropzone || !fileInput) return;
 
-    dropzone.addEventListener("click", () => fileInput.click());
+    // Reset value on click BEFORE file picker opens so re-selecting same file triggers change safely
+    dropzone.addEventListener("click", () => {
+      fileInput.value = "";
+      fileInput.click();
+    });
 
     dropzone.addEventListener("dragover", (e) => {
       e.preventDefault();
@@ -146,7 +156,6 @@ export class PortalManager {
     fileInput.addEventListener("change", (e) => {
       const files = Array.from(e.target.files);
       if (files.length > 0) this._handleUniversalFiles(files);
-      fileInput.value = "";
     });
   }
 
@@ -235,6 +244,8 @@ export class PortalManager {
   // ------------------------------------------------------------------------
   openEditModal() {
     const modal = document.getElementById("modal-edit-pdf");
+    const picker = document.getElementById("edit-modal-file-picker");
+    if (picker) picker.value = "";
     if (!modal) return;
     modal.style.display = "flex";
   }
@@ -255,7 +266,12 @@ export class PortalManager {
       if (e.target === modal) modal.style.display = "none";
     });
 
-    const triggerPick = () => picker?.click();
+    const triggerPick = () => {
+      if (picker) {
+        picker.value = "";
+        picker.click();
+      }
+    };
     chooseBtn?.addEventListener("click", (e) => {
       e.stopPropagation();
       triggerPick();
@@ -271,7 +287,6 @@ export class PortalManager {
           window.app.loadPDFFile(files[0]);
         }
       }
-      picker.value = "";
     });
 
     dropzone?.addEventListener("dragover", (e) => {
@@ -301,11 +316,11 @@ export class PortalManager {
   openMergeModal(initialFiles = []) {
     const modal = document.getElementById("modal-merge-pdf");
     if (!modal) return;
+    const picker = document.getElementById("merge-file-picker");
+    if (picker) picker.value = "";
+    this.mergeFiles = initialFiles.length > 0 ? [...initialFiles] : [];
+    this._renderMergeQueue();
     modal.style.display = "flex";
-    if (initialFiles.length > 0) {
-      this.mergeFiles = [...this.mergeFiles, ...initialFiles];
-      this._renderMergeQueue();
-    }
   }
 
   _bindMergePdfModal() {
@@ -321,13 +336,17 @@ export class PortalManager {
       this._renderMergeQueue();
     });
 
-    dropzone?.addEventListener("click", () => picker?.click());
+    dropzone?.addEventListener("click", () => {
+      if (picker) {
+        picker.value = "";
+        picker.click();
+      }
+    });
 
     picker?.addEventListener("change", (e) => {
       const files = Array.from(e.target.files);
       this.mergeFiles = [...this.mergeFiles, ...files];
       this._renderMergeQueue();
-      picker.value = "";
     });
 
     dropzone?.addEventListener("dragover", (e) => {
@@ -455,11 +474,11 @@ export class PortalManager {
   openJpgToPdfModal(initialFiles = []) {
     const modal = document.getElementById("modal-jpg-to-pdf");
     if (!modal) return;
+    const picker = document.getElementById("jpg-file-picker");
+    if (picker) picker.value = "";
+    this.jpgFiles = initialFiles.length > 0 ? [...initialFiles] : [];
+    this._renderJpgQueue();
     modal.style.display = "flex";
-    if (initialFiles.length > 0) {
-      this.jpgFiles = [...this.jpgFiles, ...initialFiles];
-      this._renderJpgQueue();
-    }
   }
 
   _bindJpgToPdfModal() {
@@ -475,13 +494,17 @@ export class PortalManager {
       this._renderJpgQueue();
     });
 
-    dropzone?.addEventListener("click", () => picker?.click());
+    dropzone?.addEventListener("click", () => {
+      if (picker) {
+        picker.value = "";
+        picker.click();
+      }
+    });
 
     picker?.addEventListener("change", (e) => {
       const files = Array.from(e.target.files);
       this.jpgFiles = [...this.jpgFiles, ...files];
       this._renderJpgQueue();
-      picker.value = "";
     });
 
     dropzone?.addEventListener("dragover", (e) => {
@@ -626,7 +649,38 @@ export class PortalManager {
   // ------------------------------------------------------------------------
   openImageResizeModal() {
     const modal = document.getElementById("modal-image-resize");
-    if (modal) modal.style.display = "flex";
+    if (!modal) return;
+    this.resetImageResizeModal();
+    modal.style.display = "flex";
+  }
+
+  resetImageResizeModal() {
+    this.resizeState = {
+      file: null,
+      img: null,
+      origWidth: 0,
+      origHeight: 0,
+      aspectRatio: 1
+    };
+    const picker = document.getElementById("resize-file-picker");
+    if (picker) picker.value = "";
+    const previewImg = document.getElementById("resize-preview-img");
+    if (previewImg) previewImg.src = "";
+    const previewContainer = document.getElementById("resize-preview-container");
+    if (previewContainer) previewContainer.style.display = "none";
+    const controlsContainer = document.getElementById("resize-controls-container");
+    if (controlsContainer) controlsContainer.style.display = "none";
+    const dropzone = document.getElementById("resize-dropzone");
+    if (dropzone) dropzone.style.display = "flex";
+    const widthInput = document.getElementById("resize-width");
+    if (widthInput) widthInput.value = "";
+    const heightInput = document.getElementById("resize-height");
+    if (heightInput) heightInput.value = "";
+    const resizeBtn = document.getElementById("btn-do-resize");
+    if (resizeBtn) {
+      resizeBtn.disabled = true;
+      resizeBtn.innerHTML = "Resize & Download";
+    }
   }
 
   _bindImageResizeModal() {
@@ -643,10 +697,23 @@ export class PortalManager {
     const resizeBtn = document.getElementById("btn-do-resize");
 
     closeBtn?.addEventListener("click", () => {
+      this.resetImageResizeModal();
       modal.style.display = "none";
     });
 
-    dropzone?.addEventListener("click", () => picker?.click());
+    modal.addEventListener("click", (e) => {
+      if (e.target === modal) {
+        this.resetImageResizeModal();
+        modal.style.display = "none";
+      }
+    });
+
+    dropzone?.addEventListener("click", () => {
+      if (picker) {
+        picker.value = "";
+        picker.click();
+      }
+    });
 
     picker?.addEventListener("change", (e) => {
       const file = e.target.files[0];
@@ -767,6 +834,7 @@ export class PortalManager {
       a.click();
       URL.revokeObjectURL(dlUrl);
 
+      this.resetImageResizeModal();
       document.getElementById("modal-image-resize").style.display = "none";
       alert("Image resized successfully! Download started.");
     }, mimeType, quality);
@@ -777,7 +845,25 @@ export class PortalManager {
   // ------------------------------------------------------------------------
   openSplitModal() {
     const modal = document.getElementById("modal-split-pdf");
-    if (modal) modal.style.display = "flex";
+    if (!modal) return;
+    this.resetSplitPdfModal();
+    modal.style.display = "flex";
+  }
+
+  resetSplitPdfModal() {
+    this.splitPdfDoc = null;
+    this.splitFile = null;
+    const picker = document.getElementById("split-file-picker");
+    if (picker) picker.value = "";
+    const dropzone = document.getElementById("split-dropzone");
+    if (dropzone) dropzone.style.display = "flex";
+    const controls = document.getElementById("split-controls");
+    if (controls) controls.style.display = "none";
+    const splitBtn = document.getElementById("btn-do-split");
+    if (splitBtn) {
+      splitBtn.disabled = true;
+      splitBtn.innerHTML = "Extract & Download PDF";
+    }
   }
 
   _bindSplitPdfModal() {
@@ -787,8 +873,24 @@ export class PortalManager {
     const dropzone = document.getElementById("split-dropzone");
     const splitBtn = document.getElementById("btn-do-split");
 
-    closeBtn?.addEventListener("click", () => modal.style.display = "none");
-    dropzone?.addEventListener("click", () => picker?.click());
+    closeBtn?.addEventListener("click", () => {
+      this.resetSplitPdfModal();
+      modal.style.display = "none";
+    });
+
+    modal?.addEventListener("click", (e) => {
+      if (e.target === modal) {
+        this.resetSplitPdfModal();
+        modal.style.display = "none";
+      }
+    });
+
+    dropzone?.addEventListener("click", () => {
+      if (picker) {
+        picker.value = "";
+        picker.click();
+      }
+    });
 
     picker?.addEventListener("change", async (e) => {
       const file = e.target.files[0];
@@ -833,6 +935,7 @@ export class PortalManager {
         a.click();
         URL.revokeObjectURL(url);
 
+        this.resetSplitPdfModal();
         modal.style.display = "none";
         alert(`Pages ${from} to ${to} extracted successfully!`);
       } catch (err) {
@@ -849,7 +952,26 @@ export class PortalManager {
   // ------------------------------------------------------------------------
   openRotateModal() {
     const modal = document.getElementById("modal-rotate-pdf");
-    if (modal) modal.style.display = "flex";
+    if (!modal) return;
+    this.resetRotatePdfModal();
+    modal.style.display = "flex";
+  }
+
+  resetRotatePdfModal() {
+    this.rotatePdfDoc = null;
+    this.rotateFile = null;
+    this.rotateAngle = 90;
+    const picker = document.getElementById("rotate-file-picker");
+    if (picker) picker.value = "";
+    const dropzone = document.getElementById("rotate-dropzone");
+    if (dropzone) dropzone.style.display = "flex";
+    const controls = document.getElementById("rotate-controls");
+    if (controls) controls.style.display = "none";
+    const rotateBtn = document.getElementById("btn-do-rotate");
+    if (rotateBtn) {
+      rotateBtn.disabled = true;
+      rotateBtn.innerHTML = "Rotate & Download PDF";
+    }
   }
 
   _bindRotatePdfModal() {
@@ -859,8 +981,24 @@ export class PortalManager {
     const dropzone = document.getElementById("rotate-dropzone");
     const rotateBtn = document.getElementById("btn-do-rotate");
 
-    closeBtn?.addEventListener("click", () => modal.style.display = "none");
-    dropzone?.addEventListener("click", () => picker?.click());
+    closeBtn?.addEventListener("click", () => {
+      this.resetRotatePdfModal();
+      modal.style.display = "none";
+    });
+
+    modal?.addEventListener("click", (e) => {
+      if (e.target === modal) {
+        this.resetRotatePdfModal();
+        modal.style.display = "none";
+      }
+    });
+
+    dropzone?.addEventListener("click", () => {
+      if (picker) {
+        picker.value = "";
+        picker.click();
+      }
+    });
 
     picker?.addEventListener("change", async (e) => {
       const file = e.target.files[0];
@@ -906,6 +1044,7 @@ export class PortalManager {
         a.click();
         URL.revokeObjectURL(url);
 
+        this.resetRotatePdfModal();
         modal.style.display = "none";
         alert("PDF rotated successfully! Download started.");
       } catch (err) {
@@ -929,7 +1068,24 @@ export class PortalManager {
   // ------------------------------------------------------------------------
   openPdfToJpgModal() {
     const modal = document.getElementById("modal-pdf-to-jpg");
-    if (modal) modal.style.display = "flex";
+    if (!modal) return;
+    this.resetPdfToJpgModal();
+    modal.style.display = "flex";
+  }
+
+  resetPdfToJpgModal() {
+    this.pdfToJpgFile = null;
+    const picker = document.getElementById("pdf-to-jpg-file-picker");
+    if (picker) picker.value = "";
+    const dropzone = document.getElementById("pdf-to-jpg-dropzone");
+    if (dropzone) dropzone.style.display = "flex";
+    const controls = document.getElementById("pdf-to-jpg-controls");
+    if (controls) controls.style.display = "none";
+    const convertBtn = document.getElementById("btn-do-pdf-to-jpg");
+    if (convertBtn) {
+      convertBtn.disabled = true;
+      convertBtn.innerHTML = "Convert & Download JPGs";
+    }
   }
 
   _bindPdfToJpgModal() {
@@ -939,8 +1095,24 @@ export class PortalManager {
     const dropzone = document.getElementById("pdf-to-jpg-dropzone");
     const convertBtn = document.getElementById("btn-do-pdf-to-jpg");
 
-    closeBtn?.addEventListener("click", () => modal.style.display = "none");
-    dropzone?.addEventListener("click", () => picker?.click());
+    closeBtn?.addEventListener("click", () => {
+      this.resetPdfToJpgModal();
+      modal.style.display = "none";
+    });
+
+    modal?.addEventListener("click", (e) => {
+      if (e.target === modal) {
+        this.resetPdfToJpgModal();
+        modal.style.display = "none";
+      }
+    });
+
+    dropzone?.addEventListener("click", () => {
+      if (picker) {
+        picker.value = "";
+        picker.click();
+      }
+    });
 
     picker?.addEventListener("change", (e) => {
       const file = e.target.files[0];
@@ -980,6 +1152,20 @@ export class PortalManager {
           a.href = url;
           a.download = `page_${i}.jpg`;
           a.click();
+          URL.revokeObjectURL(url);
+        }
+
+        this.resetPdfToJpgModal();
+        modal.style.display = "none";
+        alert("PDF pages converted to JPG images! Downloads complete.");
+      } catch (err) {
+        alert("Conversion error: " + err.message);
+      } finally {
+        convertBtn.disabled = false;
+        convertBtn.innerHTML = "Convert & Download JPGs";
+      }
+    });
+  }
           URL.revokeObjectURL(url);
         }
 

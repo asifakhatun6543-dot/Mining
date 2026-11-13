@@ -61,6 +61,31 @@ export const State = {
     }
   },
 
+  reset() {
+    this.documentId = null;
+    this.filename = "Untitled.pdf";
+    this.pageCount = 0;
+    this.pageDimensions = [];
+    this.isScanned = false;
+    this.isMixed = false;
+    this.isEncrypted = false;
+    this.detectedFonts = [];
+    this.hasInsufficientText = false;
+    this.unsupportedFeatures = [];
+    this.pdfDoc = null;
+    this.rawFileBytes = null;
+    this.currentPage = 0;
+    this.activeSpan = null;
+    this.activeOCRWord = null;
+    this.pendingTextEdits = [];
+    this.pendingRedactions = [];
+    this.pendingScannedEdits = [];
+    this.pendingAnnotations = [];
+    this.pendingPageOperations = [];
+    this.ocrCache = {};
+    this.emit("documentReset");
+  },
+
   setDocument(docInfo, pdfJsDoc, rawBytes) {
     this.documentId = docInfo.document_id;
     this.filename = docInfo.filename;

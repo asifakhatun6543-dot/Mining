@@ -49,7 +49,11 @@ export class ToolbarManager {
         }
 
         if (tool === "image") {
-          document.getElementById("image-upload-input")?.click();
+          const input = document.getElementById("image-upload-input");
+          if (input) {
+            input.value = "";
+            input.click();
+          }
           return;
         }
 
@@ -66,14 +70,13 @@ export class ToolbarManager {
     const imgInput = document.getElementById("image-upload-input");
     if (imgInput) {
       imgInput.addEventListener("change", (e) => {
-        const file = e.target.files[0];
+        const file = e.target.files && e.target.files[0];
         if (!file) return;
         const reader = new FileReader();
         reader.onload = (event) => {
           this.insertImageOnPage(State.currentPage, event.target.result);
         };
         reader.readAsDataURL(file);
-        imgInput.value = "";
       });
     }
 
