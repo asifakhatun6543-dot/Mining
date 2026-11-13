@@ -273,6 +273,14 @@
    white-space: nowrap;
    min-width: 44px;
    height: 44px;
+   touch-action: manipulation;
+   user-select: none;
+   -webkit-user-select: none;
+ }
+
+ .tool-btn svg,
+ .tool-btn span {
+   pointer-events: none;
  }
 
  .tool-btn svg {

@@ -22,32 +22,66 @@ class OpenPDFStudioApp {
   }
 
   init() {
+    // Expose app instance globally immediately
+    window.app = this;
+
     // DOM Elements
     const viewportContainer = document.getElementById("pages-viewport");
     const thumbnailsContainer = document.getElementById("thumbnails-container");
 
-    // Initialize Subsystems
-    this.renderer = new PDFRenderer(viewportContainer, thumbnailsContainer);
-    this.selectionManager = new TextSelectionManager();
-    this.textEditor = new InlineTextEditor();
-    this.scannedEditor = new ScannedEditor();
-    this.toolbar = new ToolbarManager();
-    this.exportClient = new ExportClient();
+    try {
+      this.renderer = new PDFRenderer(viewportContainer, thumbnailsContainer);
+    } catch (e) {
+      console.error("Failed to initialize PDFRenderer:", e);
+    }
 
-    this._bindHeaderActions();
-    this._bindPageActions();
-    this._bindZoomAndNavigation();
-    this._bindInspector();
-    this._bindDropzoneAndSamples();
-    this._bindKeyboardShortcuts();
-    this._bindToastSystem();
-    this._bindFindAndReplace();
+    try {
+      this.selectionManager = new TextSelectionManager();
+    } catch (e) {
+      console.error("Failed to initialize TextSelectionManager:", e);
+    }
 
-    // Expose app instance globally for subsystem coordination
-    window.app = this;
+    try {
+      this.textEditor = new InlineTextEditor();
+    } catch (e) {
+      console.error("Failed to initialize InlineTextEditor:", e);
+    }
+
+    try {
+      this.scannedEditor = new ScannedEditor();
+    } catch (e) {
+      console.error("Failed to initialize ScannedEditor:", e);
+    }
+
+    try {
+      this.toolbar = new ToolbarManager();
+    } catch (e) {
+      console.error("Failed to initialize ToolbarManager:", e);
+    }
+
+    try {
+      this.exportClient = new ExportClient();
+    } catch (e) {
+      console.error("Failed to initialize ExportClient:", e);
+    }
+
+    try {
+      this._bindHeaderActions();
+      this._bindPageActions();
+      this._bindZoomAndNavigation();
+      this._bindInspector();
+      this._bindDropzoneAndSamples();
+      this._bindKeyboardShortcuts();
+      this._bindToastSystem();
+      this._bindFindAndReplace();
+    } catch (e) {
+      console.error("Failed to bind UI actions:", e);
+    }
 
     // Set default tool to edit-text to match UI active state
-    this.toolbar.setTool("edit-text");
+    if (this.toolbar && typeof this.toolbar.setTool === "function") {
+      this.toolbar.setTool("edit-text");
+    }
 
     // Check backend health
     this._checkHealth();

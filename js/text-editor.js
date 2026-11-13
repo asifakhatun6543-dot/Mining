@@ -208,6 +208,11 @@ export class InlineTextEditor {
     }
 
     this.miniToolbarEl.innerHTML = `
+      <!-- Drag Handle -->
+      <div class="mini-btn drag-handle" id="mt-drag-btn" title="Drag toolbar / text box" style="cursor: move; padding: 0 4px; height: 26px; display: flex; align-items: center; justify-content: center; color: #64748b;">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="9" cy="5" r="1.5"/><circle cx="9" cy="12" r="1.5"/><circle cx="9" cy="19" r="1.5"/><circle cx="15" cy="5" r="1.5"/><circle cx="15" cy="12" r="1.5"/><circle cx="15" cy="19" r="1.5"/></svg>
+      </div>
+
       <!-- Commit OK Button -->
       <button type="button" class="mini-btn ok-btn" id="mt-ok-btn" title="Confirm and apply edit (Enter)">
         <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg>
@@ -300,8 +305,8 @@ export class InlineTextEditor {
   }
 
   _bindMiniToolbarEvents() {
-    this.miniToolbarEl.querySelector("#mt-ok-btn").addEventListener("click", () => this.applyEdit());
-    this.miniToolbarEl.querySelector("#mt-delete-btn").addEventListener("click", () => this.applyDelete());
+    this.miniToolbarEl.querySelector("#mt-ok-btn")?.addEventListener("click", () => this.applyEdit());
+    this.miniToolbarEl.querySelector("#mt-delete-btn")?.addEventListener("click", () => this.applyDelete());
 
     // Style Dropdown (B / I / U inside popover dropdown)
     const styleBtn = this.miniToolbarEl.querySelector("#mt-style-btn");
@@ -413,44 +418,63 @@ export class InlineTextEditor {
   }
 
   _bindDragHandler() {
-    const dragBtn = this.miniToolbarEl.querySelector("#mt-drag-btn");
+    const dragBtn = this.miniToolbarEl?.querySelector("#mt-drag-btn");
+    if (!dragBtn) return;
     let isDragging = false;
     let startX = 0;
     let startY = 0;
     let origLeft = 0;
     let origTop = 0;
 
-    dragBtn.addEventListener("mousedown", (e) => {
+    const startDrag = (clientX, clientY) => {
       if (!this.activeBoxEl) return;
       isDragging = true;
-      startX = e.clientX;
-      startY = e.clientY;
+      startX = clientX;
+      startY = clientY;
       origLeft = parseFloat(this.activeBoxEl.style.left) || 0;
       origTop = parseFloat(this.activeBoxEl.style.top) || 0;
-      e.preventDefault();
-    });
+    };
 
-    window.addEventListener("mousemove", (e) => {
+    const doDrag = (clientX, clientY) => {
       if (!isDragging || !this.activeBoxEl) return;
-      const dx = e.clientX - startX;
-      const dy = e.clientY - startY;
+      const dx = clientX - startX;
+      const dy = clientY - startY;
       this.activeBoxEl.style.left = `${origLeft + dx}px`;
       this.activeBoxEl.style.top = `${origTop + dy}px`;
       this._positionMiniToolbar(this.activeBoxEl);
-    });
+    };
 
-    window.addEventListener("mouseup", () => {
-      if (isDragging) {
-        isDragging = false;
-      }
+    const stopDrag = () => {
+      if (isDragging) isDragging = false;
+    };
+
+    dragBtn.addEventListener("mousedown", (e) => {
+      e.preventDefault();
+      startDrag(e.clientX, e.clientY);
     });
+    window.addEventListener("mousemove", (e) => doDrag(e.clientX, e.clientY));
+    window.addEventListener("mouseup", stopDrag);
+
+    // Mobile touch support
+    dragBtn.addEventListener("touchstart", (e) => {
+      if (e.touches.length === 1) {
+        startDrag(e.touches[0].clientX, e.touches[0].clientY);
+      }
+    }, { passive: true });
+    window.addEventListener("touchmove", (e) => {
+      if (isDragging && e.touches.length === 1) {
+        doDrag(e.touches[0].clientX, e.touches[0].clientY);
+      }
+    }, { passive: true });
+    window.addEventListener("touchend", stopDrag);
+    window.addEventListener("touchcancel", stopDrag);
   }
 
   _setAlignment(alignment) {
     this.currentAlignment = alignment;
-    this.moreMenuEl.querySelector("#mt-align-left").classList.toggle("active", alignment === "left");
-    this.moreMenuEl.querySelector("#mt-align-center").classList.toggle("active", alignment === "center");
-    this.moreMenuEl.querySelector("#mt-align-right").classList.toggle("active", alignment === "right");
+    this.moreMenuEl.querySelector("#mt-align-left")?.classList.toggle("active", alignment === "left");
+    this.moreMenuEl.querySelector("#mt-align-center")?.classList.toggle("active", alignment === "center");
+    this.moreMenuEl.querySelector("#mt-align-right")?.classList.toggle("active", alignment === "right");
     this._updateEditableStyle();
   }
 

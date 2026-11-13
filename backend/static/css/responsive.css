@@ -184,6 +184,15 @@ html, body {
     gap: 2px !important;
     flex-shrink: 0 !important;
     transition: all 0.15s ease !important;
+    touch-action: manipulation !important;
+    -webkit-tap-highlight-color: transparent !important;
+    user-select: none !important;
+    -webkit-user-select: none !important;
+  }
+
+  .tool-btn svg,
+  .tool-btn span {
+    pointer-events: none !important;
   }
 
   .tool-btn svg {

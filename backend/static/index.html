@@ -1,27 +1,31 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>OpenPDF Studio - Every tool you need to work with PDFs in one place</title>
-  <meta name="description" content="100% Free online PDF tools: PDF Editor with in-place text editing, Merge PDF, Split PDF, JPG to PDF, PDF to JPG, Image Resize, and OCR.">
-  
+  <meta name="description"
+    content="100% Free online PDF tools: PDF Editor with in-place text editing, Merge PDF, Split PDF, JPG to PDF, PDF to JPG, Image Resize, and OCR.">
+
   <!-- Google Fonts: Plus Jakarta Sans, Inter, Tinos, Dancing Script, Caveat, Great Vibes -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;600&family=Tinos:ital,wght@0,400;0,700;1,400;1,700&family=Dancing+Script:wght@600;700&family=Caveat:wght@600;700&family=Great+Vibes&display=swap">
+  <link rel="stylesheet"
+    href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;600&family=Tinos:ital,wght@0,400;0,700;1,400;1,700&family=Dancing+Script:wght@600;700&family=Caveat:wght@600;700&family=Great+Vibes&display=swap">
 
   <!-- CSS Stylesheets (with cache-busting) -->
   <link rel="stylesheet" href="./vendor/pdfjs/pdf_viewer.css">
-  <link rel="stylesheet" href="./css/styles.css?v=2.8">
-  <link rel="stylesheet" href="./css/editor.css?v=2.8">
-  <link rel="stylesheet" href="./css/portal.css?v=2.8">
-  <link rel="stylesheet" href="./css/responsive.css?v=2.8">
+  <link rel="stylesheet" href="./css/styles.css?v=2.9">
+  <link rel="stylesheet" href="./css/editor.css?v=2.9">
+  <link rel="stylesheet" href="./css/portal.css?v=2.9">
+  <link rel="stylesheet" href="./css/responsive.css?v=2.9">
 
   <!-- PDF.js & PDF-Lib Vendor Scripts -->
   <script src="./vendor/pdfjs/pdf.js"></script>
   <script src="./vendor/pdf-lib/pdf-lib.min.js"></script>
 </head>
+
 <body>
 
   <!-- ======================================================================
@@ -34,9 +38,10 @@
         <div class="brand-icon">P</div>
         <div class="brand-text">OpenPDF <span>Studio</span></div>
       </div>
-      
+
       <nav class="portal-nav-links">
-        <button type="button" class="portal-nav-item" id="nav-btn-editor" style="font-weight: 700; color: #e5322d;">Edit PDF</button>
+        <button type="button" class="portal-nav-item" id="nav-btn-editor" style="font-weight: 700; color: #e5322d;">Edit
+          PDF</button>
         <button type="button" class="portal-nav-item" id="nav-btn-merge">Merge PDF</button>
         <button type="button" class="portal-nav-item" id="nav-btn-split">Split PDF</button>
         <button type="button" class="portal-nav-item" id="nav-btn-compress">Compress PDF</button>
@@ -54,13 +59,18 @@
       </div>
       <h1>Every tool you need to work with PDFs in <span style="color: #e5322d;">one place</span></h1>
       <p class="hero-subhead">
-        Every tool you need to use PDFs, at your fingertips. All are 100% FREE and easy to use! Merge, split, compress, convert, edit, and resize in just a few clicks.
+        Every tool you need to use PDFs, at your fingertips. All are 100% FREE and easy to use! Merge, split, compress,
+        convert, edit, and resize in just a few clicks.
       </p>
 
       <!-- Quick Upload Pill -->
       <div class="hero-quick-drop">
         <div class="quick-upload-pill" id="hero-universal-dropzone">
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+            <polyline points="17 8 12 3 7 8" />
+            <line x1="12" y1="3" x2="12" y2="15" />
+          </svg>
           <span>Select PDF or Drop files here to start</span>
         </div>
       </div>
@@ -84,10 +94,14 @@
         <div class="tool-card featured" id="card-tool-editor" data-category="edit all">
           <span class="tool-card-badge popular">Popular</span>
           <div class="tool-card-icon indigo">
-            <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
+            <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+              <path d="M12 20h9" />
+              <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z" />
+            </svg>
           </div>
           <div class="tool-card-title">Edit PDF</div>
-          <p class="tool-card-desc">Edit text directly in-place on existing PDF pages, match original fonts, add signatures, shapes, and notes.</p>
+          <p class="tool-card-desc">Edit text directly in-place on existing PDF pages, match original fonts, add
+            signatures, shapes, and notes.</p>
           <div class="tool-card-action">Select PDF & Edit <span>&rarr;</span></div>
         </div>
 
@@ -95,17 +109,30 @@
         <div class="tool-card" id="card-tool-merge-pdf" data-category="organize all">
           <span class="tool-card-badge">Most Used</span>
           <div class="tool-card-icon red">
-            <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="12" y1="12" x2="12" y2="18"/><line x1="9" y1="15" x2="15" y2="15"/></svg>
+            <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+              <polyline points="14 2 14 8 20 8" />
+              <line x1="12" y1="12" x2="12" y2="18" />
+              <line x1="9" y1="15" x2="15" y2="15" />
+            </svg>
           </div>
           <div class="tool-card-title">Merge PDF</div>
-          <p class="tool-card-desc">Combine PDFs in the order you want with the easiest PDF merger available. Reorder pages with one click.</p>
+          <p class="tool-card-desc">Combine PDFs in the order you want with the easiest PDF merger available. Reorder
+            pages with one click.</p>
           <div class="tool-card-action">Merge files <span>&rarr;</span></div>
         </div>
 
         <!-- 3. Split PDF -->
         <div class="tool-card" id="card-tool-split-pdf" data-category="organize all">
           <div class="tool-card-icon orange">
-            <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><line x1="2" y1="12" x2="22" y2="12"/><line x1="5" y1="9" x2="2" y2="12"/><line x1="5" y1="15" x2="2" y2="12"/><line x1="19" y1="9" x2="22" y2="12"/><line x1="19" y1="15" x2="22" y2="12"/></svg>
+            <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+              <line x1="2" y1="12" x2="22" y2="12" />
+              <line x1="5" y1="9" x2="2" y2="12" />
+              <line x1="5" y1="15" x2="2" y2="12" />
+              <line x1="19" y1="9" x2="22" y2="12" />
+              <line x1="19" y1="15" x2="22" y2="12" />
+            </svg>
           </div>
           <div class="tool-card-title">Split PDF</div>
           <p class="tool-card-desc">Separate one page or a whole set for easy conversion into independent PDF files.</p>
@@ -116,70 +143,105 @@
         <div class="tool-card" id="card-tool-compress-pdf" data-category="optimize all">
           <span class="tool-card-badge new">Fast</span>
           <div class="tool-card-icon green">
-            <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M4 14h6v6"/><path d="M20 10h-6V4"/><path d="M14 10l7-7"/><path d="M3 21l7-7"/></svg>
+            <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+              <path d="M4 14h6v6" />
+              <path d="M20 10h-6V4" />
+              <path d="M14 10l7-7" />
+              <path d="M3 21l7-7" />
+            </svg>
           </div>
           <div class="tool-card-title">Compress PDF</div>
-          <p class="tool-card-desc">Reduce file size while optimizing for maximal PDF quality. Fast and lightweight compression.</p>
+          <p class="tool-card-desc">Reduce file size while optimizing for maximal PDF quality. Fast and lightweight
+            compression.</p>
           <div class="tool-card-action">Compress file <span>&rarr;</span></div>
         </div>
 
         <!-- 5. JPG to PDF -->
         <div class="tool-card" id="card-tool-jpg-to-pdf" data-category="convert all">
           <div class="tool-card-icon amber">
-            <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+            <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+              <rect x="3" y="3" width="18" height="18" rx="2" ry="2" />
+              <circle cx="8.5" cy="8.5" r="1.5" />
+              <polyline points="21 15 16 10 5 21" />
+            </svg>
           </div>
           <div class="tool-card-title">JPG to PDF</div>
-          <p class="tool-card-desc">Convert JPG, PNG, and WebP images to PDF in seconds. Easily adjust orientation and margins.</p>
+          <p class="tool-card-desc">Convert JPG, PNG, and WebP images to PDF in seconds. Easily adjust orientation and
+            margins.</p>
           <div class="tool-card-action">Convert images <span>&rarr;</span></div>
         </div>
 
         <!-- 6. PDF to JPG -->
         <div class="tool-card" id="card-tool-pdf-to-jpg" data-category="convert all">
           <div class="tool-card-icon purple">
-            <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+            <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+              <polyline points="7 10 12 15 17 10" />
+              <line x1="12" y1="15" x2="12" y2="3" />
+            </svg>
           </div>
           <div class="tool-card-title">PDF to JPG</div>
-          <p class="tool-card-desc">Convert each PDF page into a high-resolution JPG image or extract all embedded images.</p>
+          <p class="tool-card-desc">Convert each PDF page into a high-resolution JPG image or extract all embedded
+            images.</p>
           <div class="tool-card-action">Extract images <span>&rarr;</span></div>
         </div>
 
         <!-- 7. Image Resize -->
         <div class="tool-card" id="card-tool-image-resize" data-category="optimize all">
           <div class="tool-card-icon cyan">
-            <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><polyline points="15 3 21 3 21 9"/><polyline points="9 21 3 21 3 15"/><line x1="21" y1="3" x2="14" y2="10"/><line x1="3" y1="21" x2="10" y2="14"/></svg>
+            <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+              <polyline points="15 3 21 3 21 9" />
+              <polyline points="9 21 3 21 3 15" />
+              <line x1="21" y1="3" x2="14" y2="10" />
+              <line x1="3" y1="21" x2="10" y2="14" />
+            </svg>
           </div>
           <div class="tool-card-title">Resize & Compress Image</div>
-          <p class="tool-card-desc">Resize JPG, PNG, and WebP graphics by exact pixel dimensions or percentage while adjusting quality.</p>
+          <p class="tool-card-desc">Resize JPG, PNG, and WebP graphics by exact pixel dimensions or percentage while
+            adjusting quality.</p>
           <div class="tool-card-action">Resize image <span>&rarr;</span></div>
         </div>
 
         <!-- 8. Rotate PDF -->
         <div class="tool-card" id="card-tool-rotate-pdf" data-category="organize all">
           <div class="tool-card-icon sky">
-            <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M21.5 2v6h-6"/><path d="M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/></svg>
+            <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+              <path d="M21.5 2v6h-6" />
+              <path d="M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67" />
+            </svg>
           </div>
           <div class="tool-card-title">Rotate PDF</div>
-          <p class="tool-card-desc">Rotate your PDF pages 90°, 180°, or 270°. Perfect for orienting scanned papers correctly.</p>
+          <p class="tool-card-desc">Rotate your PDF pages 90°, 180°, or 270°. Perfect for orienting scanned papers
+            correctly.</p>
           <div class="tool-card-action">Rotate pages <span>&rarr;</span></div>
         </div>
 
         <!-- 9. Sign PDF -->
         <div class="tool-card" id="card-tool-sign-pdf" data-category="edit all">
           <div class="tool-card-icon blue">
-            <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="m18 2 4 4"/><path d="M19 9 8.7 19.3a1 1 0 0 1-.7.3H4v-4a1 1 0 0 1 .3-.7L14.6 4.6"/><path d="m2 22 5-1-4-4-1 5Z"/></svg>
+            <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+              <path d="m18 2 4 4" />
+              <path d="M19 9 8.7 19.3a1 1 0 0 1-.7.3H4v-4a1 1 0 0 1 .3-.7L14.6 4.6" />
+              <path d="m2 22 5-1-4-4-1 5Z" />
+            </svg>
           </div>
           <div class="tool-card-title">Sign PDF</div>
-          <p class="tool-card-desc">Sign a document yourself or apply signatures directly onto contracts and agreements.</p>
+          <p class="tool-card-desc">Sign a document yourself or apply signatures directly onto contracts and agreements.
+          </p>
           <div class="tool-card-action">Sign document <span>&rarr;</span></div>
         </div>
 
         <!-- 10. Watermark PDF -->
         <div class="tool-card" id="card-tool-watermark-pdf" data-category="edit all">
           <div class="tool-card-icon pink">
-            <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+            <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+              <line x1="12" y1="1" x2="12" y2="23" />
+              <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6" />
+            </svg>
           </div>
           <div class="tool-card-title">Watermark PDF</div>
-          <p class="tool-card-desc">Stamp an image or text over your PDF in seconds. Choose typography, transparency, and position.</p>
+          <p class="tool-card-desc">Stamp an image or text over your PDF in seconds. Choose typography, transparency,
+            and position.</p>
           <div class="tool-card-action">Add stamp <span>&rarr;</span></div>
         </div>
 
@@ -187,10 +249,14 @@
         <div class="tool-card" id="card-tool-ocr" data-category="edit all">
           <span class="tool-card-badge">AI Powered</span>
           <div class="tool-card-icon violet">
-            <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+            <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+              <circle cx="12" cy="12" r="10" />
+              <polyline points="12 6 12 12 16 14" />
+            </svg>
           </div>
           <div class="tool-card-title">OCR PDF & Inpaint</div>
-          <p class="tool-card-desc">Convert non-selectable scanned documents into editable text using local Tesseract OCR & OpenCV inpainting.</p>
+          <p class="tool-card-desc">Convert non-selectable scanned documents into editable text using local Tesseract
+            OCR & OpenCV inpainting.</p>
           <div class="tool-card-action">Scan & Edit <span>&rarr;</span></div>
         </div>
 
@@ -198,10 +264,13 @@
         <div class="tool-card" id="card-tool-redact" data-category="edit all">
           <span class="tool-card-badge">Security</span>
           <div class="tool-card-icon crimson">
-            <svg width="26" height="26" viewBox="0 0 24 24" fill="currentColor" stroke="none"><rect x="3" y="3" width="18" height="18" rx="2"/></svg>
+            <svg width="26" height="26" viewBox="0 0 24 24" fill="currentColor" stroke="none">
+              <rect x="3" y="3" width="18" height="18" rx="2" />
+            </svg>
           </div>
           <div class="tool-card-title">Redact PDF</div>
-          <p class="tool-card-desc">Permanently purge sensitive text characters, numbers, and personal confidential data from the stream.</p>
+          <p class="tool-card-desc">Permanently purge sensitive text characters, numbers, and personal confidential data
+            from the stream.</p>
           <div class="tool-card-action">Blackout text <span>&rarr;</span></div>
         </div>
 
@@ -220,12 +289,14 @@
 
   <!-- MODAL: Uploading & Processing PDF (Popup with status & progress) -->
   <div class="tool-dialog-backdrop" id="modal-loading-pdf" style="display: none; z-index: 100000;">
-    <div class="tool-dialog loading-modal-dialog" style="max-width: 460px; text-align: center; border-radius: 24px; padding: 36px 30px; box-shadow: 0 25px 60px -15px rgba(0, 0, 0, 0.35);">
+    <div class="tool-dialog loading-modal-dialog"
+      style="max-width: 460px; text-align: center; border-radius: 24px; padding: 36px 30px; box-shadow: 0 25px 60px -15px rgba(0, 0, 0, 0.35);">
       <!-- Glowing Animated Icon -->
       <div class="loading-icon-wrapper" style="margin: 0 auto 20px;">
         <div class="loading-pulse-ring"></div>
         <div class="loading-pdf-icon-box">
-          <svg width="44" height="44" viewBox="0 0 24 24" fill="none" stroke="#e5322d" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+          <svg width="44" height="44" viewBox="0 0 24 24" fill="none" stroke="#e5322d" stroke-width="2.2"
+            stroke-linecap="round" stroke-linejoin="round">
             <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
             <polyline points="14 2 14 8 20 8"></polyline>
             <line x1="12" y1="18" x2="12" y2="12" class="arrow-up-stem"></line>
@@ -234,32 +305,46 @@
         </div>
       </div>
 
-      <h3 id="loading-pdf-title" style="margin: 0 0 8px; font-size: 21px; font-weight: 800; color: #0f172a; letter-spacing: -0.02em;">Uploading PDF...</h3>
-      <p id="loading-pdf-desc" style="margin: 0 0 22px; font-size: 13px; color: #64748b; line-height: 1.5;">Uploading document, detecting original fonts, and preparing live editor. Please wait...</p>
+      <h3 id="loading-pdf-title"
+        style="margin: 0 0 8px; font-size: 21px; font-weight: 800; color: #0f172a; letter-spacing: -0.02em;">Uploading
+        PDF...</h3>
+      <p id="loading-pdf-desc" style="margin: 0 0 22px; font-size: 13px; color: #64748b; line-height: 1.5;">Uploading
+        document, detecting original fonts, and preparing live editor. Please wait...</p>
 
       <!-- Animated Progress Bar -->
-      <div class="loading-progress-track" style="background: #e2e8f0; height: 10px; border-radius: 999px; overflow: hidden; position: relative; margin-bottom: 14px;">
-        <div id="loading-pdf-bar" class="loading-progress-fill" style="width: 25%; height: 100%; background: linear-gradient(90deg, #e5322d, #f97316); border-radius: 999px; transition: width 0.35s ease;"></div>
+      <div class="loading-progress-track"
+        style="background: #e2e8f0; height: 10px; border-radius: 999px; overflow: hidden; position: relative; margin-bottom: 14px;">
+        <div id="loading-pdf-bar" class="loading-progress-fill"
+          style="width: 25%; height: 100%; background: linear-gradient(90deg, #e5322d, #f97316); border-radius: 999px; transition: width 0.35s ease;">
+        </div>
       </div>
 
       <!-- Live status text -->
-      <div id="loading-pdf-status" style="font-size: 13px; font-weight: 600; color: #e5322d; display: flex; align-items: center; justify-content: center; gap: 8px;">
+      <div id="loading-pdf-status"
+        style="font-size: 13px; font-weight: 600; color: #e5322d; display: flex; align-items: center; justify-content: center; gap: 8px;">
         <span class="loading-spinner-circle"></span>
         <span id="loading-pdf-status-text">Uploading file, please wait...</span>
       </div>
 
       <!-- Feature Badges -->
-      <div style="display: flex; justify-content: center; gap: 16px; margin-top: 24px; padding-top: 20px; border-top: 1px solid #f1f5f9; font-size: 11.5px; color: #64748b; font-weight: 500;">
+      <div
+        style="display: flex; justify-content: center; gap: 16px; margin-top: 24px; padding-top: 20px; border-top: 1px solid #f1f5f9; font-size: 11.5px; color: #64748b; font-weight: 500;">
         <span style="display: flex; align-items: center; gap: 4px;">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#16a34a" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#16a34a" stroke-width="2.5">
+            <polyline points="20 6 9 17 4 12" />
+          </svg>
           100% Private
         </span>
         <span style="display: flex; align-items: center; gap: 4px;">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#16a34a" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#16a34a" stroke-width="2.5">
+            <polyline points="20 6 9 17 4 12" />
+          </svg>
           Original Fonts
         </span>
         <span style="display: flex; align-items: center; gap: 4px;">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#16a34a" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#16a34a" stroke-width="2.5">
+            <polyline points="20 6 9 17 4 12" />
+          </svg>
           Instant WYSIWYG
         </span>
       </div>
@@ -270,8 +355,13 @@
   <div class="tool-dialog-backdrop" id="modal-signature" style="display: none; z-index: 99990;">
     <div class="tool-dialog" style="max-width: 520px; width: 92%;">
       <div class="tool-dialog-header">
-        <div class="tool-dialog-title" style="display: flex; align-items: center; gap: 8px; font-weight: 800; font-size: 18px; color: #0f172a;">
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#2563eb" stroke-width="2"><path d="m18 2 4 4"/><path d="M19 9 8.7 19.3a1 1 0 0 1-.7.3H4v-4a1 1 0 0 1 .3-.7L14.6 4.6"/><path d="m2 22 5-1-4-4-1 5Z"/></svg>
+        <div class="tool-dialog-title"
+          style="display: flex; align-items: center; gap: 8px; font-weight: 800; font-size: 18px; color: #0f172a;">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#2563eb" stroke-width="2">
+            <path d="m18 2 4 4" />
+            <path d="M19 9 8.7 19.3a1 1 0 0 1-.7.3H4v-4a1 1 0 0 1 .3-.7L14.6 4.6" />
+            <path d="m2 22 5-1-4-4-1 5Z" />
+          </svg>
           Create & Place Signature
         </div>
         <button type="button" class="btn-icon" id="close-signature-modal">&times;</button>
@@ -279,43 +369,61 @@
 
       <div class="tool-dialog-body" style="padding: 20px 24px;">
         <!-- Tabs: Draw / Type -->
-        <div class="sig-tabs" style="display: flex; gap: 8px; margin-bottom: 16px; border-bottom: 1px solid #e2e8f0; padding-bottom: 8px;">
-          <button type="button" class="btn-secondary sig-tab-btn active" id="tab-btn-sig-draw" data-tab="draw" style="padding: 6px 14px; font-size: 13px; font-weight: 700; background: #e5322d; color: #fff; border-color: #e5322d;">✏️ Draw</button>
-          <button type="button" class="btn-secondary sig-tab-btn" id="tab-btn-sig-type" data-tab="type" style="padding: 6px 14px; font-size: 13px; font-weight: 700;">⌨️ Type</button>
+        <div class="sig-tabs"
+          style="display: flex; gap: 8px; margin-bottom: 16px; border-bottom: 1px solid #e2e8f0; padding-bottom: 8px;">
+          <button type="button" class="btn-secondary sig-tab-btn active" id="tab-btn-sig-draw" data-tab="draw"
+            style="padding: 6px 14px; font-size: 13px; font-weight: 700; background: #e5322d; color: #fff; border-color: #e5322d;">✏️
+            Draw</button>
+          <button type="button" class="btn-secondary sig-tab-btn" id="tab-btn-sig-type" data-tab="type"
+            style="padding: 6px 14px; font-size: 13px; font-weight: 700;">⌨️ Type</button>
         </div>
 
         <!-- Tab 1: Draw Pad -->
         <div id="sig-panel-draw">
-          <div style="font-size: 12px; color: #64748b; margin-bottom: 8px;">Draw your signature using mouse or finger touch:</div>
+          <div style="font-size: 12px; color: #64748b; margin-bottom: 8px;">Draw your signature using mouse or finger
+            touch:</div>
           <div style="border: 2px dashed #cbd5e1; border-radius: 8px; background: #ffffff; position: relative;">
-            <canvas id="sig-pad-canvas" width="460" height="150" style="display: block; width: 100%; height: 150px; touch-action: none; cursor: crosshair;"></canvas>
-            <div style="position: absolute; bottom: 8px; left: 14px; right: 14px; border-bottom: 1px solid #e2e8f0; pointer-events: none;"></div>
-            <div style="position: absolute; bottom: 12px; left: 16px; font-size: 11px; color: #94a3b8; pointer-events: none;">Sign above the line</div>
+            <canvas id="sig-pad-canvas" width="460" height="150"
+              style="display: block; width: 100%; height: 150px; touch-action: none; cursor: crosshair;"></canvas>
+            <div
+              style="position: absolute; bottom: 8px; left: 14px; right: 14px; border-bottom: 1px solid #e2e8f0; pointer-events: none;">
+            </div>
+            <div
+              style="position: absolute; bottom: 12px; left: 16px; font-size: 11px; color: #94a3b8; pointer-events: none;">
+              Sign above the line</div>
           </div>
           <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 10px;">
             <div style="display: flex; gap: 8px; align-items: center;">
               <span style="font-size: 12px; color: #64748b;">Ink Color:</span>
-              <button type="button" class="sig-color-btn active" data-color="#1e3a8a" style="width: 22px; height: 22px; border-radius: 50%; background: #1e3a8a; border: 2px solid #fff; box-shadow: 0 0 0 2px #1e3a8a; cursor: pointer;"></button>
-              <button type="button" class="sig-color-btn" data-color="#000000" style="width: 22px; height: 22px; border-radius: 50%; background: #000000; border: 2px solid #fff; cursor: pointer;"></button>
-              <button type="button" class="sig-color-btn" data-color="#991b1b" style="width: 22px; height: 22px; border-radius: 50%; background: #991b1b; border: 2px solid #fff; cursor: pointer;"></button>
+              <button type="button" class="sig-color-btn active" data-color="#1e3a8a"
+                style="width: 22px; height: 22px; border-radius: 50%; background: #1e3a8a; border: 2px solid #fff; box-shadow: 0 0 0 2px #1e3a8a; cursor: pointer;"></button>
+              <button type="button" class="sig-color-btn" data-color="#000000"
+                style="width: 22px; height: 22px; border-radius: 50%; background: #000000; border: 2px solid #fff; cursor: pointer;"></button>
+              <button type="button" class="sig-color-btn" data-color="#991b1b"
+                style="width: 22px; height: 22px; border-radius: 50%; background: #991b1b; border: 2px solid #fff; cursor: pointer;"></button>
             </div>
-            <button type="button" class="btn-secondary" id="btn-sig-clear" style="padding: 4px 10px; font-size: 12px;">Clear Pad</button>
+            <button type="button" class="btn-secondary" id="btn-sig-clear"
+              style="padding: 4px 10px; font-size: 12px;">Clear Pad</button>
           </div>
         </div>
 
         <!-- Tab 2: Type Signature -->
         <div id="sig-panel-type" style="display: none;">
           <div style="font-size: 12px; color: #64748b; margin-bottom: 8px;">Type your full name:</div>
-          <input type="text" id="sig-type-input" placeholder="e.g. Asif Ali" value="Your Signature" style="width: 100%; padding: 10px 12px; border: 1px solid #cbd5e1; border-radius: 6px; font-size: 15px; margin-bottom: 14px;">
+          <input type="text" id="sig-type-input" placeholder="e.g. Asif Ali" value="Your Signature"
+            style="width: 100%; padding: 10px 12px; border: 1px solid #cbd5e1; border-radius: 6px; font-size: 15px; margin-bottom: 14px;">
           <div style="font-size: 12px; color: #64748b; margin-bottom: 8px;">Select handwriting style:</div>
           <div style="display: flex; flex-direction: column; gap: 8px;" id="sig-type-styles-list">
-            <div class="sig-style-option active" data-font="'Dancing Script', cursive" style="border: 2px solid #2563eb; background: #eff6ff; padding: 10px 14px; border-radius: 6px; cursor: pointer; font-size: 26px; font-family: 'Dancing Script', cursive; color: #1e3a8a;">
+            <div class="sig-style-option active" data-font="'Dancing Script', cursive"
+              style="border: 2px solid #2563eb; background: #eff6ff; padding: 10px 14px; border-radius: 6px; cursor: pointer; font-size: 26px; font-family: 'Dancing Script', cursive; color: #1e3a8a;">
               <span class="sig-preview-text">Your Signature</span>
             </div>
-            <div class="sig-style-option" data-font="'Caveat', cursive" style="border: 1px solid #cbd5e1; padding: 10px 14px; border-radius: 6px; cursor: pointer; font-size: 26px; font-family: 'Caveat', cursive; color: #1e3a8a;">
+            <div class="sig-style-option" data-font="'Caveat', cursive"
+              style="border: 1px solid #cbd5e1; padding: 10px 14px; border-radius: 6px; cursor: pointer; font-size: 26px; font-family: 'Caveat', cursive; color: #1e3a8a;">
               <span class="sig-preview-text">Your Signature</span>
             </div>
-            <div class="sig-style-option" data-font="'Great Vibes', cursive" style="border: 1px solid #cbd5e1; padding: 10px 14px; border-radius: 6px; cursor: pointer; font-size: 26px; font-family: 'Great Vibes', cursive; color: #1e3a8a;">
+            <div class="sig-style-option" data-font="'Great Vibes', cursive"
+              style="border: 1px solid #cbd5e1; padding: 10px 14px; border-radius: 6px; cursor: pointer; font-size: 26px; font-family: 'Great Vibes', cursive; color: #1e3a8a;">
               <span class="sig-preview-text">Your Signature</span>
             </div>
           </div>
@@ -324,8 +432,11 @@
 
       <div class="tool-dialog-footer" style="padding: 14px 24px;">
         <button type="button" class="btn-secondary" id="btn-sig-cancel">Cancel</button>
-        <button type="button" class="btn-primary" id="btn-sig-place" style="background: #2563eb; padding: 8px 18px; font-size: 13px;">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+        <button type="button" class="btn-primary" id="btn-sig-place"
+          style="background: #2563eb; padding: 8px 18px; font-size: 13px;">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+            <polyline points="20 6 9 17 4 12" />
+          </svg>
           Adopt & Place Signature
         </button>
       </div>
@@ -337,7 +448,10 @@
     <div class="tool-dialog">
       <div class="tool-dialog-header">
         <h3>
-          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#e5322d" stroke-width="2.2"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#e5322d" stroke-width="2.2">
+            <path d="M12 20h9" />
+            <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z" />
+          </svg>
           Edit PDF Document
         </h3>
         <button type="button" class="btn-icon" id="close-edit-pdf">&times;</button>
@@ -345,18 +459,26 @@
       <div class="tool-dialog-body">
         <div class="tool-dropzone" id="edit-pdf-dropzone">
           <div class="tool-dropzone-icon" style="color: #e5322d;">
-            <svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="12" y1="18" x2="12" y2="12"/><line x1="9" y1="15" x2="15" y2="15"/></svg>
+            <svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+              <polyline points="14 2 14 8 20 8" />
+              <line x1="12" y1="18" x2="12" y2="12" />
+              <line x1="9" y1="15" x2="15" y2="15" />
+            </svg>
           </div>
           <div style="font-size: 16px; font-weight: 800; color: #0f172a;">Select or Drop PDF File to Edit</div>
-          <div style="font-size: 13px; color: #64748b; margin-top: 4px;">Edit existing text, add signatures, shapes, and images</div>
-          <button type="button" class="btn-primary" id="btn-choose-edit-pdf" style="margin-top: 16px; background: #e5322d; padding: 10px 24px; font-size: 14px; border-radius: 8px;">
+          <div style="font-size: 13px; color: #64748b; margin-top: 4px;">Edit existing text, add signatures, shapes, and
+            images</div>
+          <button type="button" class="btn-primary" id="btn-choose-edit-pdf"
+            style="margin-top: 16px; background: #e5322d; padding: 10px 24px; font-size: 14px; border-radius: 8px;">
             Choose PDF File
           </button>
         </div>
         <input type="file" id="edit-modal-file-picker" accept="application/pdf" style="display: none;">
       </div>
       <div class="tool-dialog-footer">
-        <button type="button" class="btn-secondary" onclick="document.getElementById('modal-edit-pdf').style.display='none'">Cancel</button>
+        <button type="button" class="btn-secondary"
+          onclick="document.getElementById('modal-edit-pdf').style.display='none'">Cancel</button>
       </div>
     </div>
   </div>
@@ -366,7 +488,12 @@
     <div class="tool-dialog">
       <div class="tool-dialog-header">
         <h3>
-          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#e5322d" stroke-width="2.2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="12" y1="12" x2="12" y2="18"/><line x1="9" y1="15" x2="15" y2="15"/></svg>
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#e5322d" stroke-width="2.2">
+            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+            <polyline points="14 2 14 8 20 8" />
+            <line x1="12" y1="12" x2="12" y2="18" />
+            <line x1="9" y1="15" x2="15" y2="15" />
+          </svg>
           Merge PDF Documents
         </h3>
         <button type="button" class="btn-icon" id="close-merge-pdf">&times;</button>
@@ -374,19 +501,24 @@
       <div class="tool-dialog-body">
         <div class="tool-dropzone" id="merge-dropzone">
           <div class="tool-dropzone-icon" style="color: #e5322d;">
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/></svg>
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+            </svg>
           </div>
           <div style="font-size: 16px; font-weight: 800; color: #0f172a;">Select or Drop 2 or more PDF Files</div>
           <div style="font-size: 13px; color: #64748b;">Combine documents in your chosen order</div>
         </div>
         <input type="file" id="merge-file-picker" accept="application/pdf" multiple style="display: none;">
 
-        <div style="margin-top: 18px; font-size: 13.5px; font-weight: 800; color: #0f172a;" id="merge-count-badge">0 PDFs Selected</div>
+        <div style="margin-top: 18px; font-size: 13.5px; font-weight: 800; color: #0f172a;" id="merge-count-badge">0
+          PDFs Selected</div>
         <div class="tool-queue-list" id="merge-queue-list"></div>
       </div>
       <div class="tool-dialog-footer">
-        <button type="button" class="btn-secondary" onclick="document.getElementById('modal-merge-pdf').style.display='none'">Cancel</button>
-        <button type="button" class="btn-primary" id="btn-merge-pdfs" disabled style="background:#e5322d;">Merge PDFs</button>
+        <button type="button" class="btn-secondary"
+          onclick="document.getElementById('modal-merge-pdf').style.display='none'">Cancel</button>
+        <button type="button" class="btn-primary" id="btn-merge-pdfs" disabled style="background:#e5322d;">Merge
+          PDFs</button>
       </div>
     </div>
   </div>
@@ -396,7 +528,11 @@
     <div class="tool-dialog">
       <div class="tool-dialog-header">
         <h3>
-          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#f59e0b" stroke-width="2.2"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#f59e0b" stroke-width="2.2">
+            <rect x="3" y="3" width="18" height="18" rx="2" ry="2" />
+            <circle cx="8.5" cy="8.5" r="1.5" />
+            <polyline points="21 15 16 10 5 21" />
+          </svg>
           JPG to PDF Converter
         </h3>
         <button type="button" class="btn-icon" id="close-jpg-to-pdf">&times;</button>
@@ -404,7 +540,9 @@
       <div class="tool-dialog-body">
         <div class="tool-dropzone" id="jpg-dropzone">
           <div class="tool-dropzone-icon" style="color: #f59e0b;">
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/></svg>
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <rect x="3" y="3" width="18" height="18" rx="2" ry="2" />
+            </svg>
           </div>
           <div style="font-size: 16px; font-weight: 800; color: #0f172a;">Select or Drop Images Here</div>
           <div style="font-size: 13px; color: #64748b;">Supports JPG, JPEG, PNG, and WebP formats</div>
@@ -412,7 +550,8 @@
         <input type="file" id="jpg-file-picker" accept="image/*" multiple style="display: none;">
 
         <div style="display: flex; align-items: center; justify-content: space-between; margin-top: 18px;">
-          <span style="font-size: 13.5px; font-weight: 800; color: #0f172a;" id="jpg-count-badge">0 Images Selected</span>
+          <span style="font-size: 13.5px; font-weight: 800; color: #0f172a;" id="jpg-count-badge">0 Images
+            Selected</span>
           <div style="display: flex; align-items: center; gap: 8px;">
             <label for="jpg-page-size" style="font-size: 12px; font-weight: 700; color: #475569;">Page Size:</label>
             <select id="jpg-page-size" class="form-input" style="padding: 5px 10px; font-size: 12.5px;">
@@ -426,8 +565,10 @@
         <div class="tool-queue-list" id="jpg-queue-list"></div>
       </div>
       <div class="tool-dialog-footer">
-        <button type="button" class="btn-secondary" onclick="document.getElementById('modal-jpg-to-pdf').style.display='none'">Cancel</button>
-        <button type="button" class="btn-primary" id="btn-convert-jpg-to-pdf" disabled style="background:#f59e0b;">Convert to PDF</button>
+        <button type="button" class="btn-secondary"
+          onclick="document.getElementById('modal-jpg-to-pdf').style.display='none'">Cancel</button>
+        <button type="button" class="btn-primary" id="btn-convert-jpg-to-pdf" disabled
+          style="background:#f59e0b;">Convert to PDF</button>
       </div>
     </div>
   </div>
@@ -437,7 +578,12 @@
     <div class="tool-dialog">
       <div class="tool-dialog-header">
         <h3>
-          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#06b6d4" stroke-width="2.2"><polyline points="15 3 21 3 21 9"/><polyline points="9 21 3 21 3 15"/><line x1="21" y1="3" x2="14" y2="10"/><line x1="3" y1="21" x2="10" y2="14"/></svg>
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#06b6d4" stroke-width="2.2">
+            <polyline points="15 3 21 3 21 9" />
+            <polyline points="9 21 3 21 3 15" />
+            <line x1="21" y1="3" x2="14" y2="10" />
+            <line x1="3" y1="21" x2="10" y2="14" />
+          </svg>
           Image Resize & Compressor
         </h3>
         <button type="button" class="btn-icon" id="close-image-resize">&times;</button>
@@ -445,7 +591,9 @@
       <div class="tool-dialog-body">
         <div class="tool-dropzone" id="resize-dropzone">
           <div class="tool-dropzone-icon" style="color: #06b6d4;">
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/></svg>
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <rect x="3" y="3" width="18" height="18" rx="2" ry="2" />
+            </svg>
           </div>
           <div style="font-size: 16px; font-weight: 800; color: #0f172a;">Select Image to Resize</div>
           <div style="font-size: 13px; color: #64748b;">JPG, PNG, or WebP graphics</div>
@@ -469,14 +617,19 @@
           </div>
 
           <div style="display: flex; align-items: center; justify-content: space-between; margin-top: 14px;">
-            <label style="display: flex; align-items: center; gap: 6px; font-size: 13px; font-weight: 600; cursor: pointer;">
+            <label
+              style="display: flex; align-items: center; gap: 6px; font-size: 13px; font-weight: 600; cursor: pointer;">
               <input type="checkbox" id="resize-lock-aspect" checked> Keep Aspect Ratio
             </label>
             <div style="display: flex; gap: 6px;">
-              <button type="button" class="btn-secondary resize-preset-btn" data-scale="0.25" style="padding: 3px 8px; font-size: 12px;">25%</button>
-              <button type="button" class="btn-secondary resize-preset-btn" data-scale="0.5" style="padding: 3px 8px; font-size: 12px;">50%</button>
-              <button type="button" class="btn-secondary resize-preset-btn" data-scale="0.75" style="padding: 3px 8px; font-size: 12px;">75%</button>
-              <button type="button" class="btn-secondary resize-preset-btn" data-scale="1" style="padding: 3px 8px; font-size: 12px;">100%</button>
+              <button type="button" class="btn-secondary resize-preset-btn" data-scale="0.25"
+                style="padding: 3px 8px; font-size: 12px;">25%</button>
+              <button type="button" class="btn-secondary resize-preset-btn" data-scale="0.5"
+                style="padding: 3px 8px; font-size: 12px;">50%</button>
+              <button type="button" class="btn-secondary resize-preset-btn" data-scale="0.75"
+                style="padding: 3px 8px; font-size: 12px;">75%</button>
+              <button type="button" class="btn-secondary resize-preset-btn" data-scale="1"
+                style="padding: 3px 8px; font-size: 12px;">100%</button>
             </div>
           </div>
 
@@ -500,8 +653,10 @@
         </div>
       </div>
       <div class="tool-dialog-footer">
-        <button type="button" class="btn-secondary" onclick="document.getElementById('modal-image-resize').style.display='none'">Cancel</button>
-        <button type="button" class="btn-primary" id="btn-do-resize" disabled style="background:#06b6d4;">Resize & Download</button>
+        <button type="button" class="btn-secondary"
+          onclick="document.getElementById('modal-image-resize').style.display='none'">Cancel</button>
+        <button type="button" class="btn-primary" id="btn-do-resize" disabled style="background:#06b6d4;">Resize &
+          Download</button>
       </div>
     </div>
   </div>
@@ -511,7 +666,10 @@
     <div class="tool-dialog">
       <div class="tool-dialog-header">
         <h3>
-          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#ff6b00" stroke-width="2.2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><line x1="2" y1="12" x2="22" y2="12"/></svg>
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#ff6b00" stroke-width="2.2">
+            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+            <line x1="2" y1="12" x2="22" y2="12" />
+          </svg>
           Split PDF Pages
         </h3>
         <button type="button" class="btn-icon" id="close-split-pdf">&times;</button>
@@ -519,7 +677,9 @@
       <div class="tool-dialog-body">
         <div class="tool-dropzone" id="split-dropzone">
           <div class="tool-dropzone-icon" style="color: #ff6b00;">
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/></svg>
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+            </svg>
           </div>
           <div style="font-size: 16px; font-weight: 800; color: #0f172a;">Select PDF to Split</div>
           <div style="font-size: 13px; color: #64748b;">Extract individual pages or custom ranges</div>
@@ -527,7 +687,8 @@
         <input type="file" id="split-file-picker" accept="application/pdf" style="display: none;">
 
         <div id="split-controls" style="display: none; margin-top: 16px;">
-          <div style="font-weight: 800; font-size: 14px; color: #0f172a; margin-bottom: 12px;" id="split-info-text">Document Info</div>
+          <div style="font-weight: 800; font-size: 14px; color: #0f172a; margin-bottom: 12px;" id="split-info-text">
+            Document Info</div>
           <div class="resize-form-grid">
             <div class="form-group">
               <label for="split-page-from">From Page:</label>
@@ -541,8 +702,10 @@
         </div>
       </div>
       <div class="tool-dialog-footer">
-        <button type="button" class="btn-secondary" onclick="document.getElementById('modal-split-pdf').style.display='none'">Cancel</button>
-        <button type="button" class="btn-primary" id="btn-do-split" disabled style="background:#ff6b00;">Extract & Download PDF</button>
+        <button type="button" class="btn-secondary"
+          onclick="document.getElementById('modal-split-pdf').style.display='none'">Cancel</button>
+        <button type="button" class="btn-primary" id="btn-do-split" disabled style="background:#ff6b00;">Extract &
+          Download PDF</button>
       </div>
     </div>
   </div>
@@ -552,7 +715,10 @@
     <div class="tool-dialog">
       <div class="tool-dialog-header">
         <h3>
-          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#0ea5e9" stroke-width="2.2"><path d="M21.5 2v6h-6"/><path d="M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/></svg>
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#0ea5e9" stroke-width="2.2">
+            <path d="M21.5 2v6h-6" />
+            <path d="M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67" />
+          </svg>
           Rotate PDF Pages
         </h3>
         <button type="button" class="btn-icon" id="close-rotate-pdf">&times;</button>
@@ -560,7 +726,9 @@
       <div class="tool-dialog-body">
         <div class="tool-dropzone" id="rotate-dropzone">
           <div class="tool-dropzone-icon" style="color: #0ea5e9;">
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21.5 2v6h-6"/></svg>
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M21.5 2v6h-6" />
+            </svg>
           </div>
           <div style="font-size: 16px; font-weight: 800; color: #0f172a;">Select PDF to Rotate</div>
           <div style="font-size: 13px; color: #64748b;">Rotate orientation by 90°, 180°, or 270°</div>
@@ -568,7 +736,8 @@
         <input type="file" id="rotate-file-picker" accept="application/pdf" style="display: none;">
 
         <div id="rotate-controls" style="display: none; margin-top: 18px; text-align: center;">
-          <div style="font-weight: 800; font-size: 14px; color: #0f172a; margin-bottom: 14px;" id="rotate-info-text">Document Info</div>
+          <div style="font-weight: 800; font-size: 14px; color: #0f172a; margin-bottom: 14px;" id="rotate-info-text">
+            Document Info</div>
           <div style="display: flex; gap: 10px; justify-content: center;">
             <button type="button" class="btn-secondary rotate-deg-btn selected" data-deg="90">90° Clockwise</button>
             <button type="button" class="btn-secondary rotate-deg-btn" data-deg="180">180° Flip</button>
@@ -577,8 +746,10 @@
         </div>
       </div>
       <div class="tool-dialog-footer">
-        <button type="button" class="btn-secondary" onclick="document.getElementById('modal-rotate-pdf').style.display='none'">Cancel</button>
-        <button type="button" class="btn-primary" id="btn-do-rotate" disabled style="background:#0ea5e9;">Rotate & Download PDF</button>
+        <button type="button" class="btn-secondary"
+          onclick="document.getElementById('modal-rotate-pdf').style.display='none'">Cancel</button>
+        <button type="button" class="btn-primary" id="btn-do-rotate" disabled style="background:#0ea5e9;">Rotate &
+          Download PDF</button>
       </div>
     </div>
   </div>
@@ -588,7 +759,11 @@
     <div class="tool-dialog">
       <div class="tool-dialog-header">
         <h3>
-          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#9333ea" stroke-width="2.2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#9333ea" stroke-width="2.2">
+            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+            <polyline points="7 10 12 15 17 10" />
+            <line x1="12" y1="15" x2="12" y2="3" />
+          </svg>
           PDF to JPG Converter
         </h3>
         <button type="button" class="btn-icon" id="close-pdf-to-jpg">&times;</button>
@@ -596,7 +771,9 @@
       <div class="tool-dialog-body">
         <div class="tool-dropzone" id="pdf-to-jpg-dropzone">
           <div class="tool-dropzone-icon" style="color: #9333ea;">
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/></svg>
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+            </svg>
           </div>
           <div style="font-size: 16px; font-weight: 800; color: #0f172a;">Select PDF to Convert to JPG</div>
           <div style="font-size: 13px; color: #64748b;">Extract pages as crisp high-resolution images</div>
@@ -604,13 +781,17 @@
         <input type="file" id="pdf-to-jpg-file-picker" accept="application/pdf" style="display: none;">
 
         <div id="pdf-to-jpg-controls" style="display: none; margin-top: 18px; text-align: center;">
-          <div style="font-weight: 800; font-size: 14px; color: #0f172a; margin-bottom: 8px;" id="pdf-to-jpg-info-text">Document Info</div>
-          <div style="font-size: 13px; color: #64748b;">Ready to render pages into crystal-clear 300 DPI JPG format.</div>
+          <div style="font-weight: 800; font-size: 14px; color: #0f172a; margin-bottom: 8px;" id="pdf-to-jpg-info-text">
+            Document Info</div>
+          <div style="font-size: 13px; color: #64748b;">Ready to render pages into crystal-clear 300 DPI JPG format.
+          </div>
         </div>
       </div>
       <div class="tool-dialog-footer">
-        <button type="button" class="btn-secondary" onclick="document.getElementById('modal-pdf-to-jpg').style.display='none'">Cancel</button>
-        <button type="button" class="btn-primary" id="btn-do-pdf-to-jpg" disabled style="background:#9333ea;">Convert & Download JPGs</button>
+        <button type="button" class="btn-secondary"
+          onclick="document.getElementById('modal-pdf-to-jpg').style.display='none'">Cancel</button>
+        <button type="button" class="btn-primary" id="btn-do-pdf-to-jpg" disabled style="background:#9333ea;">Convert &
+          Download JPGs</button>
       </div>
     </div>
   </div>
@@ -624,7 +805,9 @@
       <div class="header-left">
         <!-- Back to All Tools Button -->
         <button type="button" class="btn-back-home" id="btn-back-to-home" title="Back to All Tools">
-          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="15 18 9 12 15 6"/></svg>
+          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+            <polyline points="15 18 9 12 15 6" />
+          </svg>
           <span>All Tools</span>
         </button>
         <div class="toolbar-separator"></div>
@@ -634,17 +817,22 @@
           <span>OpenPDF Studio</span>
         </div>
         <div class="toolbar-separator"></div>
-        
+
         <div style="display: flex; align-items: center; gap: 6px;">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#64748b" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
-          <input type="text" id="document-title-input" class="document-title-input" value="Untitled.pdf" title="Document Name">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#64748b" stroke-width="2">
+            <circle cx="12" cy="12" r="10" />
+            <polyline points="12 6 12 12 16 14" />
+          </svg>
+          <input type="text" id="document-title-input" class="document-title-input" value="Untitled.pdf"
+            title="Document Name">
         </div>
-        
+
         <span id="header-status-badge" class="doc-status-badge">No Document</span>
       </div>
 
       <div class="header-center">
-        <div style="display: flex; background: #f1f5f9; padding: 2px; border-radius: 6px; border: 1px solid #e2e8f0; font-size: 12px; font-weight: 600;">
+        <div
+          style="display: flex; background: #f1f5f9; padding: 2px; border-radius: 6px; border: 1px solid #e2e8f0; font-size: 12px; font-weight: 600;">
           <button type="button" class="mini-btn active" style="padding: 4px 10px;">Edit & fill</button>
           <button type="button" class="mini-btn" style="padding: 4px 10px;">Invite to sign</button>
           <button type="button" class="mini-btn" style="padding: 4px 10px;">Create form</button>
@@ -653,20 +841,36 @@
 
       <div class="header-right">
         <button class="btn-icon" id="header-open-btn" title="Open PDF">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z" />
+          </svg>
         </button>
         <button class="btn-icon" id="header-save-btn" title="Save Project Snapshot">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z" />
+            <polyline points="17 21 17 13 7 13 7 21" />
+            <polyline points="7 3 7 8 15 8" />
+          </svg>
         </button>
         <button class="btn-icon" id="header-print-btn" title="Print Document">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <polyline points="6 9 6 2 18 2 18 9" />
+            <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2" />
+            <rect x="6" y="14" width="12" height="8" />
+          </svg>
         </button>
         <button class="btn-primary" id="header-download-btn" title="Export Modified PDF">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+            <polyline points="7 10 12 15 17 10" />
+            <line x1="12" y1="15" x2="12" y2="3" />
+          </svg>
           Download
         </button>
         <button class="btn-done-orange" id="header-done-btn" title="Apply changes and finish">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg>
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3">
+            <polyline points="20 6 9 17 4 12" />
+          </svg>
           DONE
         </button>
       </div>
@@ -677,17 +881,27 @@
       <div class="toolbar-group">
         <!-- Toggle Pages Sidebar -->
         <button class="tool-btn" id="btn-toggle-pages" title="Manage Pages">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="4" y="2" width="16" height="20" rx="2"/><line x1="9" y1="6" x2="15" y2="6"/><line x1="9" y1="10" x2="15" y2="10"/></svg>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <rect x="4" y="2" width="16" height="20" rx="2" />
+            <line x1="9" y1="6" x2="15" y2="6" />
+            <line x1="9" y1="10" x2="15" y2="10" />
+          </svg>
           <span>Pages</span>
         </button>
 
         <!-- Undo / Redo -->
         <button class="tool-btn" id="header-undo-btn" title="Undo (Ctrl+Z)" disabled>
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 7v6h6"/><path d="M21 17a9 9 0 0 0-9-9 9 9 0 0 0-6 2.3L3 13"/></svg>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M3 7v6h6" />
+            <path d="M21 17a9 9 0 0 0-9-9 9 9 0 0 0-6 2.3L3 13" />
+          </svg>
           <span>Undo</span>
         </button>
         <button class="tool-btn" id="header-redo-btn" title="Redo (Ctrl+Y)" disabled>
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 7v6h-6"/><path d="M3 17a9 9 0 0 1 9-9 9 9 0 0 1 6 2.3l3 2.7"/></svg>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M21 7v6h-6" />
+            <path d="M3 17a9 9 0 0 1 9-9 9 9 0 0 1 6 2.3l3 2.7" />
+          </svg>
           <span>Redo</span>
         </button>
 
@@ -695,99 +909,148 @@
 
         <!-- Select -->
         <button class="tool-btn" data-tool="select" title="Selection Mode">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m3 3 7.07 16.97 2.51-7.39 7.39-2.51L3 3z"/></svg>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="m3 3 7.07 16.97 2.51-7.39 7.39-2.51L3 3z" />
+          </svg>
           <span>Select</span>
         </button>
 
         <!-- Text: In-place text edit & add text -->
-        <button class="tool-btn active highlight-feature" data-tool="edit-text" id="tool-edit-text" title="Edit Existing Text (In-Place WYSIWYG)">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="4 7 4 4 20 4 20 7"/><line x1="12" y1="4" x2="12" y2="20"/></svg>
+        <button class="tool-btn active highlight-feature" data-tool="edit-text" id="tool-edit-text"
+          title="Edit Existing Text (In-Place WYSIWYG)">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <polyline points="4 7 4 4 20 4 20 7" />
+            <line x1="12" y1="4" x2="12" y2="20" />
+          </svg>
           <span>Text</span>
         </button>
 
         <!-- Sign -->
         <button class="tool-btn" data-tool="signature" title="Insert Signature">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m18 2 4 4"/><path d="M19 9 8.7 19.3a1 1 0 0 1-.7.3H4v-4a1 1 0 0 1 .3-.7L14.6 4.6"/><path d="m2 22 5-1-4-4-1 5Z"/></svg>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="m18 2 4 4" />
+            <path d="M19 9 8.7 19.3a1 1 0 0 1-.7.3H4v-4a1 1 0 0 1 .3-.7L14.6 4.6" />
+            <path d="m2 22 5-1-4-4-1 5Z" />
+          </svg>
           <span>Sign</span>
         </button>
 
         <!-- Erase / Whiteout -->
         <button class="tool-btn" data-tool="whiteout" title="Visual Whiteout Rectangle">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m7 21-4.3-4.3c-1-1-1-2.5 0-3.4l9.6-9.6c1-1 2.5-1 3.4 0l5.6 5.6c1 1 1 2.5 0 3.4L13 21"/><path d="M22 21H7"/><path d="m5 11 9 9"/></svg>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="m7 21-4.3-4.3c-1-1-1-2.5 0-3.4l9.6-9.6c1-1 2.5-1 3.4 0l5.6 5.6c1 1 1 2.5 0 3.4L13 21" />
+            <path d="M22 21H7" />
+            <path d="m5 11 9 9" />
+          </svg>
           <span>Erase</span>
         </button>
 
         <!-- Image Insert -->
         <button class="tool-btn" data-tool="image" title="Insert Image / Asset">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <rect x="3" y="3" width="18" height="18" rx="2" ry="2" />
+            <circle cx="8.5" cy="8.5" r="1.5" />
+            <polyline points="21 15 16 10 5 21" />
+          </svg>
           <span>Image</span>
         </button>
 
         <!-- Checkmark -->
         <button class="tool-btn" data-tool="check" title="Insert Checkmark Stamp">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+            <polyline points="20 6 9 17 4 12" />
+          </svg>
           <span>Check</span>
         </button>
 
         <!-- Cross -->
         <button class="tool-btn" data-tool="cross" title="Insert Cross Stamp">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+            <line x1="18" y1="6" x2="6" y2="18" />
+            <line x1="6" y1="6" x2="18" y2="18" />
+          </svg>
           <span>Cross</span>
         </button>
 
         <!-- Shapes -->
         <button class="tool-btn" data-tool="rect" title="Draw Rectangle">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/></svg>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="12" cy="12" r="9" />
+          </svg>
           <span>Shapes</span>
         </button>
 
         <!-- Blackout (Secure Redaction) -->
         <button class="tool-btn danger-action" data-tool="redact" title="Permanent Character-Stream Redaction">
-          <svg viewBox="0 0 24 24" fill="currentColor" stroke="none"><rect x="3" y="3" width="18" height="18" rx="2"/></svg>
+          <svg viewBox="0 0 24 24" fill="currentColor" stroke="none">
+            <rect x="3" y="3" width="18" height="18" rx="2" />
+          </svg>
           <span>Blackout</span>
         </button>
 
         <!-- Highlight -->
         <button class="tool-btn" data-tool="highlight" title="Text Highlighter">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m9 11-6 6v3h3l6-6"/><path d="m22 12-4.6 4.6a2 2 0 0 1-2.8 0l-5.2-5.2a2 2 0 0 1 0-2.8L14 4"/></svg>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="m9 11-6 6v3h3l6-6" />
+            <path d="m22 12-4.6 4.6a2 2 0 0 1-2.8 0l-5.2-5.2a2 2 0 0 1 0-2.8L14 4" />
+          </svg>
           <span>Highlight</span>
         </button>
 
         <!-- Freehand Draw -->
         <button class="tool-btn" data-tool="draw" title="Freehand Pen">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 19l7-7 3 3-7 7-3-3z"/><path d="M18 13l-1.5-7.5L2 2l3.5 14.5L13 18l5-5z"/><path d="M2 2l7.586 7.586"/><circle cx="11" cy="11" r="2"/></svg>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M12 19l7-7 3 3-7 7-3-3z" />
+            <path d="M18 13l-1.5-7.5L2 2l3.5 14.5L13 18l5-5z" />
+            <path d="M2 2l7.586 7.586" />
+            <circle cx="11" cy="11" r="2" />
+          </svg>
           <span>Draw</span>
         </button>
 
         <!-- Sticky Note -->
         <button class="tool-btn" data-tool="sticky" title="Add Sticky Note Annotation">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
+          </svg>
           <span>Sticky</span>
         </button>
 
         <!-- Watermark -->
         <button class="tool-btn" data-tool="watermark" title="Diagonal Document Watermark">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <line x1="12" y1="1" x2="12" y2="23" />
+            <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6" />
+          </svg>
           <span>Watermark</span>
         </button>
 
         <!-- OCR Scanned Document Mode -->
         <button class="tool-btn" data-tool="ocr" title="Run Tesseract OCR & OpenCV Inpainting on Scanned Page">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="12" cy="12" r="10" />
+            <polyline points="12 6 12 12 16 14" />
+          </svg>
           <span>OCR</span>
         </button>
 
         <div class="toolbar-separator"></div>
 
         <!-- Search & Find -->
-        <button class="tool-btn" id="tool-find-btn" title="Find Text in Document (Ctrl+F)">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+        <button class="tool-btn" id="tool-find-btn" data-tool="find" title="Find Text in Document (Ctrl+F)">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="11" cy="11" r="8" />
+            <line x1="21" y1="21" x2="16.65" y2="16.65" />
+          </svg>
           <span>Search</span>
         </button>
 
         <!-- Mobile Dedicated Done Button (PDFfiller style) -->
-        <button type="button" class="btn-done-orange mobile-toolbar-done" id="mobile-toolbar-done-btn" title="Finish and Download">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg>
+        <button type="button" class="btn-done-orange mobile-toolbar-done" id="mobile-toolbar-done-btn"
+          title="Finish and Download">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3">
+            <polyline points="20 6 9 17 4 12" />
+          </svg>
           <span>DONE</span>
         </button>
       </div>
@@ -798,25 +1061,38 @@
 
     <!-- App Body: Left Sidebar, Canvas Viewport, Properties Inspector -->
     <section class="app-body" id="app-body">
-      
+
       <!-- Left Sidebar: Pages & Thumbnails Management (Starts closed on mobile) -->
       <aside class="left-sidebar" id="left-sidebar" aria-label="Page Thumbnails">
         <div class="sidebar-header">
           <span>Manage pages</span>
-          <button class="sidebar-close-touch" id="sidebar-close-btn" title="Close Pages Panel" aria-label="Close">&times;</button>
+          <button class="sidebar-close-touch" id="sidebar-close-btn" title="Close Pages Panel"
+            aria-label="Close">&times;</button>
         </div>
         <div class="sidebar-tools-bar">
           <button id="sidebar-rotate-btn" title="Rotate 90° Clockwise">
-            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21.5 2v6h-6"/><path d="M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/></svg>
+            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M21.5 2v6h-6" />
+              <path d="M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67" />
+            </svg>
           </button>
           <button id="sidebar-duplicate-btn" title="Duplicate Current Page">
-            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <rect x="9" y="9" width="13" height="13" rx="2" ry="2" />
+              <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
+            </svg>
           </button>
           <button id="sidebar-delete-btn" title="Delete Page" style="color: #ef4444;">
-            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <polyline points="3 6 5 6 21 6" />
+              <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
+            </svg>
           </button>
           <button id="sidebar-add-btn" title="Insert Blank Page">
-            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <line x1="12" y1="5" x2="12" y2="19" />
+              <line x1="5" y1="12" x2="19" y2="12" />
+            </svg>
           </button>
         </div>
         <div class="thumbnails-container" id="thumbnails-container"></div>
@@ -832,29 +1108,42 @@
     <!-- Floating Bottom Navigation Pill (Zoom & Page Stepper) -->
     <div class="floating-bottom-pill">
       <button id="btn-prev-page" title="Previous Page">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="18 15 12 9 6 15"/></svg>
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+          <polyline points="18 15 12 9 6 15" />
+        </svg>
       </button>
       <span style="font-weight: 600;">
         <span id="page-num-display">1</span> / <span id="total-pages-label">1</span>
       </span>
       <button id="btn-next-page" title="Next Page">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+          <polyline points="6 9 12 15 18 9" />
+        </svg>
       </button>
 
       <div class="pill-separator"></div>
 
       <button id="btn-zoom-out" title="Zoom Out (-)">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="5" y1="12" x2="19" y2="12"/></svg>
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+          <line x1="5" y1="12" x2="19" y2="12" />
+        </svg>
       </button>
       <span id="zoom-percentage-label" style="font-weight: 600; min-width: 44px; text-align: center;">100%</span>
       <button id="btn-zoom-in" title="Zoom In (+)">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+          <line x1="12" y1="5" x2="12" y2="19" />
+          <line x1="5" y1="12" x2="19" y2="12" />
+        </svg>
       </button>
 
       <div class="pill-separator"></div>
 
-      <button id="btn-fit-page" title="Fit to Screen" style="padding: 2px 10px; width: auto; border-radius: 16px; font-size: 12px; font-weight: 600; gap: 4px;">
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><polyline points="9 9 9 15 15 15"/></svg>
+      <button id="btn-fit-page" title="Fit to Screen"
+        style="padding: 2px 10px; width: auto; border-radius: 16px; font-size: 12px; font-weight: 600; gap: 4px;">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <rect x="3" y="3" width="18" height="18" rx="2" />
+          <polyline points="9 9 9 15 15 15" />
+        </svg>
         Fit
       </button>
     </div>
@@ -869,10 +1158,10 @@
         <div class="modal-body">
           <div class="dropzone-box" id="welcome-dropzone">
             <svg class="dropzone-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
-              <polyline points="14 2 14 8 20 8"/>
-              <line x1="12" y1="18" x2="12" y2="12"/>
-              <polyline points="9 15 12 12 15 15"/>
+              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+              <polyline points="14 2 14 8 20 8" />
+              <line x1="12" y1="18" x2="12" y2="12" />
+              <polyline points="9 15 12 12 15 15" />
             </svg>
             <div style="font-size: 16px; font-weight: 700; color: #0f172a; margin-bottom: 6px;">
               Drag & Drop your PDF here
@@ -884,13 +1173,17 @@
           </div>
 
           <div style="margin-top: 24px;">
-            <div style="font-size: 12px; font-weight: 700; text-transform: uppercase; color: #64748b; margin-bottom: 8px;">
+            <div
+              style="font-size: 12px; font-weight: 700; text-transform: uppercase; color: #64748b; margin-bottom: 8px;">
               Or Explore Demo Documents
             </div>
             <div class="sample-docs-grid">
               <div class="sample-doc-card" id="load-sample-digital">
                 <div class="sample-card-title">
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#2563eb" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#2563eb" stroke-width="2">
+                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+                    <polyline points="14 2 14 8 20 8" />
+                  </svg>
                   Digital Contract PDF
                 </div>
                 <div class="sample-card-desc">Click & modify existing text, test redactions & font matching.</div>
@@ -898,7 +1191,11 @@
 
               <div class="sample-doc-card" id="load-sample-scanned">
                 <div class="sample-card-title">
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#ea580c" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#ea580c" stroke-width="2">
+                    <rect x="3" y="3" width="18" height="18" rx="2" ry="2" />
+                    <circle cx="8.5" cy="8.5" r="1.5" />
+                    <polyline points="21 15 16 10 5 21" />
+                  </svg>
                   Scanned Receipt PDF
                 </div>
                 <div class="sample-card-desc">Scanned image invoice. Test Tesseract OCR & OpenCV inpainting.</div>
@@ -918,8 +1215,9 @@
   <div class="toast-container" id="toast-container"></div>
 
   <!-- Main ES Module Bootstrap (with cache-busting) -->
-  <script type="module" src="./js/portal.js?v=2.8"></script>
-  <script type="module" src="./js/app.js?v=2.8"></script>
+  <script type="module" src="./js/portal.js?v=2.9"></script>
+  <script type="module" src="./js/app.js?v=2.9"></script>
 
 </body>
+
 </html>
