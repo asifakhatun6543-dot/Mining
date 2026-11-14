@@ -157,7 +157,6 @@ export class PortalManager {
     fileInput.addEventListener("change", (e) => {
       const files = Array.from(e.target.files);
       if (files.length > 0) this._handleUniversalFiles(files);
-      e.target.value = "";
     });
   }
 
@@ -289,7 +288,6 @@ export class PortalManager {
         this.switchView("editor");
         this._loadPDFIntoApp(files[0]);
       }
-      if (picker) picker.value = "";
     });
 
     dropzone?.addEventListener("dragover", (e) => {
@@ -348,7 +346,6 @@ export class PortalManager {
       const files = Array.from(e.target.files);
       this.mergeFiles = [...this.mergeFiles, ...files];
       this._renderMergeQueue();
-      if (picker) picker.value = "";
     });
 
     dropzone?.addEventListener("dragover", (e) => {
@@ -507,7 +504,6 @@ export class PortalManager {
       const files = Array.from(e.target.files);
       this.jpgFiles = [...this.jpgFiles, ...files];
       this._renderJpgQueue();
-      if (picker) picker.value = "";
     });
 
     dropzone?.addEventListener("dragover", (e) => {
@@ -721,7 +717,6 @@ export class PortalManager {
     picker?.addEventListener("change", (e) => {
       const file = e.target.files[0];
       if (file) this._loadImageForResize(file);
-      if (picker) picker.value = "";
     });
 
     dropzone?.addEventListener("dragover", (e) => {
@@ -912,7 +907,6 @@ export class PortalManager {
         dropzone.style.display = "none";
         splitBtn.disabled = false;
       }
-      if (picker) picker.value = "";
     });
 
     splitBtn?.addEventListener("click", async () => {
@@ -1018,7 +1012,6 @@ export class PortalManager {
         dropzone.style.display = "none";
         rotateBtn.disabled = false;
       }
-      if (picker) picker.value = "";
     });
 
     document.querySelectorAll(".rotate-deg-btn").forEach(btn => {
@@ -1129,7 +1122,6 @@ export class PortalManager {
         dropzone.style.display = "none";
         convertBtn.disabled = false;
       }
-      if (picker) picker.value = "";
     });
 
     convertBtn?.addEventListener("click", async () => {

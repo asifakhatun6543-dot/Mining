@@ -197,7 +197,6 @@ class OpenPDFStudioApp {
     document.getElementById("pdf-file-picker")?.addEventListener("change", (e) => {
       const file = e.target.files && e.target.files[0];
       if (file) this.loadPDFFile(file);
-      e.target.value = ""; // Always reset value so selecting same file triggers change
     });
   }
 
@@ -576,10 +575,12 @@ class OpenPDFStudioApp {
   // Ultra-Fast Client-Side PDF Text & Typography Extractor
   // Powered by PDF.js (Zero backend dependency / 100% offline & fast)
   // ------------------------------------------------------------------------
-  _extractRawPDFFonts(arrayBuffer) {
-    if (!arrayBuffer) return [];
+  _extractRawPDFFonts(bytes) {
+    if (!bytes) return [];
     try {
-      const text = new TextDecoder("latin1").decode(new Uint8Array(arrayBuffer));
+      const u8 = bytes instanceof Uint8Array ? bytes : new Uint8Array(bytes);
+      if (u8.byteLength === 0) return [];
+      const text = new TextDecoder("latin1").decode(u8);
       const fontMatches = [...text.matchAll(/\/BaseFont\s*\/([A-Za-z0-9_\-+]+)/g)].map(m => m[1]);
       const cleanFonts = fontMatches.map(f => f.replace(/^[A-Z]{6}\+/, ""));
       return [...new Set(cleanFonts)];
@@ -588,12 +589,12 @@ class OpenPDFStudioApp {
     }
   }
 
-  async _extractClientSidePages(pdfJsDoc, filename, arrayBuffer) {
+  async _extractClientSidePages(pdfJsDoc, filename, safeBytes) {
     const pages = [];
     const detectedFonts = new Set();
     const pageDimensions = [];
 
-    const rawDocFonts = this._extractRawPDFFonts(arrayBuffer);
+    const rawDocFonts = this._extractRawPDFFonts(safeBytes);
     const docHasSerif = rawDocFonts.some(f => /times|roman|serif|georgia|cambria|garamond|palatino|century|tinos/i.test(f));
     const docHasMono = rawDocFonts.some(f => /courier|mono|consolas|fixed/i.test(f));
 
@@ -603,11 +604,6 @@ class OpenPDFStudioApp {
       const pageW = viewport.width;
       const pageH = viewport.height;
       pageDimensions.push({ width: pageW, height: pageH });
-
-      // Pre-populate commonObjs with font objects
-      try {
-        await page.getOperatorList();
-      } catch (e) {}
 
       const textContent = await page.getTextContent();
       const rawSpans = [];
@@ -793,22 +789,27 @@ class OpenPDFStudioApp {
     );
 
     try {
-      // Step 2: Read raw array buffer SAFELY (do NOT touch input.value before reading!)
+      // Step 2: Read raw array buffer SAFELY
       const arrayBuffer = await file.arrayBuffer();
+      // Keep a safe cloned copy for State and Font Detection so PDF.js worker transfer does NOT detach our buffer!
+      const safeBuffer = arrayBuffer.slice(0);
+      const safeBytes = new Uint8Array(safeBuffer);
+      const workerData = new Uint8Array(arrayBuffer);
+
       this._updateLoadingProgress("Extracting pages & vector text content...", 42);
 
-      // Step 3: Initialize PDF.js document
-      const loadingTask = window.pdfjsLib.getDocument({ data: arrayBuffer });
+      // Step 3: Initialize PDF.js document with workerData
+      const loadingTask = window.pdfjsLib.getDocument({ data: workerData });
       const pdfJsDoc = await loadingTask.promise;
       this._updateLoadingProgress("Analyzing typography and detecting original fonts...", 68);
 
       // Step 4: Extract text spans & layout client-side immediately
-      const clientAnalysis = await this._extractClientSidePages(pdfJsDoc, file.name, arrayBuffer);
+      const clientAnalysis = await this._extractClientSidePages(pdfJsDoc, file.name, safeBytes);
       const docInfo = clientAnalysis.docInfo;
       const pages = clientAnalysis.pages;
 
-      // Register in State
-      State.setDocument(docInfo, pdfJsDoc, arrayBuffer);
+      // Register in State using safeBuffer
+      State.setDocument(docInfo, pdfJsDoc, safeBuffer);
 
       // Auto-fit to screen width on mobile devices so document is fully readable without horizontal scrolling
       if (window.innerWidth <= 768) {
