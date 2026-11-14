@@ -171,9 +171,12 @@ export class PortalManager {
       if (window.app && typeof window.app.loadPDFFile === "function") {
         clearInterval(interval);
         window.app.loadPDFFile(file);
-      } else if (attempts > 30) {
+      } else if (attempts > 100) {
         clearInterval(interval);
         console.error("OpenPDFStudioApp failed to initialize in time.");
+        if (window.app && window.app.showToast) {
+          window.app.showToast("error", "Application loading timed out. Please refresh and try again.");
+        }
       }
     }, 50);
   }

@@ -706,20 +706,6 @@ export class ToolbarManager {
             rect: [x0, y0, x1, y1],
             properties: { fill: [0, 0, 0], color: [0, 0, 0] }
           };
-        }
-      } else if (d.tool === "whiteout") {
-        // Tap to whiteout sensible block (80x24 pt)
-        annot = {
-          id: `wo_${Date.now()}`,
-          type: "whiteout",
-          page_number: pageIndex,
-          rect: [d.startX - 40, d.startY - 12, d.startX + 40, d.startY + 12],
-          properties: { fill: [1, 1, 1], color: [1, 1, 1] }
-        };
-      }
-            rect: [x0, y0, x1, y1],
-            properties: { fill: [0, 0, 0], color: [0, 0, 0] }
-          };
         } else if (d.tool === "highlight") {
           annot = {
             id: `hl_${Date.now()}`,
@@ -737,6 +723,15 @@ export class ToolbarManager {
             properties: { color: [0, 0, 0], stroke_width: 2 }
           };
         }
+      } else if (d.tool === "whiteout") {
+        // Tap to whiteout sensible block (80x24 pt)
+        annot = {
+          id: `wo_${Date.now()}`,
+          type: "whiteout",
+          page_number: pageIndex,
+          rect: [d.startX - 40, d.startY - 12, d.startX + 40, d.startY + 12],
+          properties: { fill: [1, 1, 1], color: [1, 1, 1] }
+        };
       }
     }
 

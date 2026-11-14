@@ -580,7 +580,8 @@ class OpenPDFStudioApp {
     try {
       const u8 = bytes instanceof Uint8Array ? bytes : new Uint8Array(bytes);
       if (u8.byteLength === 0) return [];
-      const text = new TextDecoder("latin1").decode(u8);
+      const maxLen = Math.min(u8.byteLength, 2 * 1024 * 1024);
+      const text = new TextDecoder("latin1").decode(u8.subarray(0, maxLen));
       const fontMatches = [...text.matchAll(/\/BaseFont\s*\/([A-Za-z0-9_\-+]+)/g)].map(m => m[1]);
       const cleanFonts = fontMatches.map(f => f.replace(/^[A-Z]{6}\+/, ""));
       return [...new Set(cleanFonts)];
@@ -628,11 +629,15 @@ class OpenPDFStudioApp {
         let isFontBold = false;
         let isFontItalic = false;
 
-        if (page.commonObjs && page.commonObjs.has(item.fontName)) {
-          const fontObj = page.commonObjs.get(item.fontName);
-          realFontName = fontObj.name || fontObj.loadedName || "";
-          isFontBold = !!fontObj.bold || !!fontObj.black;
-          isFontItalic = !!fontObj.italic;
+        if (page.commonObjs && typeof page.commonObjs.has === "function" && page.commonObjs.has(item.fontName)) {
+          try {
+            const fontObj = page.commonObjs.get(item.fontName);
+            if (fontObj && typeof fontObj === "object") {
+              realFontName = fontObj.name || fontObj.loadedName || "";
+              isFontBold = !!fontObj.bold || !!fontObj.black;
+              isFontItalic = !!fontObj.italic;
+            }
+          } catch (_) {}
         }
 
         const cleanReal = realFontName.replace(/^[A-Z]{6}\+/, "");
@@ -774,6 +779,10 @@ class OpenPDFStudioApp {
 
     // Clean reset of previous document state before reading new file
     this.resetDocument();
+
+    // Immediately update title with uploaded filename
+    const titleInput = document.getElementById("document-title-input");
+    if (titleInput) titleInput.value = file.name;
 
     // Ensure editor view is active
     if (window.portal && window.portal.switchView) {

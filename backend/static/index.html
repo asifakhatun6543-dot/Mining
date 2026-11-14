@@ -16,10 +16,10 @@
 
   <!-- CSS Stylesheets (with cache-busting) -->
   <link rel="stylesheet" href="./vendor/pdfjs/pdf_viewer.css">
-  <link rel="stylesheet" href="./css/styles.css?v=3.3">
-  <link rel="stylesheet" href="./css/editor.css?v=3.3">
-  <link rel="stylesheet" href="./css/portal.css?v=3.3">
-  <link rel="stylesheet" href="./css/responsive.css?v=3.3">
+  <link rel="stylesheet" href="./css/styles.css?v=3.4">
+  <link rel="stylesheet" href="./css/editor.css?v=3.4">
+  <link rel="stylesheet" href="./css/portal.css?v=3.4">
+  <link rel="stylesheet" href="./css/responsive.css?v=3.4">
 
   <!-- PDF.js & PDF-Lib Vendor Scripts -->
   <script src="./vendor/pdfjs/pdf.js"></script>
@@ -474,7 +474,7 @@
             Choose PDF File
           </button>
         </div>
-        <input type="file" id="edit-modal-file-picker" accept="application/pdf" style="display: none;">
+        <input type="file" id="edit-modal-file-picker" accept="application/pdf,.pdf,application/x-pdf" style="display: none;">
       </div>
       <div class="tool-dialog-footer">
         <button type="button" class="btn-secondary"
@@ -508,7 +508,7 @@
           <div style="font-size: 16px; font-weight: 800; color: #0f172a;">Select or Drop 2 or more PDF Files</div>
           <div style="font-size: 13px; color: #64748b;">Combine documents in your chosen order</div>
         </div>
-        <input type="file" id="merge-file-picker" accept="application/pdf" multiple style="display: none;">
+        <input type="file" id="merge-file-picker" accept="application/pdf,.pdf,application/x-pdf" multiple style="display: none;">
 
         <div style="margin-top: 18px; font-size: 13.5px; font-weight: 800; color: #0f172a;" id="merge-count-badge">0
           PDFs Selected</div>
@@ -684,7 +684,7 @@
           <div style="font-size: 16px; font-weight: 800; color: #0f172a;">Select PDF to Split</div>
           <div style="font-size: 13px; color: #64748b;">Extract individual pages or custom ranges</div>
         </div>
-        <input type="file" id="split-file-picker" accept="application/pdf" style="display: none;">
+        <input type="file" id="split-file-picker" accept="application/pdf,.pdf,application/x-pdf" style="display: none;">
 
         <div id="split-controls" style="display: none; margin-top: 16px;">
           <div style="font-weight: 800; font-size: 14px; color: #0f172a; margin-bottom: 12px;" id="split-info-text">
@@ -733,7 +733,7 @@
           <div style="font-size: 16px; font-weight: 800; color: #0f172a;">Select PDF to Rotate</div>
           <div style="font-size: 13px; color: #64748b;">Rotate orientation by 90°, 180°, or 270°</div>
         </div>
-        <input type="file" id="rotate-file-picker" accept="application/pdf" style="display: none;">
+        <input type="file" id="rotate-file-picker" accept="application/pdf,.pdf,application/x-pdf" style="display: none;">
 
         <div id="rotate-controls" style="display: none; margin-top: 18px; text-align: center;">
           <div style="font-weight: 800; font-size: 14px; color: #0f172a; margin-bottom: 14px;" id="rotate-info-text">
@@ -778,7 +778,7 @@
           <div style="font-size: 16px; font-weight: 800; color: #0f172a;">Select PDF to Convert to JPG</div>
           <div style="font-size: 13px; color: #64748b;">Extract pages as crisp high-resolution images</div>
         </div>
-        <input type="file" id="pdf-to-jpg-file-picker" accept="application/pdf" style="display: none;">
+        <input type="file" id="pdf-to-jpg-file-picker" accept="application/pdf,.pdf,application/x-pdf" style="display: none;">
 
         <div id="pdf-to-jpg-controls" style="display: none; margin-top: 18px; text-align: center;">
           <div style="font-weight: 800; font-size: 14px; color: #0f172a; margin-bottom: 8px;" id="pdf-to-jpg-info-text">
@@ -1265,7 +1265,7 @@
     </div>
 
     <!-- Hidden File Pickers -->
-    <input type="file" id="pdf-file-picker" accept="application/pdf" style="display: none;">
+    <input type="file" id="pdf-file-picker" accept="application/pdf,.pdf,application/x-pdf" style="display: none;">
     <input type="file" id="image-upload-input" accept="image/*" style="display: none;">
   </div>
 
@@ -1273,8 +1273,8 @@
   <div class="toast-container" id="toast-container"></div>
 
   <!-- Main ES Module Bootstrap (with cache-busting) -->
-  <script type="module" src="./js/portal.js?v=3.3"></script>
-  <script type="module" src="./js/app.js?v=3.3"></script>
+  <script type="module" src="./js/portal.js?v=3.4"></script>
+  <script type="module" src="./js/app.js?v=3.4"></script>
 
 </body>
 
