@@ -392,47 +392,55 @@ html, body {
   /* Bottom Floating Pill Navigation: Elevated Safely Above Docked Toolbar */
   .floating-bottom-pill {
     bottom: 74px !important; /* Floats above bottom docked toolbar */
-    padding: 4px 12px !important;
+    padding: 5px 14px !important;
     gap: 8px !important;
     font-size: 12px !important;
     transform: translateX(-50%) !important;
-    z-index: 950 !important;
-    background: #ffffff !important;
-    color: #0f172a !important;
-    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.18) !important;
-    border: 1px solid #cbd5e1 !important;
+    z-index: 1000 !important;
+    background: #1e293b !important;
+    color: #ffffff !important;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.35) !important;
+    border: 1px solid #334155 !important;
   }
 
-  .floating-bottom-pill span {
-    color: #0f172a !important;
+  .floating-bottom-pill span,
+  .floating-bottom-pill #page-num-display,
+  .floating-bottom-pill #total-pages-label,
+  .floating-bottom-pill #zoom-percentage-label {
+    color: #ffffff !important;
     font-weight: 700 !important;
+    font-size: 12px !important;
+    opacity: 1 !important;
+    visibility: visible !important;
   }
 
   .floating-bottom-pill button {
-    width: 36px !important;
-    height: 36px !important;
+    width: 32px !important;
+    height: 32px !important;
     border-radius: 50% !important;
     display: inline-flex !important;
     align-items: center !important;
     justify-content: center !important;
-    background: #f1f5f9 !important;
-    border: 1px solid #cbd5e1 !important;
-    color: #1e293b !important;
+    background: rgba(255, 255, 255, 0.15) !important;
+    border: 1px solid rgba(255, 255, 255, 0.25) !important;
+    color: #ffffff !important;
   }
 
-  .floating-bottom-pill button:hover {
-    background: #e2e8f0 !important;
+  .floating-bottom-pill button:hover,
+  .floating-bottom-pill button:active {
+    background: rgba(255, 255, 255, 0.3) !important;
+    color: #ffffff !important;
   }
 
   .floating-bottom-pill button svg {
-    width: 16px !important;
-    height: 16px !important;
-    stroke: #1e293b !important;
+    width: 15px !important;
+    height: 15px !important;
+    stroke: #ffffff !important;
     stroke-width: 2.5 !important;
   }
 
   .floating-bottom-pill .pill-separator {
-    background: #cbd5e1 !important;
+    background: rgba(255, 255, 255, 0.25) !important;
   }
 
   /* Modals: Mobile Optimized */
@@ -488,17 +496,23 @@ html, body {
 
   /* Floating In-Place Mini-Toolbar */
   .floating-mini-toolbar {
+    position: fixed !important;
     max-width: calc(100vw - 16px) !important;
     overflow: visible !important;
     height: auto !important;
     min-height: 36px !important;
     padding: 3px 6px !important;
     gap: 3px !important;
-    z-index: 1050 !important;
+    z-index: 2100 !important;
+    box-sizing: border-box !important;
+  }
+
+  .floating-mini-toolbar .drag-handle {
+    display: none !important;
   }
 
   .floating-mini-toolbar .mini-select {
-    max-width: 80px !important;
+    max-width: 78px !important;
     font-size: 11px !important;
     padding: 0 2px !important;
   }
@@ -517,17 +531,18 @@ html, body {
 
   /* Style Popover Dropdown (B/I/U) */
   #mt-style-popover {
-    z-index: 1150 !important;
+    z-index: 2200 !important;
     background: #ffffff !important;
     box-shadow: 0 4px 18px rgba(0, 0, 0, 0.22) !important;
   }
 
   /* Mobile Search Bar */
   .find-replace-floating {
-    top: 56px !important;
+    top: 58px !important;
     left: 8px !important;
     right: 8px !important;
     width: auto !important;
+    z-index: 2500 !important;
     justify-content: space-between !important;
   }
 
@@ -615,29 +630,37 @@ html, body {
 
   /* Bottom Pill: Compact Floating Bar Elevated Above Docked Toolbar */
   .floating-bottom-pill {
-    bottom: 72px !important;
-    padding: 3px 10px !important;
+    bottom: 74px !important;
+    padding: 4px 12px !important;
     gap: 6px !important;
     font-size: 12px !important;
-    background: #ffffff !important;
-    color: #0f172a !important;
+    background: #1e293b !important;
+    color: #ffffff !important;
   }
 
-  .floating-bottom-pill span {
-    color: #0f172a !important;
+  .floating-bottom-pill span,
+  .floating-bottom-pill #page-num-display,
+  .floating-bottom-pill #total-pages-label,
+  .floating-bottom-pill #zoom-percentage-label {
+    color: #ffffff !important;
     font-weight: 700 !important;
+    opacity: 1 !important;
+    visibility: visible !important;
   }
 
   .floating-bottom-pill button {
-    width: 34px !important;
-    height: 34px !important;
-    background: #f1f5f9 !important;
-    color: #1e293b !important;
-    border: 1px solid #cbd5e1 !important;
+    width: 30px !important;
+    height: 30px !important;
+    background: rgba(255, 255, 255, 0.15) !important;
+    color: #ffffff !important;
+    border: 1px solid rgba(255, 255, 255, 0.25) !important;
   }
 
   .floating-bottom-pill button svg {
-    width: 16px !important;
+    width: 14px !important;
+    height: 14px !important;
+    stroke: #ffffff !important;
+  }
     height: 16px !important;
     stroke: #1e293b !important;
   }

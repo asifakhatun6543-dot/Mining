@@ -333,7 +333,8 @@ export class ToolbarManager {
   }
 
   insertSignatureOnPage(pageIndex, dataUrl) {
-    const pDim = State.pageDimensions[pageIndex] || { width: 612, height: 792 };
+    const targetPage = (pageIndex !== undefined && pageIndex >= 0) ? pageIndex : (State.currentPage || 0);
+    const pDim = State.pageDimensions[targetPage] || { width: 612, height: 792 };
     const w = 180;
     const h = 60;
     const x0 = (pDim.width - w) / 2;
@@ -342,7 +343,7 @@ export class ToolbarManager {
     const annot = {
       id: `sig_${Date.now()}`,
       type: "signature",
-      page_number: pageIndex,
+      page_number: targetPage,
       rect: [x0, y0, x0 + w, y0 + h],
       properties: { image_data: dataUrl }
     };
@@ -353,15 +354,21 @@ export class ToolbarManager {
       item: annot,
       undo: () => {
         State.pendingAnnotations = State.pendingAnnotations.filter(a => a.id !== annot.id);
-        this.renderAnnotationsOnPage(pageIndex);
+        this.renderAnnotationsOnPage(targetPage);
       },
       redo: () => {
         State.pendingAnnotations.push(annot);
-        this.renderAnnotationsOnPage(pageIndex);
+        this.renderAnnotationsOnPage(targetPage);
       }
     });
 
-    this.renderAnnotationsOnPage(pageIndex);
+    this.renderAnnotationsOnPage(targetPage);
+
+    // Ensure target page is centered in viewport so user immediately sees their placed signature
+    const pageContainer = document.getElementById(`page-container-${targetPage}`);
+    if (pageContainer) {
+      pageContainer.scrollIntoView({ behavior: "smooth", block: "center" });
+    }
   }
 
   insertImageOnPage(pageIndex, dataUrl) {
@@ -429,11 +436,35 @@ export class ToolbarManager {
 
     if (!interactiveTools.includes(this.currentTool)) return;
 
-    // Don't intercept if clicking an existing text span, editor box, or mini toolbar
-    if (e.target.closest(".text-span-highlight") || 
-        e.target.closest(".inplace-text-box") || 
+    // If clicking an existing text span with Erase (whiteout), Redact or Highlight tool, immediately apply to span
+    const hitSpan = e.target.closest(".text-span-highlight");
+    if (hitSpan && (this.currentTool === "whiteout" || this.currentTool === "redact" || this.currentTool === "highlight")) {
+      e.stopPropagation();
+      e.preventDefault();
+      const pno = parseInt(hitSpan.dataset.page || "0");
+      const spanScale = State.zoomScale || 1.0;
+      const left = parseFloat(hitSpan.style.left) / spanScale;
+      const top = parseFloat(hitSpan.style.top) / spanScale;
+      const width = parseFloat(hitSpan.style.width) / spanScale;
+      const height = parseFloat(hitSpan.style.height) / spanScale;
+      const annot = {
+        id: `${this.currentTool}_${Date.now()}`,
+        type: this.currentTool,
+        page_number: pno,
+        rect: [left, top, left + width, top + height],
+        properties: this.currentTool === "whiteout"
+          ? { fill: [1, 1, 1], color: [1, 1, 1] }
+          : (this.currentTool === "redact" ? { fill: [0, 0, 0], color: [0, 0, 0] } : { color: [1, 0.9, 0], opacity: 0.45 })
+      };
+      this._saveAnnotation(annot, pno);
+      return;
+    }
+
+    // Don't intercept if clicking an active editor box, mini toolbar, popover or editing text
+    if (e.target.closest(".inplace-text-box") || 
         e.target.closest(".floating-mini-toolbar") || 
-        e.target.closest("#mt-style-popover")) return;
+        e.target.closest("#mt-style-popover") ||
+        (hitSpan && (this.currentTool === "edit-text" || this.currentTool === "select"))) return;
 
     const pageContainer = e.target.closest(".pdf-page-container");
     if (!pageContainer) return;
@@ -672,6 +703,20 @@ export class ToolbarManager {
             id: `red_${Date.now()}`,
             type: "redact",
             page_number: pageIndex,
+            rect: [x0, y0, x1, y1],
+            properties: { fill: [0, 0, 0], color: [0, 0, 0] }
+          };
+        }
+      } else if (d.tool === "whiteout") {
+        // Tap to whiteout sensible block (80x24 pt)
+        annot = {
+          id: `wo_${Date.now()}`,
+          type: "whiteout",
+          page_number: pageIndex,
+          rect: [d.startX - 40, d.startY - 12, d.startX + 40, d.startY + 12],
+          properties: { fill: [1, 1, 1], color: [1, 1, 1] }
+        };
+      }
             rect: [x0, y0, x1, y1],
             properties: { fill: [0, 0, 0], color: [0, 0, 0] }
           };

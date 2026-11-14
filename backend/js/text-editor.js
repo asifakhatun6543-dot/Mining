@@ -229,15 +229,15 @@ export class InlineTextEditor {
       <!-- Font Size Input -->
       <input type="number" class="mini-size-input" id="mt-font-size" value="12" min="4" max="144" step="0.5" title="Font Size (pt)" style="width: 38px; height: 26px; font-size: 11.5px; text-align: center; padding: 0 2px;">
 
-      <!-- Style Dropdown (B / I / U inside a dropdown as requested) -->
+      <!-- Style Dropdown (B with dropdown arrow, opens B / I / U popover) -->
       <div style="position: relative;" id="mt-style-dropdown-wrap">
-        <button type="button" class="mini-btn" id="mt-style-btn" title="Text Style (Bold, Italic, Underline)" style="padding: 0 6px; height: 26px; font-weight: 700; font-size: 11px; display: flex; align-items: center; gap: 3px;">
-          <span>B/I/U</span>
+        <button type="button" class="mini-btn" id="mt-style-btn" title="Style (B / I / U)" style="padding: 0 6px; height: 26px; font-weight: 700; font-size: 11px; display: flex; align-items: center; gap: 3px;">
+          <span>B</span>
           <svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="6 9 12 15 18 9"/></svg>
         </button>
 
         <!-- Style Popover Dropdown -->
-        <div id="mt-style-popover" style="display: none; position: absolute; top: calc(100% + 4px); left: 0; background: #ffffff; border: 1px solid #cbd5e1; border-radius: 6px; box-shadow: 0 4px 14px rgba(0,0,0,0.18); padding: 4px; gap: 4px; z-index: 120; flex-direction: row; align-items: center;">
+        <div id="mt-style-popover" style="display: none; position: absolute; top: calc(100% + 4px); left: 0; background: #ffffff; border: 1px solid #cbd5e1; border-radius: 6px; box-shadow: 0 4px 14px rgba(0,0,0,0.18); padding: 4px; gap: 4px; z-index: 1200; flex-direction: row; align-items: center;">
           <button type="button" class="mini-btn" id="mt-bold-btn" title="Bold" style="font-weight: 800; font-family: serif; width: 28px; height: 28px; border-radius: 4px;">B</button>
           <button type="button" class="mini-btn" id="mt-italic-btn" title="Italic" style="font-style: italic; font-family: serif; width: 28px; height: 28px; border-radius: 4px;">I</button>
           <button type="button" class="mini-btn" id="mt-underline-btn" title="Underline" style="text-decoration: underline; width: 28px; height: 28px; border-radius: 4px;">U</button>
@@ -308,21 +308,38 @@ export class InlineTextEditor {
     this.miniToolbarEl.querySelector("#mt-ok-btn")?.addEventListener("click", () => this.applyEdit());
     this.miniToolbarEl.querySelector("#mt-delete-btn")?.addEventListener("click", () => this.applyDelete());
 
-    // Style Dropdown (B / I / U inside popover dropdown)
+    // Style Dropdown (B with popover dropdown for B / I / U)
     const styleBtn = this.miniToolbarEl.querySelector("#mt-style-btn");
     const stylePopover = this.miniToolbarEl.querySelector("#mt-style-popover");
     if (styleBtn && stylePopover) {
-      styleBtn.addEventListener("click", (e) => {
-        e.stopPropagation();
+      const togglePopover = (e) => {
+        if (e) {
+          e.preventDefault();
+          e.stopPropagation();
+        }
         const isShown = stylePopover.style.display === "flex";
         stylePopover.style.display = isShown ? "none" : "flex";
-        this.moreMenuEl.style.display = "none";
+        if (this.moreMenuEl) this.moreMenuEl.style.display = "none";
+      };
+
+      styleBtn.addEventListener("click", togglePopover);
+      styleBtn.addEventListener("touchend", (e) => {
+        e.stopPropagation();
+        togglePopover(e);
       });
-      document.addEventListener("click", (e) => {
-        if (!stylePopover.contains(e.target) && e.target !== styleBtn) {
+
+      // Prevent clicks/taps inside the popover from dismissing it
+      stylePopover.addEventListener("click", (e) => e.stopPropagation());
+      stylePopover.addEventListener("touchend", (e) => e.stopPropagation());
+
+      // Dismiss popover when clicking/tapping outside
+      const outsideDismiss = (e) => {
+        if (!stylePopover.contains(e.target) && !styleBtn.contains(e.target)) {
           stylePopover.style.display = "none";
         }
-      });
+      };
+      document.addEventListener("click", outsideDismiss);
+      document.addEventListener("touchend", outsideDismiss);
     }
 
     const updateStyleBtnState = () => {
@@ -334,7 +351,8 @@ export class InlineTextEditor {
 
     // Bold / Italic / Underline inside dropdown
     const boldBtn = this.miniToolbarEl.querySelector("#mt-bold-btn");
-    boldBtn?.addEventListener("click", () => {
+    boldBtn?.addEventListener("click", (e) => {
+      e.stopPropagation();
       this.isBold = !this.isBold;
       boldBtn.classList.toggle("active", this.isBold);
       updateStyleBtnState();
@@ -342,7 +360,8 @@ export class InlineTextEditor {
     });
 
     const italicBtn = this.miniToolbarEl.querySelector("#mt-italic-btn");
-    italicBtn?.addEventListener("click", () => {
+    italicBtn?.addEventListener("click", (e) => {
+      e.stopPropagation();
       this.isItalic = !this.isItalic;
       italicBtn.classList.toggle("active", this.isItalic);
       updateStyleBtnState();
@@ -350,7 +369,8 @@ export class InlineTextEditor {
     });
 
     const underlineBtn = this.miniToolbarEl.querySelector("#mt-underline-btn");
-    underlineBtn?.addEventListener("click", () => {
+    underlineBtn?.addEventListener("click", (e) => {
+      e.stopPropagation();
       this.isUnderline = !this.isUnderline;
       underlineBtn.classList.toggle("active", this.isUnderline);
       updateStyleBtnState();
@@ -679,6 +699,10 @@ export class InlineTextEditor {
       this.populateDocumentFonts(docInfo.detected_fonts || []);
     });
 
+    State.subscribe("documentReset", () => {
+      this.hide();
+    });
+
     State.subscribe("pageRendered", ({ pageIndex }) => {
       this.reRenderPageEdits(pageIndex);
     });
@@ -891,29 +915,50 @@ export class InlineTextEditor {
       }
     });
 
-    window.addEventListener("scroll", () => this._positionMiniToolbar(box), { passive: true });
+    const onScrollReposition = () => {
+      if (this.activeBoxEl) this._positionMiniToolbar(this.activeBoxEl);
+    };
+    window.addEventListener("scroll", onScrollReposition, { passive: true });
+    document.getElementById("center-workspace")?.addEventListener("scroll", onScrollReposition, { passive: true });
   }
 
   _positionMiniToolbar(box) {
     if (!box || !this.miniToolbarEl) return;
+    this.miniToolbarEl.style.display = "flex";
+    this.miniToolbarEl.style.position = "fixed";
     const rect = box.getBoundingClientRect();
-    const toolbarWidth = Math.min(300, window.innerWidth - 16);
-    const toolbarHeight = 36;
+    const actualWidth = this.miniToolbarEl.offsetWidth || 310;
+    const actualHeight = this.miniToolbarEl.offsetHeight || 36;
+    const screenWidth = window.innerWidth;
 
-    let top = rect.top - toolbarHeight - 8;
-    let left = rect.left;
-
-    if (top < 54) {
+    const minTop = screenWidth <= 768 ? 58 : 54;
+    let top = rect.top - actualHeight - 8;
+    if (top < minTop) {
       top = rect.bottom + 8;
     }
-    if (left + toolbarWidth > window.innerWidth - 8) {
-      left = window.innerWidth - toolbarWidth - 8;
+    if (top + actualHeight > window.innerHeight - 8) {
+      top = Math.max(minTop, window.innerHeight - actualHeight - 8);
     }
-    left = Math.max(8, left);
+
+    // Horizontally center toolbar over text, clamped safely within screen borders
+    let left = rect.left + (rect.width - actualWidth) / 2;
+    const maxLeft = Math.max(8, screenWidth - actualWidth - 8);
+    left = Math.max(8, Math.min(left, maxLeft));
 
     this.miniToolbarEl.style.top = `${Math.round(top)}px`;
     this.miniToolbarEl.style.left = `${Math.round(left)}px`;
-    this.miniToolbarEl.style.display = "flex";
+
+    // Ensure style popover does not get clipped off screen bottom
+    const stylePopover = this.miniToolbarEl.querySelector("#mt-style-popover");
+    if (stylePopover) {
+      if (top + actualHeight + 52 > window.innerHeight) {
+        stylePopover.style.top = "auto";
+        stylePopover.style.bottom = "calc(100% + 4px)";
+      } else {
+        stylePopover.style.top = "calc(100% + 4px)";
+        stylePopover.style.bottom = "auto";
+      }
+    }
   }
 
   applyEdit() {
@@ -1164,27 +1209,35 @@ export class InlineTextEditor {
       origSpan._coverEl = cover;
       overlayLayer.appendChild(cover);
 
-      // Click handler for re-editing — always works regardless of tool
-      cover.addEventListener("click", (e) => {
+      // Re-editing handler with pointerup & click support and debouncing for mobile touch
+      let lastReEdit = 0;
+      const triggerReEdit = (e) => {
+        const now = Date.now();
+        if (now - lastReEdit < 250) return;
+        lastReEdit = now;
         e.stopPropagation();
         e.preventDefault();
-        if (State.activeTool === "edit-text" || State.activeTool === "select") {
+
+        if (State.activeTool === "redact") {
+          this.quickRedactSpan({ pageIndex, span: origSpan, element: cover }, false);
+        } else if (State.activeTool === "whiteout") {
+          this.quickRedactSpan({ pageIndex, span: origSpan, element: cover }, true);
+        } else {
+          State.setActiveTool("edit-text");
           this.openForSpan({
             pageIndex,
             span: origSpan,
             element: cover
           });
-        } else if (State.activeTool === "redact") {
-          this.quickRedactSpan({ pageIndex, span: origSpan, element: cover }, false);
-        } else if (State.activeTool === "whiteout") {
-          this.quickRedactSpan({ pageIndex, span: origSpan, element: cover }, true);
         }
-      });
+      };
 
-      // Prevent mousedown from propagating to avoid interference with canvas/overlay
-      cover.addEventListener("mousedown", (e) => {
-        e.stopPropagation();
-      });
+      cover.addEventListener("pointerup", triggerReEdit);
+      cover.addEventListener("click", triggerReEdit);
+
+      // Prevent pointerdown and mousedown from propagating to canvas tools
+      cover.addEventListener("pointerdown", (e) => e.stopPropagation());
+      cover.addEventListener("mousedown", (e) => e.stopPropagation());
     }
 
     cover.style.position = "absolute";

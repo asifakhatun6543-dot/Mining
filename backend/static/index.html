@@ -16,10 +16,10 @@
 
   <!-- CSS Stylesheets (with cache-busting) -->
   <link rel="stylesheet" href="./vendor/pdfjs/pdf_viewer.css">
-  <link rel="stylesheet" href="./css/styles.css?v=3.1">
-  <link rel="stylesheet" href="./css/editor.css?v=3.1">
-  <link rel="stylesheet" href="./css/portal.css?v=3.1">
-  <link rel="stylesheet" href="./css/responsive.css?v=3.1">
+  <link rel="stylesheet" href="./css/styles.css?v=3.2">
+  <link rel="stylesheet" href="./css/editor.css?v=3.2">
+  <link rel="stylesheet" href="./css/portal.css?v=3.2">
+  <link rel="stylesheet" href="./css/responsive.css?v=3.2">
 
   <!-- PDF.js & PDF-Lib Vendor Scripts -->
   <script src="./vendor/pdfjs/pdf.js"></script>
@@ -1139,43 +1139,42 @@
       <main class="center-workspace" id="center-workspace">
         <div class="pages-viewport" id="pages-viewport"></div>
       </main>
-
-      <!-- Floating Find & Search Bar -->
-      <div class="find-replace-floating" id="find-replace-drawer" style="display: none;">
-        <div class="find-input-wrap">
-          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <circle cx="11" cy="11" r="8"></circle>
-            <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
-          </svg>
-          <input type="text" id="find-search-input" placeholder="Find in document..." autocomplete="off" />
-          <span class="find-match-badge" id="find-match-badge">0 / 0</span>
-        </div>
-        <button id="find-prev-btn" class="find-btn" title="Previous match (Shift+Enter)">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="18 15 12 9 6 15"></polyline></svg>
-        </button>
-        <button id="find-next-btn" class="find-btn" title="Next match (Enter)">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"></polyline></svg>
-        </button>
-        <div class="find-divider"></div>
-        <button id="find-close-btn" class="find-btn find-close" title="Close search (Esc)">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
-        </button>
-      </div>
-
     </section>
 
-    <!-- Floating Bottom Navigation Pill (Zoom & Page Stepper) -->
+    <!-- Floating Find & Search Bar (Positioned outside app-body for unobstructed rendering) -->
+    <div class="find-replace-floating" id="find-replace-drawer" style="display: none;">
+      <div class="find-input-wrap">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <circle cx="11" cy="11" r="8"></circle>
+          <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+        </svg>
+        <input type="text" id="find-search-input" placeholder="Find in document..." autocomplete="off" />
+        <span class="find-match-badge" id="find-match-badge">0 / 0</span>
+      </div>
+      <button id="find-prev-btn" class="find-btn" title="Previous match (Shift+Enter)">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="18 15 12 9 6 15"></polyline></svg>
+      </button>
+      <button id="find-next-btn" class="find-btn" title="Next match (Enter)">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"></polyline></svg>
+      </button>
+      <div class="find-divider"></div>
+      <button id="find-close-btn" class="find-btn find-close" title="Close search (Esc)">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+      </button>
+    </div>
+
+    <!-- Floating Bottom Navigation Pill (High-Contrast White Text/Icons on Dark Slate) -->
     <div class="floating-bottom-pill">
       <button id="btn-prev-page" title="Previous Page">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#ffffff" stroke-width="2.5">
           <polyline points="18 15 12 9 6 15" />
         </svg>
       </button>
-      <span style="font-weight: 600;">
-        <span id="page-num-display">1</span> / <span id="total-pages-label">1</span>
+      <span style="font-weight: 700; color: #ffffff !important; display: inline-flex; align-items: center; gap: 3px;">
+        <span id="page-num-display" style="color: #ffffff !important; font-weight: 700;">1</span> / <span id="total-pages-label" style="color: #ffffff !important; font-weight: 700;">1</span>
       </span>
       <button id="btn-next-page" title="Next Page">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#ffffff" stroke-width="2.5">
           <polyline points="6 9 12 15 18 9" />
         </svg>
       </button>
@@ -1183,13 +1182,13 @@
       <div class="pill-separator"></div>
 
       <button id="btn-zoom-out" title="Zoom Out (-)">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#ffffff" stroke-width="2.5">
           <line x1="5" y1="12" x2="19" y2="12" />
         </svg>
       </button>
-      <span id="zoom-percentage-label" style="font-weight: 600; min-width: 44px; text-align: center;">100%</span>
+      <span id="zoom-percentage-label" style="font-weight: 700; color: #ffffff !important; min-width: 44px; text-align: center; display: inline-block;">100%</span>
       <button id="btn-zoom-in" title="Zoom In (+)">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#ffffff" stroke-width="2.5">
           <line x1="12" y1="5" x2="12" y2="19" />
           <line x1="5" y1="12" x2="19" y2="12" />
         </svg>
@@ -1198,8 +1197,8 @@
       <div class="pill-separator"></div>
 
       <button id="btn-fit-page" title="Fit to Screen"
-        style="padding: 2px 10px; width: auto; border-radius: 16px; font-size: 12px; font-weight: 600; gap: 4px;">
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        style="padding: 2px 10px; width: auto !important; border-radius: 16px; font-size: 12px; font-weight: 700; gap: 4px; color: #ffffff !important;">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#ffffff" stroke-width="2">
           <rect x="3" y="3" width="18" height="18" rx="2" />
           <polyline points="9 9 9 15 15 15" />
         </svg>
@@ -1274,8 +1273,8 @@
   <div class="toast-container" id="toast-container"></div>
 
   <!-- Main ES Module Bootstrap (with cache-busting) -->
-  <script type="module" src="./js/portal.js?v=3.1"></script>
-  <script type="module" src="./js/app.js?v=3.1"></script>
+  <script type="module" src="./js/portal.js?v=3.2"></script>
+  <script type="module" src="./js/app.js?v=3.2"></script>
 
 </body>
 

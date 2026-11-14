@@ -146,6 +146,45 @@ class OpenPDFStudioApp {
       });
     }
 
+    // 3-Horizontal-Line Hamburger Menu & Dropdown
+    const menuBtn = document.getElementById("header-menu-btn");
+    const dropdownMenu = document.getElementById("header-dropdown-menu");
+
+    menuBtn?.addEventListener("click", (e) => {
+      e.stopPropagation();
+      if (!dropdownMenu) return;
+      const isOpen = dropdownMenu.style.display === "flex";
+      dropdownMenu.style.display = isOpen ? "none" : "flex";
+      menuBtn.setAttribute("aria-expanded", !isOpen);
+    });
+
+    document.addEventListener("click", (e) => {
+      if (dropdownMenu && !dropdownMenu.contains(e.target) && e.target !== menuBtn && !menuBtn?.contains(e.target)) {
+        dropdownMenu.style.display = "none";
+        menuBtn?.setAttribute("aria-expanded", "false");
+      }
+    });
+
+    document.getElementById("menu-opt-download")?.addEventListener("click", () => {
+      if (dropdownMenu) dropdownMenu.style.display = "none";
+      this.exportClient.exportCurrentDocument();
+    });
+
+    document.getElementById("menu-opt-save")?.addEventListener("click", () => {
+      if (dropdownMenu) dropdownMenu.style.display = "none";
+      document.getElementById("header-save-btn")?.click();
+    });
+
+    document.getElementById("menu-opt-print")?.addEventListener("click", () => {
+      if (dropdownMenu) dropdownMenu.style.display = "none";
+      document.getElementById("header-print-btn")?.click();
+    });
+
+    document.getElementById("menu-opt-open")?.addEventListener("click", () => {
+      if (dropdownMenu) dropdownMenu.style.display = "none";
+      document.getElementById("header-open-btn")?.click();
+    });
+
     // Open file button
     document.getElementById("header-open-btn")?.addEventListener("click", () => {
       const picker = document.getElementById("pdf-file-picker");
@@ -158,27 +197,55 @@ class OpenPDFStudioApp {
     document.getElementById("pdf-file-picker")?.addEventListener("change", (e) => {
       const file = e.target.files && e.target.files[0];
       if (file) this.loadPDFFile(file);
+      e.target.value = ""; // Always reset value so selecting same file triggers change
     });
   }
 
   _bindPageActions() {
-    // Rotate Page
+    // Rotate Page with immediate visual feedback
     document.getElementById("sidebar-rotate-btn")?.addEventListener("click", () => {
-      const op = { type: "rotate", page_number: State.currentPage, rotation_angle: 90 };
+      const pno = State.currentPage;
+      const op = { type: "rotate", page_number: pno, rotation_angle: 90 };
       State.addPageOperation(op);
-      this.showToast("info", `Rotated Page ${State.currentPage + 1} by 90°`);
+
+      // Visual feedback: apply CSS rotation to page container and thumbnail
+      const pageEl = document.getElementById(`page-container-${pno}`);
+      const thumbEl = document.getElementById(`thumb-page-${pno}`);
+      const currentRot = (parseInt(pageEl?.dataset.rotation || "0") + 90) % 360;
+      if (pageEl) {
+        pageEl.dataset.rotation = currentRot;
+        const canvas = pageEl.querySelector(".pdf-canvas-layer");
+        if (canvas) canvas.style.transform = `rotate(${currentRot}deg)`;
+      }
+      if (thumbEl) {
+        thumbEl.dataset.rotation = currentRot;
+        const thumbCanvas = thumbEl.querySelector("canvas");
+        if (thumbCanvas) thumbCanvas.style.transform = `rotate(${currentRot}deg)`;
+      }
+      this.showToast("info", `Rotated Page ${pno + 1} by 90°`);
     });
 
-    // Delete Page
+    // Delete Page with immediate visual feedback
     document.getElementById("sidebar-delete-btn")?.addEventListener("click", () => {
       if (State.pageCount <= 1) {
         this.showToast("warning", "Cannot delete the only page in the document.");
         return;
       }
-      if (confirm(`Delete Page ${State.currentPage + 1}?`)) {
-        const op = { type: "delete", page_number: State.currentPage };
+      const pno = State.currentPage;
+      if (confirm(`Delete Page ${pno + 1}?`)) {
+        const op = { type: "delete", page_number: pno };
         State.addPageOperation(op);
-        this.showToast("info", `Page ${State.currentPage + 1} marked for deletion on export.`);
+        const pageEl = document.getElementById(`page-container-${pno}`);
+        const thumbEl = document.getElementById(`thumb-page-${pno}`);
+        if (pageEl) {
+          pageEl.style.opacity = "0.35";
+          pageEl.style.filter = "grayscale(90%)";
+        }
+        if (thumbEl) {
+          thumbEl.style.opacity = "0.35";
+          thumbEl.style.border = "2px dashed #ef4444";
+        }
+        this.showToast("info", `Page ${pno + 1} marked for deletion on export.`);
       }
     });
 
@@ -189,12 +256,15 @@ class OpenPDFStudioApp {
       this.showToast("info", `Page ${State.currentPage + 1} duplicated.`);
     });
 
-    // Insert Blank Page
-    document.getElementById("sidebar-insert-btn")?.addEventListener("click", () => {
+    // Insert Blank Page (Support both sidebar-insert-btn and sidebar-add-btn)
+    const handleInsert = () => {
       const op = { type: "insert_blank", target_page: State.currentPage + 1 };
       State.addPageOperation(op);
       this.showToast("info", `Blank page inserted after Page ${State.currentPage + 1}.`);
-    });
+    };
+    document.getElementById("sidebar-insert-btn")?.addEventListener("click", handleInsert);
+    document.getElementById("sidebar-add-btn")?.addEventListener("click", handleInsert);
+
     // Sidebar Toggle with smooth mobile slide-in drawer & backdrop
     const sidebar = document.getElementById("left-sidebar");
     const backdrop = document.getElementById("sidebar-backdrop");
@@ -224,21 +294,24 @@ class OpenPDFStudioApp {
 
     const toggleSidebar = () => {
       if (!sidebar) return;
-      const isOpen = window.innerWidth <= 768
-        ? sidebar.classList.contains("mobile-open")
-        : sidebar.style.display !== "none";
-      if (isOpen) {
-        closeSidebarMobile();
-      } else {
-        sidebar.style.display = "flex";
-        // Force reflow for smooth transition
-        void sidebar.offsetWidth;
-        sidebar.classList.add("mobile-open");
-        if (backdrop && window.innerWidth <= 768) {
-          backdrop.style.display = "block";
-          void backdrop.offsetWidth;
-          backdrop.classList.add("active");
+      const isMobile = window.innerWidth <= 768;
+      if (isMobile) {
+        const isOpen = sidebar.classList.contains("mobile-open");
+        if (isOpen) {
+          closeSidebarMobile();
+        } else {
+          sidebar.style.display = "flex";
+          void sidebar.offsetWidth;
+          sidebar.classList.add("mobile-open");
+          if (backdrop) {
+            backdrop.style.display = "block";
+            void backdrop.offsetWidth;
+            backdrop.classList.add("active");
+          }
         }
+      } else {
+        const isVisible = sidebar.style.display !== "none" && getComputedStyle(sidebar).display !== "none";
+        sidebar.style.display = isVisible ? "none" : "flex";
       }
     };
 
@@ -259,6 +332,7 @@ class OpenPDFStudioApp {
         closeSidebarMobile();
       }
     });
+
     document.getElementById("tool-find-btn")?.addEventListener("click", () => {
       this._toggleFindDrawer();
     });
@@ -294,7 +368,12 @@ class OpenPDFStudioApp {
     });
 
     document.getElementById("btn-fit-page")?.addEventListener("click", () => {
-      State.setZoom(1.0);
+      const firstPage = State.pageDimensions?.[0];
+      const pageW = firstPage?.width || 612;
+      const ws = document.getElementById("center-workspace");
+      const availableW = (ws ? ws.clientWidth : window.innerWidth) - 32;
+      const fitScale = Math.min(2.0, Math.max(0.35, Math.round((availableW / pageW) * 100) / 100));
+      State.setZoom(fitScale);
       this.renderer.updateZoom();
       this._updateZoomUI();
     });
@@ -303,6 +382,34 @@ class OpenPDFStudioApp {
       const pageDisplay = document.getElementById("page-num-display");
       if (pageDisplay) pageDisplay.textContent = pno + 1;
     });
+
+    // Real-time dynamic page stepper update on scrolling workspace
+    const workspace = document.getElementById("center-workspace");
+    if (workspace) {
+      let scrollTimer = null;
+      workspace.addEventListener("scroll", () => {
+        if (scrollTimer) return;
+        scrollTimer = setTimeout(() => {
+          scrollTimer = null;
+          const wsRect = workspace.getBoundingClientRect();
+          const centerY = wsRect.top + wsRect.height / 2;
+          for (let pno = 0; pno < State.pageCount; pno++) {
+            const pageEl = document.getElementById(`page-container-${pno}`);
+            if (pageEl) {
+              const pRect = pageEl.getBoundingClientRect();
+              if (pRect.top <= centerY && pRect.bottom >= centerY) {
+                if (State.currentPage !== pno) {
+                  State.currentPage = pno;
+                  const pageDisplay = document.getElementById("page-num-display");
+                  if (pageDisplay) pageDisplay.textContent = pno + 1;
+                }
+                break;
+              }
+            }
+          }
+        }, 80);
+      }, { passive: true });
+    }
   }
 
   _updateZoomUI() {
@@ -469,10 +576,26 @@ class OpenPDFStudioApp {
   // Ultra-Fast Client-Side PDF Text & Typography Extractor
   // Powered by PDF.js (Zero backend dependency / 100% offline & fast)
   // ------------------------------------------------------------------------
-  async _extractClientSidePages(pdfJsDoc, filename) {
+  _extractRawPDFFonts(arrayBuffer) {
+    if (!arrayBuffer) return [];
+    try {
+      const text = new TextDecoder("latin1").decode(new Uint8Array(arrayBuffer));
+      const fontMatches = [...text.matchAll(/\/BaseFont\s*\/([A-Za-z0-9_\-+]+)/g)].map(m => m[1]);
+      const cleanFonts = fontMatches.map(f => f.replace(/^[A-Z]{6}\+/, ""));
+      return [...new Set(cleanFonts)];
+    } catch (e) {
+      return [];
+    }
+  }
+
+  async _extractClientSidePages(pdfJsDoc, filename, arrayBuffer) {
     const pages = [];
     const detectedFonts = new Set();
     const pageDimensions = [];
+
+    const rawDocFonts = this._extractRawPDFFonts(arrayBuffer);
+    const docHasSerif = rawDocFonts.some(f => /times|roman|serif|georgia|cambria|garamond|palatino|century|tinos/i.test(f));
+    const docHasMono = rawDocFonts.some(f => /courier|mono|consolas|fixed/i.test(f));
 
     for (let pageNum = 1; pageNum <= pdfJsDoc.numPages; pageNum++) {
       const page = await pdfJsDoc.getPage(pageNum);
@@ -480,6 +603,11 @@ class OpenPDFStudioApp {
       const pageW = viewport.width;
       const pageH = viewport.height;
       pageDimensions.push({ width: pageW, height: pageH });
+
+      // Pre-populate commonObjs with font objects
+      try {
+        await page.getOperatorList();
+      } catch (e) {}
 
       const textContent = await page.getTextContent();
       const rawSpans = [];
@@ -499,31 +627,51 @@ class OpenPDFStudioApp {
         const x0 = tx;
         const x1 = tx + item.width;
 
-        // Detect typography
+        // Retrieve real font object from PDF.js commonObjs if available
+        let realFontName = "";
+        let isFontBold = false;
+        let isFontItalic = false;
+
+        if (page.commonObjs && page.commonObjs.has(item.fontName)) {
+          const fontObj = page.commonObjs.get(item.fontName);
+          realFontName = fontObj.name || fontObj.loadedName || "";
+          isFontBold = !!fontObj.bold || !!fontObj.black;
+          isFontItalic = !!fontObj.italic;
+        }
+
+        const cleanReal = realFontName.replace(/^[A-Z]{6}\+/, "");
         const style = textContent.styles?.[item.fontName];
         const fontFam = (style?.fontFamily || "").toLowerCase();
-        const rawFontName = (item.fontName || "").toLowerCase();
+        const combined = `${cleanReal} ${item.fontName} ${fontFam}`.toLowerCase();
 
         let detectedFamily = "Helvetica";
         let flags = 0;
 
-        if (fontFam.includes("serif") || /times|roman|georgia|cambria|serif|tinos/i.test(rawFontName)) {
-          detectedFamily = "Times-Roman";
+        if (/times|roman|georgia|cambria|serif|garamond|palatino|century|tinos/i.test(combined) || (docHasSerif && !/sans|arial|helvetica|calibri/i.test(combined))) {
+          detectedFamily = "times-roman";
           flags |= 4; // Serif flag
           detectedFonts.add("Times New Roman / Serif");
-        } else if (fontFam.includes("mono") || /courier|mono|fixed|consolas/i.test(rawFontName)) {
-          detectedFamily = "Courier";
+        } else if (/courier|mono|consolas|fixed/i.test(combined) || (docHasMono && !/sans|arial|helvetica/i.test(combined))) {
+          detectedFamily = "courier";
           flags |= 1; // Monospace flag
           detectedFonts.add("Courier New / Monospace");
+        } else if (/calibri|carlito/i.test(combined)) {
+          detectedFamily = "calibri";
+          flags |= 0;
+          detectedFonts.add("Calibri");
+        } else if (/arial/i.test(combined)) {
+          detectedFamily = "arial";
+          flags |= 0;
+          detectedFonts.add("Arial");
         } else {
-          detectedFamily = "Helvetica";
+          detectedFamily = "helvetica";
           detectedFonts.add("Helvetica / Arial (Standard)");
         }
 
-        if (/bold|black|heavy|semibold/i.test(rawFontName)) {
+        if (isFontBold || /bold|black|heavy|semibold/i.test(combined)) {
           flags |= 16; // Bold flag
         }
-        if (/italic|oblique/i.test(rawFontName)) {
+        if (isFontItalic || /italic|oblique/i.test(combined)) {
           flags |= 2; // Italic flag
         }
 
@@ -655,7 +803,7 @@ class OpenPDFStudioApp {
       this._updateLoadingProgress("Analyzing typography and detecting original fonts...", 68);
 
       // Step 4: Extract text spans & layout client-side immediately
-      const clientAnalysis = await this._extractClientSidePages(pdfJsDoc, file.name);
+      const clientAnalysis = await this._extractClientSidePages(pdfJsDoc, file.name, arrayBuffer);
       const docInfo = clientAnalysis.docInfo;
       const pages = clientAnalysis.pages;
 
@@ -781,41 +929,159 @@ class OpenPDFStudioApp {
     const drawer = document.getElementById("find-replace-drawer");
     const findInput = document.getElementById("find-search-input");
     const matchBadge = document.getElementById("find-match-badge");
+    const prevBtn = document.getElementById("find-prev-btn");
+    const nextBtn = document.getElementById("find-next-btn");
+    const closeBtn = document.getElementById("find-close-btn");
 
-    State.subscribe("toggleFind", () => this._toggleFindDrawer());
+    let matches = [];
+    let currentMatchIndex = -1;
 
-    document.getElementById("find-close-btn")?.addEventListener("click", () => {
-      if (drawer) drawer.style.display = "none";
-    });
+    const clearHighlights = () => {
+      document.querySelectorAll(".dynamic-search-match").forEach(el => el.remove());
+      document.querySelectorAll(".text-span-highlight.search-match, .text-span-highlight.search-active-match").forEach(el => {
+        el.classList.remove("search-match", "search-active-match");
+        if (!el.classList.contains("selected") && !el.classList.contains("edited-text-overlay")) {
+          const isTextTool = State.activeTool === "edit-text" || State.activeTool === "select";
+          el.style.display = isTextTool ? "block" : "none";
+        }
+      });
+    };
 
-    findInput?.addEventListener("input", (e) => {
-      const query = e.target.value.trim().toLowerCase();
-      if (!query) {
-        if (matchBadge) matchBadge.textContent = "0 matches";
+    const updateMatchUI = () => {
+      if (!matchBadge) return;
+      if (matches.length === 0) {
+        matchBadge.textContent = "0 / 0";
+      } else {
+        matchBadge.textContent = `${currentMatchIndex + 1} / ${matches.length}`;
+      }
+    };
+
+    const jumpToMatch = (index) => {
+      if (matches.length === 0) return;
+      if (index < 0) index = matches.length - 1;
+      if (index >= matches.length) index = 0;
+      currentMatchIndex = index;
+      updateMatchUI();
+
+      const match = matches[currentMatchIndex];
+      if (!match) return;
+
+      document.querySelectorAll(".text-span-highlight.search-active-match").forEach(el => {
+        el.classList.remove("search-active-match");
+        el.classList.add("search-match");
+      });
+
+      // Scroll document to match page and update page stepper
+      this.renderer.scrollToPage(match.pageIndex);
+      if (State.currentPage !== match.pageIndex) {
+        State.setCurrentPage(match.pageIndex);
+        const pageDisplay = document.getElementById("page-num-display");
+        if (pageDisplay) pageDisplay.textContent = match.pageIndex + 1;
+      }
+
+      if (match.element) {
+        match.element.classList.remove("search-match");
+        match.element.classList.add("search-active-match");
+        match.element.scrollIntoView({ behavior: "smooth", block: "center", inline: "center" });
+      }
+    };
+
+    const performSearch = () => {
+      clearHighlights();
+      matches = [];
+      currentMatchIndex = -1;
+
+      const query = findInput ? findInput.value.trim().toLowerCase() : "";
+      if (!query || !this.selectionManager || !this.selectionManager.extractedPages) {
+        updateMatchUI();
         return;
       }
 
-      // Count occurrences in extracted pages
-      let count = 0;
-      this.selectionManager.extractedPages.forEach(p => {
-        p.blocks.forEach(b => {
-          if (b.text && b.text.toLowerCase().includes(query)) {
-            count++;
-          }
+      this.selectionManager.extractedPages.forEach((analysis, pageIndex) => {
+        const overlayLayer = document.getElementById(`page-overlay-${pageIndex}`);
+        if (!analysis || !analysis.blocks) return;
+
+        analysis.blocks.forEach(block => {
+          if (block.type !== 0 || !block.lines) return;
+          block.lines.forEach(line => {
+            if (!line.spans) return;
+            line.spans.forEach(span => {
+              const text = (span.currentText || span.text || "").toLowerCase();
+              if (text.includes(query)) {
+                let el = (span._origHighlightEl && span._origHighlightEl.isConnected)
+                  ? span._origHighlightEl
+                  : (span._coverEl ? span._coverEl : null);
+
+                if (!el && overlayLayer) {
+                  const scale = State.zoomScale || 1.0;
+                  const [x0, y0, x1, y1] = span.bbox;
+                  el = document.createElement("div");
+                  el.className = "text-span-highlight search-match dynamic-search-match";
+                  el.style.position = "absolute";
+                  el.style.left = `${x0 * scale}px`;
+                  el.style.top = `${y0 * scale}px`;
+                  el.style.width = `${Math.max(8, (x1 - x0) * scale)}px`;
+                  el.style.height = `${Math.max(10, (y1 - y0) * scale)}px`;
+                  el.style.display = "block";
+                  el.title = `Found: "${span.text}"`;
+                  overlayLayer.appendChild(el);
+                } else if (el) {
+                  el.classList.add("search-match");
+                  el.style.display = "block";
+                }
+                matches.push({ pageIndex, span, element: el });
+              }
+            });
+          });
         });
       });
 
-      if (matchBadge) matchBadge.textContent = `${count} found`;
+      if (matches.length > 0) {
+        jumpToMatch(0);
+      } else {
+        updateMatchUI();
+      }
+    };
+
+    findInput?.addEventListener("input", performSearch);
+
+    findInput?.addEventListener("keydown", (e) => {
+      if (e.key === "Enter") {
+        e.preventDefault();
+        if (e.shiftKey) {
+          jumpToMatch(currentMatchIndex - 1);
+        } else {
+          jumpToMatch(currentMatchIndex + 1);
+        }
+      } else if (e.key === "Escape") {
+        this._toggleFindDrawer(false);
+      }
     });
+
+    prevBtn?.addEventListener("click", () => jumpToMatch(currentMatchIndex - 1));
+    nextBtn?.addEventListener("click", () => jumpToMatch(currentMatchIndex + 1));
+    closeBtn?.addEventListener("click", () => this._toggleFindDrawer(false));
   }
 
-  _toggleFindDrawer() {
+  _toggleFindDrawer(force) {
     const drawer = document.getElementById("find-replace-drawer");
     if (!drawer) return;
     const isVisible = drawer.style.display === "flex";
-    drawer.style.display = isVisible ? "none" : "flex";
-    if (!isVisible) {
-      document.getElementById("find-search-input")?.focus();
+    const nextState = force !== undefined ? force : !isVisible;
+    drawer.style.display = nextState ? "flex" : "none";
+    if (nextState) {
+      const input = document.getElementById("find-search-input");
+      input?.focus();
+      input?.select();
+    } else {
+      document.querySelectorAll(".dynamic-search-match").forEach(el => el.remove());
+      document.querySelectorAll(".text-span-highlight.search-match, .text-span-highlight.search-active-match").forEach(el => {
+        el.classList.remove("search-match", "search-active-match");
+        if (!el.classList.contains("selected") && !el.classList.contains("edited-text-overlay")) {
+          const isTextTool = State.activeTool === "edit-text" || State.activeTool === "select";
+          el.style.display = isTextTool ? "block" : "none";
+        }
+      });
     }
   }
 

@@ -477,7 +477,7 @@
    display: block;
  }
 
- /* PDF.js Text Selection Layer */
+ /* PDF.js Text Selection Layer - pointer-events: none allows drawing, whiteout, stamping and annotations to work seamlessly */
  .textLayer {
    position: absolute;
    left: 0;
@@ -489,6 +489,7 @@
    line-height: 1.0;
    z-index: 2;
    user-select: text;
+   pointer-events: none !important;
  }
 
  .textLayer span {
@@ -497,6 +498,7 @@
    white-space: pre;
    cursor: text;
    transform-origin: 0% 0%;
+   pointer-events: none !important;
  }
 
  .textLayer ::selection {
