@@ -3,6 +3,8 @@
  * Powered by PDF-Lib, PDF.js, and HTML5 Canvas
  */
 
+import { AdvancedToolsManager } from "./portal-advanced-tools.js";
+
 export class PortalManager {
   constructor() {
     this.landingView = document.getElementById("landing-view");
@@ -40,6 +42,7 @@ export class PortalManager {
     this._bindSplitPdfModal();
     this._bindRotatePdfModal();
     this._bindPdfToJpgModal();
+    this.advancedTools = new AdvancedToolsManager(this);
   }
 
   // ------------------------------------------------------------------------
@@ -212,10 +215,21 @@ export class PortalManager {
     bindCard("card-tool-merge-pdf", () => this.openMergeModal());
     bindCard("card-tool-split-pdf", () => this.openSplitModal());
     bindCard("card-tool-compress-pdf", () => this.openCompressModal());
+    bindCard("card-tool-pdf-to-word", () => this.openPdfToWordModal());
+    bindCard("card-tool-pdf-to-excel", () => this.openPdfToExcelModal());
+    bindCard("card-tool-pdf-to-pptx", () => this.openPdfToPptxModal());
+    bindCard("card-tool-word-to-pdf", () => this.openWordToPdfModal());
+    bindCard("card-tool-excel-to-pdf", () => this.openExcelToPdfModal());
+    bindCard("card-tool-pptx-to-pdf", () => this.openPptxToPdfModal());
     bindCard("card-tool-jpg-to-pdf", () => this.openJpgToPdfModal());
     bindCard("card-tool-pdf-to-jpg", () => this.openPdfToJpgModal());
     bindCard("card-tool-image-resize", () => this.openImageResizeModal());
     bindCard("card-tool-rotate-pdf", () => this.openRotateModal());
+    bindCard("card-tool-ai-summarizer", () => this.openAiSummarizerModal());
+    bindCard("card-tool-translator", () => this.openTranslatorModal());
+    bindCard("card-tool-html-to-pdf", () => this.openHtmlToPdfModal());
+    bindCard("card-tool-unlock-pdf", () => this.openUnlockPdfModal());
+    bindCard("card-tool-pdf-scanner", () => this.openPdfScannerModal());
 
     bindCard("card-tool-sign-pdf", () => {
       this.switchView("editor");
@@ -1059,10 +1073,100 @@ export class PortalManager {
   }
 
   // ------------------------------------------------------------------------
-  // TOOL 6: Compress PDF (Client-side optimization)
+  // TOOL 6: Compress PDF (Custom Target Size in KB / MB / GB)
   // ------------------------------------------------------------------------
   openCompressModal() {
-    this.openSplitModal(); // Or opens compress
+    const modal = document.getElementById("modal-compress-pdf");
+    if (!modal) return;
+    const picker = document.getElementById("compress-pdf-picker");
+    if (picker) picker.value = "";
+    modal.style.display = "flex";
+  }
+
+  openPdfToWordModal() {
+    const modal = document.getElementById("modal-pdf-to-word");
+    if (!modal) return;
+    const picker = document.getElementById("pdf-to-word-picker");
+    if (picker) picker.value = "";
+    modal.style.display = "flex";
+  }
+
+  openPdfToExcelModal() {
+    const modal = document.getElementById("modal-pdf-to-excel");
+    if (!modal) return;
+    const picker = document.getElementById("pdf-to-excel-picker");
+    if (picker) picker.value = "";
+    modal.style.display = "flex";
+  }
+
+  openPdfToPptxModal() {
+    const modal = document.getElementById("modal-pdf-to-pptx");
+    if (!modal) return;
+    const picker = document.getElementById("pdf-to-pptx-picker");
+    if (picker) picker.value = "";
+    modal.style.display = "flex";
+  }
+
+  openWordToPdfModal() {
+    const modal = document.getElementById("modal-word-to-pdf");
+    if (!modal) return;
+    const picker = document.getElementById("word-to-pdf-picker");
+    if (picker) picker.value = "";
+    modal.style.display = "flex";
+  }
+
+  openExcelToPdfModal() {
+    const modal = document.getElementById("modal-excel-to-pdf");
+    if (!modal) return;
+    const picker = document.getElementById("excel-to-pdf-picker");
+    if (picker) picker.value = "";
+    modal.style.display = "flex";
+  }
+
+  openPptxToPdfModal() {
+    const modal = document.getElementById("modal-pptx-to-pdf");
+    if (!modal) return;
+    const picker = document.getElementById("pptx-to-pdf-picker");
+    if (picker) picker.value = "";
+    modal.style.display = "flex";
+  }
+
+  openAiSummarizerModal() {
+    const modal = document.getElementById("modal-ai-summarizer");
+    if (!modal) return;
+    const picker = document.getElementById("ai-summarizer-picker");
+    if (picker) picker.value = "";
+    modal.style.display = "flex";
+  }
+
+  openTranslatorModal() {
+    const modal = document.getElementById("modal-translator");
+    if (!modal) return;
+    const picker = document.getElementById("translator-picker");
+    if (picker) picker.value = "";
+    modal.style.display = "flex";
+  }
+
+  openHtmlToPdfModal() {
+    const modal = document.getElementById("modal-html-to-pdf");
+    if (!modal) return;
+    modal.style.display = "flex";
+  }
+
+  openUnlockPdfModal() {
+    const modal = document.getElementById("modal-unlock-pdf");
+    if (!modal) return;
+    const picker = document.getElementById("unlock-pdf-picker");
+    if (picker) picker.value = "";
+    modal.style.display = "flex";
+  }
+
+  openPdfScannerModal() {
+    const modal = document.getElementById("modal-pdf-scanner");
+    if (!modal) return;
+    const picker = document.getElementById("pdf-scanner-picker");
+    if (picker) picker.value = "";
+    modal.style.display = "flex";
   }
 
   // ------------------------------------------------------------------------
