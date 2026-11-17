@@ -16,10 +16,10 @@
 
   <!-- CSS Stylesheets (with cache-busting) -->
   <link rel="stylesheet" href="./vendor/pdfjs/pdf_viewer.css">
-  <link rel="stylesheet" href="./css/styles.css?v=3.5">
-  <link rel="stylesheet" href="./css/editor.css?v=3.5">
-  <link rel="stylesheet" href="./css/portal.css?v=3.5">
-  <link rel="stylesheet" href="./css/responsive.css?v=3.5">
+  <link rel="stylesheet" href="./css/styles.css?v=3.6">
+  <link rel="stylesheet" href="./css/editor.css?v=3.6">
+  <link rel="stylesheet" href="./css/portal.css?v=3.6">
+  <link rel="stylesheet" href="./css/responsive.css?v=3.6">
 
   <!-- PDF.js & PDF-Lib Vendor Scripts -->
   <script src="./vendor/pdfjs/pdf.js"></script>
@@ -52,7 +52,8 @@
     </header>
 
     <!-- Hero Section -->
-    <section class="portal-hero">
+    <div id="portal-home-content">
+<section class="portal-hero">
       <div class="hero-pill-badge">
         <span class="pulse-dot"></span>
         <span>⚡ 100% Free • Private Client-Side • No File Size Limits</span>
@@ -62,42 +63,38 @@
         20+ powerful tools to edit, convert, compress to custom KB/MB/GB, summarize with AI, and scan documents directly in your browser. No file size limits, zero server tracking.
       </p>
 
-      <!-- Interactive Tool Search Bar -->
+      <!-- Interactive Tool Search Bar (Executive Premium Design) -->
       <div class="hero-search-wrap">
         <div class="hero-search-bar">
-          <svg class="search-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
-            <circle cx="11" cy="11" r="8"></circle>
-            <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
-          </svg>
-          <input type="text" id="portal-tool-search" placeholder="Search 20+ tools: compress (kb/mb), word, excel, ppt, ai summarizer, translator, scanner, unlock..." autocomplete="off" />
-          <button type="button" id="portal-search-clear" class="search-clear-btn" style="display:none;" title="Clear search">&times;</button>
-          <div class="search-shortcut-badge"><kbd>/</kbd></div>
+          <div class="hero-search-icon-box">
+            <svg class="hero-search-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="11" cy="11" r="8"></circle>
+              <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+            </svg>
+          </div>
+          <input type="text" id="portal-tool-search" placeholder="Search 20+ tools... (e.g. compress, word, excel, ai, scanner)" autocomplete="off" spellcheck="false" />
+          <button type="button" id="portal-search-clear" class="hero-search-clear-btn" style="display:none;" title="Clear search" aria-label="Clear search">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+              <line x1="18" y1="6" x2="6" y2="18"></line>
+              <line x1="6" y1="6" x2="18" y2="18"></line>
+            </svg>
+          </button>
+          <div class="search-shortcut-pill" title="Press / to search">
+            <kbd class="shortcut-key">/</kbd>
+          </div>
         </div>
-        <div id="search-results-count" class="search-count-pill" style="display:none;"></div>
+        <div id="search-results-count" class="search-results-feedback" style="display:none;"></div>
       </div>
 
-      <!-- Quick Upload Pill -->
-      <div class="hero-quick-drop">
-        <div class="quick-upload-pill" id="hero-universal-dropzone">
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
-            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
-            <polyline points="17 8 12 3 7 8" />
-            <line x1="12" y1="3" x2="12" y2="15" />
-          </svg>
-          <span>Select any PDF or Drop files here to auto-launch</span>
-        </div>
-      </div>
-      <input type="file" id="hero-universal-input" accept="application/pdf,image/*,.docx,.xlsx,.pptx" multiple style="display: none;">
-
-      <!-- Category Filter Tabs -->
+      <!-- Category Filter Tabs (Separate Box Cards, No Emojis, No Numbers) -->
       <div class="portal-filter-tabs">
-        <button type="button" class="filter-tab-btn active" data-category="all">All Tools <span class="tab-count">23</span></button>
-        <button type="button" class="filter-tab-btn" data-category="ai">🤖 AI & Smart</button>
-        <button type="button" class="filter-tab-btn" data-category="convert-from">📤 Convert from PDF</button>
-        <button type="button" class="filter-tab-btn" data-category="convert-to">📥 Convert to PDF</button>
-        <button type="button" class="filter-tab-btn" data-category="optimize">⚡ Optimize & Scan</button>
-        <button type="button" class="filter-tab-btn" data-category="edit">✏️ Edit & Sign</button>
-        <button type="button" class="filter-tab-btn" data-category="organize">📑 Organize</button>
+        <button type="button" class="filter-tab-box active" data-category="all">All Tools</button>
+        <button type="button" class="filter-tab-box" data-category="ai">AI &amp; Smart</button>
+        <button type="button" class="filter-tab-box" data-category="convert-from">Convert from PDF</button>
+        <button type="button" class="filter-tab-box" data-category="convert-to">Convert to PDF</button>
+        <button type="button" class="filter-tab-box" data-category="optimize">Optimize &amp; Scan</button>
+        <button type="button" class="filter-tab-box" data-category="edit">Edit &amp; Sign</button>
+        <button type="button" class="filter-tab-box" data-category="organize">Organize</button>
       </div>
     </section>
 
@@ -478,6 +475,904 @@
     <footer class="portal-footer">
       <p>OpenPDF Studio &copy; 2026 &mdash; The open-source, private, and aesthetic PDF & Image tool suite.</p>
     </footer>
+    </div>
+
+
+    <!-- ======================================================================
+         DEDICATED TOOL WORKSPACE VIEW (SECOND FRONT PAGE - NO POPUPS)
+         ====================================================================== -->
+    <div id="portal-tool-workspace" class="portal-tool-workspace" style="display: none;">
+      <!-- Top Navigation & Back Header -->
+      <div class="tw-nav-bar">
+        <button type="button" class="tw-back-btn" id="btn-back-to-tools" title="Back to All Tools">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="19" y1="12" x2="5" y2="12"></line>
+            <polyline points="12 19 5 12 12 5"></polyline>
+          </svg>
+          <span>All PDF Tools</span>
+        </button>
+        <div class="tw-breadcrumb">
+          <span class="tw-breadcrumb-home">Home</span>
+          <span class="tw-breadcrumb-sep">/</span>
+          <span class="tw-breadcrumb-tools">Tools</span>
+          <span class="tw-breadcrumb-sep">/</span>
+          <span class="tw-breadcrumb-active" id="tw-breadcrumb-title">Tool Workspace</span>
+        </div>
+      </div>
+
+      <!-- Tool Hero Header -->
+      <div class="tw-hero-header">
+        <div class="tw-tool-icon" id="tw-tool-icon">
+          <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+            <path d="M4 14h6v6" /><path d="M20 10h-6V4" /><path d="m14 10 7-7" /><path d="m3 21 7-7" />
+          </svg>
+        </div>
+        <h1 class="tw-tool-title" id="tw-tool-title">Tool Name</h1>
+        <p class="tw-tool-desc" id="tw-tool-desc">Tool description will appear here.</p>
+      </div>
+
+      <!-- In-Page Active Tool Panels Container -->
+      <div class="tw-panels-container" id="tw-panels-container">
+<div class="tool-workspace-panel" id="modal-edit-pdf" style="display: none;">
+    <div class="tool-workspace-card">
+      <div class="tool-dialog-header">
+        <h3>
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#e5322d" stroke-width="2.2">
+            <path d="M12 20h9" />
+            <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z" />
+          </svg>
+          Edit PDF Document
+        </h3>
+        <button type="button" class="btn-icon" id="close-edit-pdf">&times;</button>
+      </div>
+      <div class="tool-dialog-body">
+        <div class="tool-dropzone" id="edit-pdf-dropzone">
+          <div class="tool-dropzone-icon" style="color: #e5322d;">
+            <svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+              <polyline points="14 2 14 8 20 8" />
+              <line x1="12" y1="18" x2="12" y2="12" />
+              <line x1="9" y1="15" x2="15" y2="15" />
+            </svg>
+          </div>
+          <div style="font-size: 16px; font-weight: 800; color: #0f172a;">Select or Drop PDF File to Edit</div>
+          <div style="font-size: 13px; color: #64748b; margin-top: 4px;">Edit existing text, add signatures, shapes, and
+            images</div>
+          <button type="button" class="btn-select-pdf-hero" id="btn-choose-edit-pdf"
+            style="margin-top: 16px; background: #e5322d; padding: 10px 24px; font-size: 14px; border-radius: 8px;">
+            Choose PDF File
+          </button>
+        </div>
+        <input type="file" id="edit-modal-file-picker" accept="application/pdf,.pdf,application/x-pdf" style="display: none;">
+      </div>
+      <div class="tool-dialog-footer">
+        <button type="button" class="btn-secondary"
+          onclick="document.getElementById('modal-edit-pdf').style.display='none'">Cancel</button>
+      </div>
+    </div>
+  </div>
+
+<div class="tool-workspace-panel" id="modal-merge-pdf" style="display: none;">
+    <div class="tool-workspace-card">
+      <div class="tool-dialog-header">
+        <h3>
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#e5322d" stroke-width="2.2">
+            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+            <polyline points="14 2 14 8 20 8" />
+            <line x1="12" y1="12" x2="12" y2="18" />
+            <line x1="9" y1="15" x2="15" y2="15" />
+          </svg>
+          Merge PDF Documents
+        </h3>
+        <button type="button" class="btn-icon" id="close-merge-pdf">&times;</button>
+      </div>
+      <div class="tool-dialog-body">
+        <div class="tool-dropzone" id="merge-dropzone">
+          <div class="tool-dropzone-icon" style="color: #e5322d;">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+            </svg>
+          </div>
+          <div style="font-size: 16px; font-weight: 800; color: #0f172a;">Select or Drop 2 or more PDF Files</div>
+          <div style="font-size: 13px; color: #64748b;">Combine documents in your chosen order</div>
+        </div>
+        <input type="file" id="merge-file-picker" accept="application/pdf,.pdf,application/x-pdf" multiple style="display: none;">
+
+        <div style="margin-top: 18px; font-size: 13.5px; font-weight: 800; color: #0f172a;" id="merge-count-badge">0
+          PDFs Selected</div>
+        <div class="tool-queue-list" id="merge-queue-list"></div>
+      </div>
+      <div class="tool-dialog-footer">
+        <button type="button" class="btn-secondary"
+          onclick="document.getElementById('modal-merge-pdf').style.display='none'">Cancel</button>
+        <button type="button" class="btn-select-pdf-hero" id="btn-merge-pdfs" disabled style="background:#e5322d;">Merge
+          PDFs</button>
+      </div>
+    </div>
+  </div>
+
+<div class="tool-workspace-panel" id="modal-jpg-to-pdf" style="display: none;">
+    <div class="tool-workspace-card">
+      <div class="tool-dialog-header">
+        <h3>
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#f59e0b" stroke-width="2.2">
+            <rect x="3" y="3" width="18" height="18" rx="2" ry="2" />
+            <circle cx="8.5" cy="8.5" r="1.5" />
+            <polyline points="21 15 16 10 5 21" />
+          </svg>
+          JPG to PDF Converter
+        </h3>
+        <button type="button" class="btn-icon" id="close-jpg-to-pdf">&times;</button>
+      </div>
+      <div class="tool-dialog-body">
+        <div class="tool-dropzone" id="jpg-dropzone">
+          <div class="tool-dropzone-icon" style="color: #f59e0b;">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <rect x="3" y="3" width="18" height="18" rx="2" ry="2" />
+            </svg>
+          </div>
+          <div style="font-size: 16px; font-weight: 800; color: #0f172a;">Select or Drop Images Here</div>
+          <div style="font-size: 13px; color: #64748b;">Supports JPG, JPEG, PNG, and WebP formats</div>
+        </div>
+        <input type="file" id="jpg-file-picker" accept="image/*" multiple style="display: none;">
+
+        <div style="display: flex; align-items: center; justify-content: space-between; margin-top: 18px;">
+          <span style="font-size: 13.5px; font-weight: 800; color: #0f172a;" id="jpg-count-badge">0 Images
+            Selected</span>
+          <div style="display: flex; align-items: center; gap: 8px;">
+            <label for="jpg-page-size" style="font-size: 12px; font-weight: 700; color: #475569;">Page Size:</label>
+            <select id="jpg-page-size" class="form-input" style="padding: 5px 10px; font-size: 12.5px;">
+              <option value="fit">Fit to Image Size</option>
+              <option value="a4_portrait">A4 (Portrait)</option>
+              <option value="a4_landscape">A4 (Landscape)</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="tool-queue-list" id="jpg-queue-list"></div>
+      </div>
+      <div class="tool-dialog-footer">
+        <button type="button" class="btn-secondary"
+          onclick="document.getElementById('modal-jpg-to-pdf').style.display='none'">Cancel</button>
+        <button type="button" class="btn-select-pdf-hero" id="btn-convert-jpg-to-pdf" disabled
+          style="background:#f59e0b;">Convert to PDF</button>
+      </div>
+    </div>
+  </div>
+
+<div class="tool-workspace-panel" id="modal-image-resize" style="display: none;">
+    <div class="tool-workspace-card">
+      <div class="tool-dialog-header">
+        <h3>
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#06b6d4" stroke-width="2.2">
+            <polyline points="15 3 21 3 21 9" />
+            <polyline points="9 21 3 21 3 15" />
+            <line x1="21" y1="3" x2="14" y2="10" />
+            <line x1="3" y1="21" x2="10" y2="14" />
+          </svg>
+          Image Resize & Compressor
+        </h3>
+        <button type="button" class="btn-icon" id="close-image-resize">&times;</button>
+      </div>
+      <div class="tool-dialog-body">
+        <div class="tool-dropzone" id="resize-dropzone">
+          <div class="tool-dropzone-icon" style="color: #06b6d4;">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <rect x="3" y="3" width="18" height="18" rx="2" ry="2" />
+            </svg>
+          </div>
+          <div style="font-size: 16px; font-weight: 800; color: #0f172a;">Select Image to Resize</div>
+          <div style="font-size: 13px; color: #64748b;">JPG, PNG, or WebP graphics</div>
+        </div>
+        <input type="file" id="resize-file-picker" accept="image/*" style="display: none;">
+
+        <div class="resize-preview-box" id="resize-preview-container" style="display: none;">
+          <img id="resize-preview-img" alt="Preview">
+        </div>
+
+        <div id="resize-controls-container" style="display: none;">
+          <div class="resize-form-grid">
+            <div class="form-group">
+              <label for="resize-width">Width (px):</label>
+              <input type="number" id="resize-width" class="form-input" min="1" max="10000">
+            </div>
+            <div class="form-group">
+              <label for="resize-height">Height (px):</label>
+              <input type="number" id="resize-height" class="form-input" min="1" max="10000">
+            </div>
+          </div>
+
+          <div style="display: flex; align-items: center; justify-content: space-between; margin-top: 14px;">
+            <label
+              style="display: flex; align-items: center; gap: 6px; font-size: 13px; font-weight: 600; cursor: pointer;">
+              <input type="checkbox" id="resize-lock-aspect" checked> Keep Aspect Ratio
+            </label>
+            <div style="display: flex; gap: 6px;">
+              <button type="button" class="btn-secondary resize-preset-btn" data-scale="0.25"
+                style="padding: 3px 8px; font-size: 12px;">25%</button>
+              <button type="button" class="btn-secondary resize-preset-btn" data-scale="0.5"
+                style="padding: 3px 8px; font-size: 12px;">50%</button>
+              <button type="button" class="btn-secondary resize-preset-btn" data-scale="0.75"
+                style="padding: 3px 8px; font-size: 12px;">75%</button>
+              <button type="button" class="btn-secondary resize-preset-btn" data-scale="1"
+                style="padding: 3px 8px; font-size: 12px;">100%</button>
+            </div>
+          </div>
+
+          <div class="resize-form-grid" style="margin-top: 16px;">
+            <div class="form-group">
+              <label for="resize-format">Target Format:</label>
+              <select id="resize-format" class="form-input">
+                <option value="image/jpeg">JPEG (.jpg)</option>
+                <option value="image/png">PNG (.png)</option>
+                <option value="image/webp">WebP (.webp)</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label for="resize-quality" style="display: flex; justify-content: space-between;">
+                <span>Quality:</span>
+                <span id="resize-quality-val" style="color: #06b6d4; font-weight: 700;">90%</span>
+              </label>
+              <input type="range" id="resize-quality" min="10" max="100" value="90" style="margin-top: 6px;">
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="tool-dialog-footer">
+        <button type="button" class="btn-secondary"
+          onclick="document.getElementById('modal-image-resize').style.display='none'">Cancel</button>
+        <button type="button" class="btn-select-pdf-hero" id="btn-do-resize" disabled style="background:#06b6d4;">Resize &
+          Download</button>
+      </div>
+    </div>
+  </div>
+
+<div class="tool-workspace-panel" id="modal-split-pdf" style="display: none;">
+    <div class="tool-workspace-card">
+      <div class="tool-dialog-header">
+        <h3>
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#ff6b00" stroke-width="2.2">
+            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+            <line x1="2" y1="12" x2="22" y2="12" />
+          </svg>
+          Split PDF Pages
+        </h3>
+        <button type="button" class="btn-icon" id="close-split-pdf">&times;</button>
+      </div>
+      <div class="tool-dialog-body">
+        <div class="tool-dropzone" id="split-dropzone">
+          <div class="tool-dropzone-icon" style="color: #ff6b00;">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+            </svg>
+          </div>
+          <div style="font-size: 16px; font-weight: 800; color: #0f172a;">Select PDF to Split</div>
+          <div style="font-size: 13px; color: #64748b;">Extract individual pages or custom ranges</div>
+        </div>
+        <input type="file" id="split-file-picker" accept="application/pdf,.pdf,application/x-pdf" style="display: none;">
+
+        <div id="split-controls" style="display: none; margin-top: 16px;">
+          <div style="font-weight: 800; font-size: 14px; color: #0f172a; margin-bottom: 12px;" id="split-info-text">
+            Document Info</div>
+          <div class="resize-form-grid">
+            <div class="form-group">
+              <label for="split-page-from">From Page:</label>
+              <input type="number" id="split-page-from" class="form-input" min="1" value="1">
+            </div>
+            <div class="form-group">
+              <label for="split-page-to">To Page:</label>
+              <input type="number" id="split-page-to" class="form-input" min="1" value="1">
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="tool-dialog-footer">
+        <button type="button" class="btn-secondary"
+          onclick="document.getElementById('modal-split-pdf').style.display='none'">Cancel</button>
+        <button type="button" class="btn-select-pdf-hero" id="btn-do-split" disabled style="background:#ff6b00;">Extract &
+          Download PDF</button>
+      </div>
+    </div>
+  </div>
+
+<div class="tool-workspace-panel" id="modal-rotate-pdf" style="display: none;">
+    <div class="tool-workspace-card">
+      <div class="tool-dialog-header">
+        <h3>
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#0ea5e9" stroke-width="2.2">
+            <path d="M21.5 2v6h-6" />
+            <path d="M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67" />
+          </svg>
+          Rotate PDF Pages
+        </h3>
+        <button type="button" class="btn-icon" id="close-rotate-pdf">&times;</button>
+      </div>
+      <div class="tool-dialog-body">
+        <div class="tool-dropzone" id="rotate-dropzone">
+          <div class="tool-dropzone-icon" style="color: #0ea5e9;">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M21.5 2v6h-6" />
+            </svg>
+          </div>
+          <div style="font-size: 16px; font-weight: 800; color: #0f172a;">Select PDF to Rotate</div>
+          <div style="font-size: 13px; color: #64748b;">Rotate orientation by 90°, 180°, or 270°</div>
+        </div>
+        <input type="file" id="rotate-file-picker" accept="application/pdf,.pdf,application/x-pdf" style="display: none;">
+
+        <div id="rotate-controls" style="display: none; margin-top: 18px; text-align: center;">
+          <div style="font-weight: 800; font-size: 14px; color: #0f172a; margin-bottom: 14px;" id="rotate-info-text">
+            Document Info</div>
+          <div style="display: flex; gap: 10px; justify-content: center;">
+            <button type="button" class="btn-secondary rotate-deg-btn selected" data-deg="90">90° Clockwise</button>
+            <button type="button" class="btn-secondary rotate-deg-btn" data-deg="180">180° Flip</button>
+            <button type="button" class="btn-secondary rotate-deg-btn" data-deg="270">270° Counter-Clockwise</button>
+          </div>
+        </div>
+      </div>
+      <div class="tool-dialog-footer">
+        <button type="button" class="btn-secondary"
+          onclick="document.getElementById('modal-rotate-pdf').style.display='none'">Cancel</button>
+        <button type="button" class="btn-select-pdf-hero" id="btn-do-rotate" disabled style="background:#0ea5e9;">Rotate &
+          Download PDF</button>
+      </div>
+    </div>
+  </div>
+
+<div class="tool-workspace-panel" id="modal-pdf-to-jpg" style="display: none;">
+    <div class="tool-workspace-card">
+      <div class="tool-dialog-header">
+        <h3>
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#9333ea" stroke-width="2.2">
+            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+            <polyline points="7 10 12 15 17 10" />
+            <line x1="12" y1="15" x2="12" y2="3" />
+          </svg>
+          PDF to JPG Converter
+        </h3>
+        <button type="button" class="btn-icon" id="close-pdf-to-jpg">&times;</button>
+      </div>
+      <div class="tool-dialog-body">
+        <div class="tool-dropzone" id="pdf-to-jpg-dropzone">
+          <div class="tool-dropzone-icon" style="color: #9333ea;">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+            </svg>
+          </div>
+          <div style="font-size: 16px; font-weight: 800; color: #0f172a;">Select PDF to Convert to JPG</div>
+          <div style="font-size: 13px; color: #64748b;">Extract pages as crisp high-resolution images</div>
+        </div>
+        <input type="file" id="pdf-to-jpg-file-picker" accept="application/pdf,.pdf,application/x-pdf" style="display: none;">
+
+        <div id="pdf-to-jpg-controls" style="display: none; margin-top: 18px; text-align: center;">
+          <div style="font-weight: 800; font-size: 14px; color: #0f172a; margin-bottom: 8px;" id="pdf-to-jpg-info-text">
+            Document Info</div>
+          <div style="font-size: 13px; color: #64748b;">Ready to render pages into crystal-clear 300 DPI JPG format.
+          </div>
+        </div>
+      </div>
+      <div class="tool-dialog-footer">
+        <button type="button" class="btn-secondary"
+          onclick="document.getElementById('modal-pdf-to-jpg').style.display='none'">Cancel</button>
+        <button type="button" class="btn-select-pdf-hero" id="btn-do-pdf-to-jpg" disabled style="background:#9333ea;">Convert &
+          Download JPGs</button>
+      </div>
+    </div>
+  </div>
+
+<div class="tool-workspace-panel" id="modal-compress-pdf" style="display: none;">
+    <div class="tool-workspace-card" >
+      <div class="tool-dialog-header">
+        <h3>
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="2.2">
+            <path d="M4 14h6v6" /><path d="M20 10h-6V4" /><path d="m14 10 7-7" /><path d="m3 21 7-7" />
+          </svg>
+          Compress PDF to Exact Target Size
+        </h3>
+        <button type="button" class="btn-icon" id="close-compress-pdf">&times;</button>
+      </div>
+      <div class="tool-dialog-body">
+        <div class="tool-dropzone" id="compress-pdf-dropzone">
+          <div class="tool-dropzone-icon" style="color: #10b981;">
+            <svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+              <polyline points="14 2 14 8 20 8" />
+              <path d="M12 18v-6" /><path d="m9 15 3 3 3-3" />
+            </svg>
+          </div>
+          <div style="font-size: 16px; font-weight: 800; color: #0f172a;">Select or Drop PDF to Compress</div>
+          <div style="font-size: 13px; color: #64748b;">Specify exact KB, MB, or GB target size with lossless clarity</div>
+          <button type="button" class="btn-select-pdf-hero" id="btn-choose-compress-pdf" style="margin-top: 14px; background: #10b981; padding: 10px 22px; font-size: 14px; border-radius: 8px;">Select PDF files</button>
+        </div>
+        <input type="file" id="compress-pdf-picker" accept="application/pdf,.pdf,application/x-pdf" style="display: none;">
+
+        <div id="compress-options-area" style="display: none; margin-top: 20px;">
+          <div id="compress-file-info" style="font-size: 14px; color: #1e293b; margin-bottom: 16px; padding: 10px 14px; background: #f8fafc; border-radius: 8px; border: 1px solid #e2e8f0;"></div>
+          
+          <label style="display: block; font-size: 13px; font-weight: 700; color: #334155; margin-bottom: 8px;">Target File Size (KB / MB / GB)</label>
+          <div style="display: flex; gap: 10px; align-items: center; margin-bottom: 12px;">
+            <input type="number" id="compress-target-val" value="200" min="1" step="1" style="flex: 1; padding: 10px 14px; border: 1.5px solid #cbd5e1; border-radius: 8px; font-size: 16px; font-weight: 700;">
+            <select id="compress-target-unit" style="padding: 10px 16px; border: 1.5px solid #cbd5e1; border-radius: 8px; font-size: 15px; font-weight: 700; background: #f8fafc; cursor: pointer;">
+              <option value="KB" selected>KB</option>
+              <option value="MB">MB</option>
+              <option value="GB">GB</option>
+            </select>
+          </div>
+
+          <div style="font-size: 12px; font-weight: 700; color: #64748b; margin-bottom: 8px;">Quick Target Presets:</div>
+          <div class="compress-presets-row" style="display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 16px;">
+            <button type="button" class="compress-preset-pill" data-val="100" data-unit="KB">100 KB (Govt Portals)</button>
+            <button type="button" class="compress-preset-pill active" data-val="200" data-unit="KB">200 KB (Job Apps)</button>
+            <button type="button" class="compress-preset-pill" data-val="500" data-unit="KB">500 KB (Email)</button>
+            <button type="button" class="compress-preset-pill" data-val="1" data-unit="MB">1 MB (High Quality)</button>
+            <button type="button" class="compress-preset-pill" data-val="auto-50">Recommended (-50%)</button>
+            <button type="button" class="compress-preset-pill" data-val="auto-80">Extreme (-80%)</button>
+          </div>
+
+          <div id="compress-progress-wrap" style="display: none; margin-bottom: 16px;">
+            <div style="height: 8px; background: #e2e8f0; border-radius: 4px; overflow: hidden;">
+              <div id="compress-progress-bar" style="width: 0%; height: 100%; background: #10b981; transition: width 0.2s ease;"></div>
+            </div>
+          </div>
+
+          <div id="compress-result-box" style="display: none; padding: 14px; background: #ecfdf5; border: 1.5px solid #a7f3d0; border-radius: 12px; margin-bottom: 16px; text-align: center;">
+            <div style="font-size: 12px; font-weight: 800; color: #047857; text-transform: uppercase;">Compression Complete</div>
+            <div style="font-size: 18px; font-weight: 800; color: #065f46; margin: 4px 0;">
+              <span id="compress-res-original"></span> &rarr; <span id="compress-res-new" style="color: #059669;"></span>
+            </div>
+            <div style="font-size: 13px; font-weight: 700; color: #047857;" id="compress-res-savings"></div>
+            <button type="button" class="btn-select-pdf-hero" id="btn-download-compressed" style="margin-top: 10px; background: #059669; width: 100%; padding: 11px;">Download Compressed PDF</button>
+          </div>
+
+          <button type="button" class="btn-select-pdf-hero" id="btn-start-compress" style="background: #10b981; width: 100%; padding: 12px; font-size: 15px; font-weight: 700;">Compress PDF</button>
+        </div>
+      </div>
+      <div class="tool-dialog-footer">
+        <button type="button" class="btn-secondary" onclick="document.getElementById('modal-compress-pdf').style.display='none'">Close</button>
+      </div>
+    </div>
+  </div>
+
+<div class="tool-workspace-panel" id="modal-pdf-to-word" style="display: none;">
+    <div class="tool-workspace-card" >
+      <div class="tool-dialog-header">
+        <h3>
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#2b579a" stroke-width="2.2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><path d="M9 13l2 5 2-5 2 5"/></svg>
+          Convert PDF to Microsoft Word (.docx)
+        </h3>
+        <button type="button" class="btn-icon" id="close-pdf-to-word">&times;</button>
+      </div>
+      <div class="tool-dialog-body">
+        <div class="tool-dropzone" id="pdf-to-word-dropzone">
+          <div class="tool-dropzone-icon" style="color: #2b579a;">
+            <svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+          </div>
+          <div style="font-size: 16px; font-weight: 800; color: #0f172a;">Select PDF to Convert to Word</div>
+          <div style="font-size: 13px; color: #64748b;">Preserves headings, bold text, paragraphs, and document structure</div>
+          <button type="button" class="btn-select-pdf-hero" id="btn-choose-pdf-to-word" style="margin-top: 14px; background: #2b579a; padding: 10px 22px; font-size: 14px; border-radius: 8px;">Select PDF files</button>
+        </div>
+        <input type="file" id="pdf-to-word-picker" accept="application/pdf,.pdf,application/x-pdf" style="display: none;">
+
+        <div id="pdf-to-word-preview-wrap" style="display: none; margin-top: 18px;">
+          <div id="pdf-to-word-status" style="font-size: 13px; font-weight: 700; color: #1e3a8a; margin-bottom: 10px;"></div>
+          <div class="word-preview-box" id="pdf-to-word-preview-text" style="max-height: 240px; overflow-y: auto; background: #f8fafc; border: 1.5px solid #e2e8f0; border-radius: 10px; padding: 14px; font-size: 13px; line-height: 1.5;"></div>
+          <button type="button" class="btn-select-pdf-hero" id="btn-start-pdf-to-word" disabled style="margin-top: 14px; background: #2b579a; width: 100%; padding: 12px; font-size: 15px; font-weight: 700;">Download Microsoft Word (.docx)</button>
+        </div>
+      </div>
+      <div class="tool-dialog-footer">
+        <button type="button" class="btn-secondary" onclick="document.getElementById('modal-pdf-to-word').style.display='none'">Cancel</button>
+      </div>
+    </div>
+  </div>
+
+<div class="tool-workspace-panel" id="modal-pdf-to-excel" style="display: none;">
+    <div class="tool-workspace-card" >
+      <div class="tool-dialog-header">
+        <h3>
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#217346" stroke-width="2.2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><path d="M8 13h8"/><path d="M8 17h8"/><path d="M12 9v12"/></svg>
+          Extract PDF Tables to Excel (.xlsx / .csv)
+        </h3>
+        <button type="button" class="btn-icon" id="close-pdf-to-excel">&times;</button>
+      </div>
+      <div class="tool-dialog-body">
+        <div class="tool-dropzone" id="pdf-to-excel-dropzone">
+          <div class="tool-dropzone-icon" style="color: #217346;">
+            <svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18"/><path d="M9 3v18"/></svg>
+          </div>
+          <div style="font-size: 16px; font-weight: 800; color: #0f172a;">Select PDF with Tables, Invoices or Statements</div>
+          <div style="font-size: 13px; color: #64748b;">Automatically detects rows, columns, and numeric cells</div>
+          <button type="button" class="btn-select-pdf-hero" id="btn-choose-pdf-to-excel" style="margin-top: 14px; background: #217346; padding: 10px 22px; font-size: 14px; border-radius: 8px;">Select PDF files</button>
+        </div>
+        <input type="file" id="pdf-to-excel-picker" accept="application/pdf,.pdf,application/x-pdf" style="display: none;">
+
+        <div id="pdf-to-excel-preview-wrap" style="display: none; margin-top: 18px;">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+            <span style="font-size: 13px; font-weight: 700; color: #166534;" id="pdf-to-excel-stats"></span>
+            <span style="font-size: 11px; color: #64748b;">Showing first 35 rows</span>
+          </div>
+          <div id="pdf-to-excel-preview-table" style="max-height: 220px; overflow: auto; border: 1.5px solid #cbd5e1; border-radius: 8px; margin-bottom: 14px;"></div>
+          <div style="display: flex; gap: 10px;">
+            <button type="button" class="btn-select-pdf-hero" id="btn-download-excel-xlsx" disabled style="flex: 1; background: #217346; padding: 11px; font-size: 14px; font-weight: 700;">Download Excel (.xlsx)</button>
+            <button type="button" class="btn-secondary" id="btn-download-excel-csv" disabled style="padding: 11px 18px; font-size: 14px; font-weight: 700;">Download CSV</button>
+          </div>
+        </div>
+      </div>
+      <div class="tool-dialog-footer">
+        <button type="button" class="btn-secondary" onclick="document.getElementById('modal-pdf-to-excel').style.display='none'">Close</button>
+      </div>
+    </div>
+  </div>
+
+<div class="tool-workspace-panel" id="modal-pdf-to-pptx" style="display: none;">
+    <div class="tool-workspace-card" >
+      <div class="tool-dialog-header">
+        <h3>
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#d24726" stroke-width="2.2"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M9 7h4a2 2 0 0 1 0 4H9V7z"/></svg>
+          Convert PDF to PowerPoint Presentation (.pptx)
+        </h3>
+        <button type="button" class="btn-icon" id="close-pdf-to-pptx">&times;</button>
+      </div>
+      <div class="tool-dialog-body">
+        <div class="tool-dropzone" id="pdf-to-pptx-dropzone">
+          <div class="tool-dropzone-icon" style="color: #d24726;">
+            <svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
+          </div>
+          <div style="font-size: 16px; font-weight: 800; color: #0f172a;">Select PDF to Convert to Slides</div>
+          <div style="font-size: 13px; color: #64748b;">Creates a 16:9 widescreen presentation deck ready for PowerPoint</div>
+          <button type="button" class="btn-select-pdf-hero" id="btn-choose-pdf-to-pptx" style="margin-top: 14px; background: #d24726; padding: 10px 22px; font-size: 14px; border-radius: 8px;">Select PDF files</button>
+        </div>
+        <input type="file" id="pdf-to-pptx-picker" accept="application/pdf,.pdf,application/x-pdf" style="display: none;">
+
+        <div id="pdf-to-pptx-status" style="margin-top: 14px; font-size: 13px; font-weight: 700; color: #9a3412;"></div>
+        <div id="pdf-to-pptx-preview-deck" style="display: flex; gap: 10px; overflow-x: auto; padding: 10px 0; margin-bottom: 14px;"></div>
+        <button type="button" class="btn-select-pdf-hero" id="btn-download-pptx" disabled style="background: #d24726; width: 100%; padding: 12px; font-size: 15px; font-weight: 700;">Download PowerPoint (.pptx)</button>
+      </div>
+      <div class="tool-dialog-footer">
+        <button type="button" class="btn-secondary" onclick="document.getElementById('modal-pdf-to-pptx').style.display='none'">Close</button>
+      </div>
+    </div>
+  </div>
+
+<div class="tool-workspace-panel" id="modal-word-to-pdf" style="display: none;">
+    <div class="tool-workspace-card" >
+      <div class="tool-dialog-header">
+        <h3>
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#2b579a" stroke-width="2.2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><path d="M12 18v-6"/><path d="m9 15 3 3 3-3"/></svg>
+          Convert Word Document to PDF
+        </h3>
+        <button type="button" class="btn-icon" id="close-word-to-pdf">&times;</button>
+      </div>
+      <div class="tool-dialog-body">
+        <div class="tool-dropzone" id="word-to-pdf-dropzone">
+          <div class="tool-dropzone-icon" style="color: #2b579a;">
+            <svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+          </div>
+          <div style="font-size: 16px; font-weight: 800; color: #0f172a;">Select Word File (.docx, .doc, .txt)</div>
+          <div style="font-size: 13px; color: #64748b;">Or paste your document text directly below</div>
+          <button type="button" class="btn-select-pdf-hero" id="btn-choose-word-to-pdf" style="margin-top: 14px; background: #2b579a; padding: 10px 22px; font-size: 14px; border-radius: 8px;">Choose File</button>
+        </div>
+        <input type="file" id="word-to-pdf-picker" accept=".docx,.doc,.rtf,.txt" style="display: none;">
+
+        <div style="margin-top: 16px;">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+            <label style="font-size: 12.5px; font-weight: 700; color: #334155;">Document Text Content:</label>
+            <select id="word-to-pdf-font" style="padding: 4px 10px; border-radius: 6px; border: 1px solid #cbd5e1; font-size: 12px;">
+              <option value="Helvetica" selected>Font: Helvetica (Modern)</option>
+              <option value="Times">Font: Times Roman (Formal)</option>
+            </select>
+          </div>
+          <textarea id="word-to-pdf-text-input" rows="7" style="width: 100%; padding: 10px; border: 1.5px solid #cbd5e1; border-radius: 8px; font-family: inherit; font-size: 13px;" placeholder="Type or paste document text here..."></textarea>
+          <button type="button" class="btn-select-pdf-hero" id="btn-convert-word-to-pdf" style="margin-top: 14px; background: #2b579a; width: 100%; padding: 12px; font-size: 15px; font-weight: 700;">Convert to PDF Document</button>
+        </div>
+      </div>
+      <div class="tool-dialog-footer">
+        <button type="button" class="btn-secondary" onclick="document.getElementById('modal-word-to-pdf').style.display='none'">Cancel</button>
+      </div>
+    </div>
+  </div>
+
+<div class="tool-workspace-panel" id="modal-excel-to-pdf" style="display: none;">
+    <div class="tool-workspace-card" >
+      <div class="tool-dialog-header">
+        <h3>
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#217346" stroke-width="2.2"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18"/><path d="M9 3v18"/></svg>
+          Convert Spreadsheet to PDF Table Report
+        </h3>
+        <button type="button" class="btn-icon" id="close-excel-to-pdf">&times;</button>
+      </div>
+      <div class="tool-dialog-body">
+        <div class="tool-dropzone" id="excel-to-pdf-dropzone">
+          <div class="tool-dropzone-icon" style="color: #217346;">
+            <svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+          </div>
+          <div style="font-size: 16px; font-weight: 800; color: #0f172a;">Select .csv or .xlsx Spreadsheet File</div>
+          <div style="font-size: 13px; color: #64748b;">Or paste CSV rows directly into the box below</div>
+          <button type="button" class="btn-select-pdf-hero" id="btn-choose-excel-to-pdf" style="margin-top: 14px; background: #217346; padding: 10px 22px; font-size: 14px; border-radius: 8px;">Choose File</button>
+        </div>
+        <input type="file" id="excel-to-pdf-picker" accept=".csv,.xlsx,.xls,.txt" style="display: none;">
+
+        <div style="margin-top: 16px;">
+          <label style="display: block; font-size: 12.5px; font-weight: 700; color: #334155; margin-bottom: 6px;">CSV Data / Rows:</label>
+          <textarea id="excel-to-pdf-csv-input" rows="6" style="width: 100%; padding: 10px; border: 1.5px solid #cbd5e1; border-radius: 8px; font-family: monospace; font-size: 12.5px;" placeholder="Name,Department,Role,Salary&#10;Alice,Engineering,Lead,$120000&#10;Bob,Design,Senior,$95000"></textarea>
+          <button type="button" class="btn-select-pdf-hero" id="btn-convert-excel-to-pdf" style="margin-top: 14px; background: #217346; width: 100%; padding: 12px; font-size: 15px; font-weight: 700;">Convert to PDF Table</button>
+        </div>
+      </div>
+      <div class="tool-dialog-footer">
+        <button type="button" class="btn-secondary" onclick="document.getElementById('modal-excel-to-pdf').style.display='none'">Cancel</button>
+      </div>
+    </div>
+  </div>
+
+<div class="tool-workspace-panel" id="modal-pptx-to-pdf" style="display: none;">
+    <div class="tool-workspace-card" >
+      <div class="tool-dialog-header">
+        <h3>
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#d24726" stroke-width="2.2"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="m10 9 5 3-5 3V9z"/></svg>
+          Convert PowerPoint Slides to PDF
+        </h3>
+        <button type="button" class="btn-icon" id="close-pptx-to-pdf">&times;</button>
+      </div>
+      <div class="tool-dialog-body">
+        <div class="tool-dropzone" id="pptx-to-pdf-dropzone">
+          <div class="tool-dropzone-icon" style="color: #d24726;">
+            <svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="3" width="20" height="14" rx="2"/><polyline points="10 9 15 12 10 15"/></svg>
+          </div>
+          <div style="font-size: 16px; font-weight: 800; color: #0f172a;">Select Presentation (.pptx, .ppt)</div>
+          <div style="font-size: 13px; color: #64748b;">Creates landscape presentation handout PDF pages</div>
+          <button type="button" class="btn-select-pdf-hero" id="btn-choose-pptx-to-pdf" style="margin-top: 14px; background: #d24726; padding: 10px 22px; font-size: 14px; border-radius: 8px;">Choose Presentation</button>
+        </div>
+        <input type="file" id="pptx-to-pdf-picker" accept=".pptx,.ppt,image/*" style="display: none;">
+
+        <div id="pptx-to-pdf-file-label" style="margin-top: 14px; font-size: 13px; font-weight: 700; color: #9a3412; text-align: center;"></div>
+        <button type="button" class="btn-select-pdf-hero" id="btn-convert-pptx-to-pdf" disabled style="margin-top: 14px; background: #d24726; width: 100%; padding: 12px; font-size: 15px; font-weight: 700;">Convert to PDF</button>
+      </div>
+      <div class="tool-dialog-footer">
+        <button type="button" class="btn-secondary" onclick="document.getElementById('modal-pptx-to-pdf').style.display='none'">Cancel</button>
+      </div>
+    </div>
+  </div>
+
+<div class="tool-workspace-panel" id="modal-ai-summarizer" style="display: none;">
+    <div class="tool-workspace-card" >
+      <div class="tool-dialog-header">
+        <h3>
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#6366f1" stroke-width="2.2"><path d="m12 3-1.9 5.8a2 2 0 0 1-1.3 1.3L3 12l5.8 1.9a2 2 0 0 1 1.3 1.3L12 21l1.9-5.8a2 2 0 0 1 1.3-1.3L21 12l-5.8-1.9a2 2 0 0 1-1.3-1.3L12 3z"/></svg>
+          PDF AI Summarizer & Intelligence
+        </h3>
+        <button type="button" class="btn-icon" id="close-ai-summarizer">&times;</button>
+      </div>
+      <div class="tool-dialog-body">
+        <div class="tool-dropzone" id="ai-summarizer-dropzone">
+          <div class="tool-dropzone-icon" style="color: #6366f1;">
+            <svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m12 3-1.9 5.8a2 2 0 0 1-1.3 1.3L3 12l5.8 1.9a2 2 0 0 1 1.3 1.3L12 21l1.9-5.8a2 2 0 0 1 1.3-1.3L21 12l-5.8-1.9a2 2 0 0 1-1.3-1.3L12 3z"/></svg>
+          </div>
+          <div style="font-size: 16px; font-weight: 800; color: #0f172a;">Select PDF Document to Summarize</div>
+          <div style="font-size: 13px; color: #64748b;">Instant executive summary, key insights, and Q&A without uploading to cloud</div>
+          <button type="button" class="btn-select-pdf-hero" id="btn-choose-ai-summarizer" style="margin-top: 14px; background: linear-gradient(135deg, #6366f1, #8b5cf6); padding: 10px 22px; font-size: 14px; border-radius: 8px;">Select PDF files</button>
+        </div>
+        <input type="file" id="ai-summarizer-picker" accept="application/pdf,.pdf,application/x-pdf" style="display: none;">
+
+        <div id="ai-summarizer-results" style="display: none; margin-top: 18px;">
+          <div id="ai-summary-stats" style="display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 12px;"></div>
+
+          <div style="font-size: 13px; font-weight: 800; color: #3730a3; margin-bottom: 6px; text-transform: uppercase;">Executive Summary</div>
+          <div id="ai-summary-text" style="background: #eef2ff; border: 1.5px solid #c7d2fe; border-radius: 10px; padding: 14px; font-size: 13.5px; line-height: 1.6; color: #1e1b4b; margin-bottom: 14px;"></div>
+
+          <div style="font-size: 13px; font-weight: 800; color: #3730a3; margin-bottom: 6px; text-transform: uppercase;">Key Insights & Highlights</div>
+          <ul id="ai-summary-bullets" style="padding-left: 20px; font-size: 13px; line-height: 1.55; color: #334155; margin-bottom: 16px;"></ul>
+
+          <div style="background: #f8fafc; border: 1.5px solid #e2e8f0; border-radius: 10px; padding: 12px; margin-bottom: 14px;">
+            <label style="display: block; font-size: 12px; font-weight: 800; color: #475569; margin-bottom: 6px;">ASK A QUESTION ABOUT THIS DOCUMENT:</label>
+            <div style="display: flex; gap: 8px;">
+              <input type="text" id="ai-ask-input" placeholder="e.g. What is the fee? What is the deadline?" style="flex: 1; padding: 8px 12px; border: 1.5px solid #cbd5e1; border-radius: 6px; font-size: 13px;">
+              <button type="button" class="btn-select-pdf-hero" id="btn-ai-ask" style="background: #6366f1; padding: 8px 16px; font-size: 13px;">Search</button>
+            </div>
+            <div id="ai-ask-answer" style="margin-top: 8px; font-size: 12.5px; color: #1e293b;"></div>
+          </div>
+
+          <div style="display: flex; gap: 10px;">
+            <button type="button" class="btn-select-pdf-hero" id="btn-copy-ai-summary" style="flex: 1; background: #4f46e5; padding: 10px;">Copy Summary</button>
+            <button type="button" class="btn-secondary" id="btn-download-ai-summary-pdf" style="padding: 10px 18px;">Download Summary PDF</button>
+          </div>
+        </div>
+      </div>
+      <div class="tool-dialog-footer">
+        <button type="button" class="btn-secondary" onclick="document.getElementById('modal-ai-summarizer').style.display='none'">Close</button>
+      </div>
+    </div>
+  </div>
+
+<div class="tool-workspace-panel" id="modal-translator" style="display: none;">
+    <div class="tool-workspace-card" >
+      <div class="tool-dialog-header">
+        <h3>
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#06b6d4" stroke-width="2.2"><path d="m5 8 6 6"/><path d="m4 14 6-6 2-3"/><path d="M2 5h12"/><path d="m22 22-5-10-5 10"/><path d="M14 18h6"/></svg>
+          PDF Document Translator (Side-by-Side)
+        </h3>
+        <button type="button" class="btn-icon" id="close-translator">&times;</button>
+      </div>
+      <div class="tool-dialog-body">
+        <div class="tool-dropzone" id="translator-dropzone">
+          <div class="tool-dropzone-icon" style="color: #06b6d4;">
+            <svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+          </div>
+          <div style="font-size: 16px; font-weight: 800; color: #0f172a;">Select PDF to Translate</div>
+          <div style="font-size: 13px; color: #64748b;">Translate into Hindi, Spanish, French, German, Bengali & more</div>
+          <button type="button" class="btn-select-pdf-hero" id="btn-choose-translator" style="margin-top: 14px; background: #06b6d4; padding: 10px 22px; font-size: 14px; border-radius: 8px;">Select PDF files</button>
+        </div>
+        <input type="file" id="translator-picker" accept="application/pdf,.pdf,application/x-pdf" style="display: none;">
+
+        <div style="margin-top: 16px;">
+          <div style="display: flex; gap: 10px; align-items: center; margin-bottom: 12px;">
+            <label style="font-size: 13px; font-weight: 700; color: #334155;">Translate Target Language:</label>
+            <select id="translator-target-lang" style="flex: 1; padding: 8px 12px; border-radius: 8px; border: 1.5px solid #cbd5e1; font-weight: 700;">
+              <option value="hi" selected>Hindi (हिन्दी)</option>
+              <option value="es">Spanish (Español)</option>
+              <option value="fr">French (Français)</option>
+              <option value="de">German (Deutsch)</option>
+              <option value="bn">Bengali (বাংলা)</option>
+              <option value="ar">Arabic (العربية)</option>
+              <option value="ru">Russian (Русский)</option>
+              <option value="ja">Japanese (日本語)</option>
+              <option value="zh">Chinese (中文)</option>
+              <option value="pt">Portuguese (Português)</option>
+            </select>
+            <button type="button" class="btn-select-pdf-hero" id="btn-start-translation" disabled style="background: #0891b2; padding: 8px 18px; font-weight: 700;">Translate</button>
+          </div>
+
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 14px;">
+            <div>
+              <div style="font-size: 12px; font-weight: 800; color: #475569; margin-bottom: 4px;">ORIGINAL EXTRACTED TEXT:</div>
+              <div id="translator-orig-text" style="height: 190px; overflow-y: auto; background: #f8fafc; border: 1.5px solid #e2e8f0; border-radius: 8px; padding: 10px; font-size: 12px; line-height: 1.5; white-space: pre-wrap;"></div>
+            </div>
+            <div>
+              <div style="font-size: 12px; font-weight: 800; color: #0891b2; margin-bottom: 4px;">TRANSLATED OUTPUT:</div>
+              <div id="translator-trans-text" style="height: 190px; overflow-y: auto; background: #ecfeff; border: 1.5px solid #a5f3fc; border-radius: 8px; padding: 10px; font-size: 12px; line-height: 1.5; color: #155e75;"></div>
+            </div>
+          </div>
+
+          <button type="button" class="btn-select-pdf-hero" id="btn-download-translated-pdf" disabled style="background: #0891b2; width: 100%; padding: 11px; font-weight: 700;">Download Translated PDF Document</button>
+        </div>
+      </div>
+      <div class="tool-dialog-footer">
+        <button type="button" class="btn-secondary" onclick="document.getElementById('modal-translator').style.display='none'">Close</button>
+      </div>
+    </div>
+  </div>
+
+<div class="tool-workspace-panel" id="modal-html-to-pdf" style="display: none;">
+    <div class="tool-workspace-card" >
+      <div class="tool-dialog-header">
+        <h3>
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#ec4899" stroke-width="2.2"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg>
+          Convert HTML & Rich Code to PDF
+        </h3>
+        <button type="button" class="btn-icon" id="close-html-to-pdf">&times;</button>
+      </div>
+      <div class="tool-dialog-body">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+          <label style="font-size: 13px; font-weight: 700; color: #334155;">Template / Code Snippet:</label>
+          <select id="html-to-pdf-template" style="padding: 5px 12px; border-radius: 6px; border: 1.5px solid #cbd5e1; font-weight: 700; font-size: 12px;">
+            <option value="invoice">Preset: Commercial Invoice</option>
+            <option value="certificate">Preset: Formal Certificate</option>
+          </select>
+        </div>
+
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 14px;">
+          <div>
+            <div style="font-size: 11.5px; font-weight: 700; color: #64748b; margin-bottom: 4px;">HTML Code Editor:</div>
+            <textarea id="html-to-pdf-code" rows="12" style="width: 100%; height: 210px; padding: 10px; font-family: monospace; font-size: 12px; border: 1.5px solid #cbd5e1; border-radius: 8px; resize: none;"></textarea>
+          </div>
+          <div>
+            <div style="font-size: 11.5px; font-weight: 700; color: #ec4899; margin-bottom: 4px;">Live Document Preview:</div>
+            <iframe id="html-to-pdf-preview-iframe" style="width: 100%; height: 210px; border: 1.5px solid #cbd5e1; border-radius: 8px; background: #fff;"></iframe>
+          </div>
+        </div>
+
+        <button type="button" class="btn-select-pdf-hero" id="btn-convert-html-to-pdf" style="background: #db2777; width: 100%; padding: 12px; font-size: 15px; font-weight: 700;">Generate & Download PDF</button>
+      </div>
+      <div class="tool-dialog-footer">
+        <button type="button" class="btn-secondary" onclick="document.getElementById('modal-html-to-pdf').style.display='none'">Close</button>
+      </div>
+    </div>
+  </div>
+
+<div class="tool-workspace-panel" id="modal-unlock-pdf" style="display: none;">
+    <div class="tool-workspace-card" >
+      <div class="tool-dialog-header">
+        <h3>
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#8b5cf6" stroke-width="2.2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 9.9-1"/></svg>
+          Unlock PDF & Remove Permissions Lock
+        </h3>
+        <button type="button" class="btn-icon" id="close-unlock-pdf">&times;</button>
+      </div>
+      <div class="tool-dialog-body">
+        <div class="tool-dropzone" id="unlock-pdf-dropzone">
+          <div class="tool-dropzone-icon" style="color: #8b5cf6;">
+            <svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 9.9-1"/></svg>
+          </div>
+          <div style="font-size: 16px; font-weight: 800; color: #0f172a;">Select Encrypted or Restricted PDF</div>
+          <div style="font-size: 13px; color: #64748b;">Removes editing restrictions, printing locks, and passwords</div>
+          <button type="button" class="btn-select-pdf-hero" id="btn-choose-unlock-pdf" style="margin-top: 14px; background: #8b5cf6; padding: 10px 22px; font-size: 14px; border-radius: 8px;">Choose PDF</button>
+        </div>
+        <input type="file" id="unlock-pdf-picker" accept="application/pdf,.pdf,application/x-pdf" style="display: none;">
+
+        <div id="unlock-pdf-file-label" style="margin-top: 14px; font-size: 13px; color: #5b21b6; text-align: center;"></div>
+        <div style="margin-top: 14px;">
+          <label style="display: block; font-size: 12.5px; font-weight: 700; color: #334155; margin-bottom: 6px;">Password (if document is open-password protected):</label>
+          <input type="password" id="unlock-pdf-password" placeholder="Leave blank to strip printing/copying locks" style="width: 100%; padding: 10px 14px; border: 1.5px solid #cbd5e1; border-radius: 8px; font-size: 14px; margin-bottom: 14px;">
+          <button type="button" class="btn-select-pdf-hero" id="btn-start-unlock-pdf" disabled style="background: #8b5cf6; width: 100%; padding: 12px; font-size: 15px; font-weight: 700;">Unlock PDF & Remove Restrictions</button>
+        </div>
+      </div>
+      <div class="tool-dialog-footer">
+        <button type="button" class="btn-secondary" onclick="document.getElementById('modal-unlock-pdf').style.display='none'">Cancel</button>
+      </div>
+    </div>
+  </div>
+
+<div class="tool-workspace-panel" id="modal-pdf-scanner" style="display: none;">
+    <div class="tool-workspace-card" >
+      <div class="tool-dialog-header">
+        <h3>
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#f59e0b" stroke-width="2.2"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/><line x1="12" y1="21" x2="12" y2="17"/></svg>
+          Convert Digital PDF to Authentic Scanned Look
+        </h3>
+        <button type="button" class="btn-icon" id="close-pdf-scanner">&times;</button>
+      </div>
+      <div class="tool-dialog-body">
+        <div class="tool-dropzone" id="pdf-scanner-dropzone">
+          <div class="tool-dropzone-icon" style="color: #f59e0b;">
+            <svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/></svg>
+          </div>
+          <div style="font-size: 16px; font-weight: 800; color: #0f172a;">Select Digital PDF to Apply Scan Effect</div>
+          <div style="font-size: 13px; color: #64748b;">Adds realistic photocopy contrast, paper grain texture, and subtle tilt</div>
+          <button type="button" class="btn-select-pdf-hero" id="btn-choose-pdf-scanner" style="margin-top: 14px; background: #f59e0b; padding: 10px 22px; font-size: 14px; border-radius: 8px;">Select PDF files</button>
+        </div>
+        <input type="file" id="pdf-scanner-picker" accept="application/pdf,.pdf,application/x-pdf" style="display: none;">
+
+        <div style="margin-top: 16px;">
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 12px;">
+            <div>
+              <label style="font-size: 12px; font-weight: 700; color: #334155; display: block; margin-bottom: 4px;">Scanner Preset:</label>
+              <select id="scanner-mode-select" style="width: 100%; padding: 6px 10px; border-radius: 6px; border: 1.5px solid #cbd5e1; font-weight: 700; font-size: 12.5px;">
+                <option value="photocopy" selected>Photocopy B&W (Monochrome)</option>
+                <option value="grayscale">Flatbed Grayscale Scanner</option>
+                <option value="vintage">Vintage Aged Office Fax</option>
+              </select>
+            </div>
+            <div>
+              <label style="font-size: 12px; font-weight: 700; color: #334155; display: block; margin-bottom: 4px;">Paper Noise & Grain:</label>
+              <input type="range" id="scanner-noise-slider" min="0" max="40" value="18" style="width: 100%;">
+            </div>
+          </div>
+
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 14px;">
+            <div>
+              <label style="font-size: 12px; font-weight: 700; color: #334155; display: block; margin-bottom: 4px;">Photocopy Contrast:</label>
+              <input type="range" id="scanner-contrast-slider" min="1.0" max="2.4" step="0.1" value="1.5" style="width: 100%;">
+            </div>
+            <div>
+              <label style="font-size: 12px; font-weight: 700; color: #334155; display: block; margin-bottom: 4px;">Feeder Tilt / Angle:</label>
+              <input type="range" id="scanner-tilt-slider" min="-1.0" max="1.0" step="0.1" value="0.3" style="width: 100%;">
+            </div>
+          </div>
+
+          <div style="text-align: center; margin-bottom: 14px;">
+            <div id="scanner-page-stepper" style="font-size: 12px; font-weight: 700; color: #64748b; margin-bottom: 6px;">Live Page Preview:</div>
+            <div style="max-height: 220px; overflow: hidden; display: inline-block; border: 1.5px solid #cbd5e1; border-radius: 8px; box-shadow: 0 4px 10px rgba(0,0,0,0.1);">
+              <canvas id="scanner-preview-canvas" style="max-height: 220px; width: auto; display: block;"></canvas>
+            </div>
+          </div>
+
+          <button type="button" class="btn-select-pdf-hero" id="btn-start-scanner" disabled style="background: #f59e0b; width: 100%; padding: 12px; font-size: 15px; font-weight: 700;">Apply Scan Effect & Download PDF</button>
+        </div>
+      </div>
+      <div class="tool-dialog-footer">
+        <button type="button" class="btn-secondary" onclick="document.getElementById('modal-pdf-scanner').style.display='none'">Close</button>
+      </div>
+    </div>
+  </div>
+      </div>
+    </div>
   </main>
 
   <!-- ======================================================================
@@ -641,357 +1536,25 @@
   </div>
 
   <!-- MODAL: Edit PDF File Upload -->
-  <div class="tool-dialog-backdrop" id="modal-edit-pdf" style="display: none;">
-    <div class="tool-dialog">
-      <div class="tool-dialog-header">
-        <h3>
-          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#e5322d" stroke-width="2.2">
-            <path d="M12 20h9" />
-            <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z" />
-          </svg>
-          Edit PDF Document
-        </h3>
-        <button type="button" class="btn-icon" id="close-edit-pdf">&times;</button>
-      </div>
-      <div class="tool-dialog-body">
-        <div class="tool-dropzone" id="edit-pdf-dropzone">
-          <div class="tool-dropzone-icon" style="color: #e5322d;">
-            <svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
-              <polyline points="14 2 14 8 20 8" />
-              <line x1="12" y1="18" x2="12" y2="12" />
-              <line x1="9" y1="15" x2="15" y2="15" />
-            </svg>
-          </div>
-          <div style="font-size: 16px; font-weight: 800; color: #0f172a;">Select or Drop PDF File to Edit</div>
-          <div style="font-size: 13px; color: #64748b; margin-top: 4px;">Edit existing text, add signatures, shapes, and
-            images</div>
-          <button type="button" class="btn-primary" id="btn-choose-edit-pdf"
-            style="margin-top: 16px; background: #e5322d; padding: 10px 24px; font-size: 14px; border-radius: 8px;">
-            Choose PDF File
-          </button>
-        </div>
-        <input type="file" id="edit-modal-file-picker" accept="application/pdf,.pdf,application/x-pdf" style="display: none;">
-      </div>
-      <div class="tool-dialog-footer">
-        <button type="button" class="btn-secondary"
-          onclick="document.getElementById('modal-edit-pdf').style.display='none'">Cancel</button>
-      </div>
-    </div>
-  </div>
+  
 
   <!-- MODAL: Merge PDF -->
-  <div class="tool-dialog-backdrop" id="modal-merge-pdf" style="display: none;">
-    <div class="tool-dialog">
-      <div class="tool-dialog-header">
-        <h3>
-          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#e5322d" stroke-width="2.2">
-            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
-            <polyline points="14 2 14 8 20 8" />
-            <line x1="12" y1="12" x2="12" y2="18" />
-            <line x1="9" y1="15" x2="15" y2="15" />
-          </svg>
-          Merge PDF Documents
-        </h3>
-        <button type="button" class="btn-icon" id="close-merge-pdf">&times;</button>
-      </div>
-      <div class="tool-dialog-body">
-        <div class="tool-dropzone" id="merge-dropzone">
-          <div class="tool-dropzone-icon" style="color: #e5322d;">
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
-            </svg>
-          </div>
-          <div style="font-size: 16px; font-weight: 800; color: #0f172a;">Select or Drop 2 or more PDF Files</div>
-          <div style="font-size: 13px; color: #64748b;">Combine documents in your chosen order</div>
-        </div>
-        <input type="file" id="merge-file-picker" accept="application/pdf,.pdf,application/x-pdf" multiple style="display: none;">
-
-        <div style="margin-top: 18px; font-size: 13.5px; font-weight: 800; color: #0f172a;" id="merge-count-badge">0
-          PDFs Selected</div>
-        <div class="tool-queue-list" id="merge-queue-list"></div>
-      </div>
-      <div class="tool-dialog-footer">
-        <button type="button" class="btn-secondary"
-          onclick="document.getElementById('modal-merge-pdf').style.display='none'">Cancel</button>
-        <button type="button" class="btn-primary" id="btn-merge-pdfs" disabled style="background:#e5322d;">Merge
-          PDFs</button>
-      </div>
-    </div>
-  </div>
+  
 
   <!-- MODAL: JPG to PDF Converter -->
-  <div class="tool-dialog-backdrop" id="modal-jpg-to-pdf" style="display: none;">
-    <div class="tool-dialog">
-      <div class="tool-dialog-header">
-        <h3>
-          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#f59e0b" stroke-width="2.2">
-            <rect x="3" y="3" width="18" height="18" rx="2" ry="2" />
-            <circle cx="8.5" cy="8.5" r="1.5" />
-            <polyline points="21 15 16 10 5 21" />
-          </svg>
-          JPG to PDF Converter
-        </h3>
-        <button type="button" class="btn-icon" id="close-jpg-to-pdf">&times;</button>
-      </div>
-      <div class="tool-dialog-body">
-        <div class="tool-dropzone" id="jpg-dropzone">
-          <div class="tool-dropzone-icon" style="color: #f59e0b;">
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <rect x="3" y="3" width="18" height="18" rx="2" ry="2" />
-            </svg>
-          </div>
-          <div style="font-size: 16px; font-weight: 800; color: #0f172a;">Select or Drop Images Here</div>
-          <div style="font-size: 13px; color: #64748b;">Supports JPG, JPEG, PNG, and WebP formats</div>
-        </div>
-        <input type="file" id="jpg-file-picker" accept="image/*" multiple style="display: none;">
-
-        <div style="display: flex; align-items: center; justify-content: space-between; margin-top: 18px;">
-          <span style="font-size: 13.5px; font-weight: 800; color: #0f172a;" id="jpg-count-badge">0 Images
-            Selected</span>
-          <div style="display: flex; align-items: center; gap: 8px;">
-            <label for="jpg-page-size" style="font-size: 12px; font-weight: 700; color: #475569;">Page Size:</label>
-            <select id="jpg-page-size" class="form-input" style="padding: 5px 10px; font-size: 12.5px;">
-              <option value="fit">Fit to Image Size</option>
-              <option value="a4_portrait">A4 (Portrait)</option>
-              <option value="a4_landscape">A4 (Landscape)</option>
-            </select>
-          </div>
-        </div>
-
-        <div class="tool-queue-list" id="jpg-queue-list"></div>
-      </div>
-      <div class="tool-dialog-footer">
-        <button type="button" class="btn-secondary"
-          onclick="document.getElementById('modal-jpg-to-pdf').style.display='none'">Cancel</button>
-        <button type="button" class="btn-primary" id="btn-convert-jpg-to-pdf" disabled
-          style="background:#f59e0b;">Convert to PDF</button>
-      </div>
-    </div>
-  </div>
+  
 
   <!-- MODAL: Image Resize -->
-  <div class="tool-dialog-backdrop" id="modal-image-resize" style="display: none;">
-    <div class="tool-dialog">
-      <div class="tool-dialog-header">
-        <h3>
-          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#06b6d4" stroke-width="2.2">
-            <polyline points="15 3 21 3 21 9" />
-            <polyline points="9 21 3 21 3 15" />
-            <line x1="21" y1="3" x2="14" y2="10" />
-            <line x1="3" y1="21" x2="10" y2="14" />
-          </svg>
-          Image Resize & Compressor
-        </h3>
-        <button type="button" class="btn-icon" id="close-image-resize">&times;</button>
-      </div>
-      <div class="tool-dialog-body">
-        <div class="tool-dropzone" id="resize-dropzone">
-          <div class="tool-dropzone-icon" style="color: #06b6d4;">
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <rect x="3" y="3" width="18" height="18" rx="2" ry="2" />
-            </svg>
-          </div>
-          <div style="font-size: 16px; font-weight: 800; color: #0f172a;">Select Image to Resize</div>
-          <div style="font-size: 13px; color: #64748b;">JPG, PNG, or WebP graphics</div>
-        </div>
-        <input type="file" id="resize-file-picker" accept="image/*" style="display: none;">
-
-        <div class="resize-preview-box" id="resize-preview-container" style="display: none;">
-          <img id="resize-preview-img" alt="Preview">
-        </div>
-
-        <div id="resize-controls-container" style="display: none;">
-          <div class="resize-form-grid">
-            <div class="form-group">
-              <label for="resize-width">Width (px):</label>
-              <input type="number" id="resize-width" class="form-input" min="1" max="10000">
-            </div>
-            <div class="form-group">
-              <label for="resize-height">Height (px):</label>
-              <input type="number" id="resize-height" class="form-input" min="1" max="10000">
-            </div>
-          </div>
-
-          <div style="display: flex; align-items: center; justify-content: space-between; margin-top: 14px;">
-            <label
-              style="display: flex; align-items: center; gap: 6px; font-size: 13px; font-weight: 600; cursor: pointer;">
-              <input type="checkbox" id="resize-lock-aspect" checked> Keep Aspect Ratio
-            </label>
-            <div style="display: flex; gap: 6px;">
-              <button type="button" class="btn-secondary resize-preset-btn" data-scale="0.25"
-                style="padding: 3px 8px; font-size: 12px;">25%</button>
-              <button type="button" class="btn-secondary resize-preset-btn" data-scale="0.5"
-                style="padding: 3px 8px; font-size: 12px;">50%</button>
-              <button type="button" class="btn-secondary resize-preset-btn" data-scale="0.75"
-                style="padding: 3px 8px; font-size: 12px;">75%</button>
-              <button type="button" class="btn-secondary resize-preset-btn" data-scale="1"
-                style="padding: 3px 8px; font-size: 12px;">100%</button>
-            </div>
-          </div>
-
-          <div class="resize-form-grid" style="margin-top: 16px;">
-            <div class="form-group">
-              <label for="resize-format">Target Format:</label>
-              <select id="resize-format" class="form-input">
-                <option value="image/jpeg">JPEG (.jpg)</option>
-                <option value="image/png">PNG (.png)</option>
-                <option value="image/webp">WebP (.webp)</option>
-              </select>
-            </div>
-            <div class="form-group">
-              <label for="resize-quality" style="display: flex; justify-content: space-between;">
-                <span>Quality:</span>
-                <span id="resize-quality-val" style="color: #06b6d4; font-weight: 700;">90%</span>
-              </label>
-              <input type="range" id="resize-quality" min="10" max="100" value="90" style="margin-top: 6px;">
-            </div>
-          </div>
-        </div>
-      </div>
-      <div class="tool-dialog-footer">
-        <button type="button" class="btn-secondary"
-          onclick="document.getElementById('modal-image-resize').style.display='none'">Cancel</button>
-        <button type="button" class="btn-primary" id="btn-do-resize" disabled style="background:#06b6d4;">Resize &
-          Download</button>
-      </div>
-    </div>
-  </div>
+  
 
   <!-- MODAL: Split PDF -->
-  <div class="tool-dialog-backdrop" id="modal-split-pdf" style="display: none;">
-    <div class="tool-dialog">
-      <div class="tool-dialog-header">
-        <h3>
-          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#ff6b00" stroke-width="2.2">
-            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
-            <line x1="2" y1="12" x2="22" y2="12" />
-          </svg>
-          Split PDF Pages
-        </h3>
-        <button type="button" class="btn-icon" id="close-split-pdf">&times;</button>
-      </div>
-      <div class="tool-dialog-body">
-        <div class="tool-dropzone" id="split-dropzone">
-          <div class="tool-dropzone-icon" style="color: #ff6b00;">
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
-            </svg>
-          </div>
-          <div style="font-size: 16px; font-weight: 800; color: #0f172a;">Select PDF to Split</div>
-          <div style="font-size: 13px; color: #64748b;">Extract individual pages or custom ranges</div>
-        </div>
-        <input type="file" id="split-file-picker" accept="application/pdf,.pdf,application/x-pdf" style="display: none;">
-
-        <div id="split-controls" style="display: none; margin-top: 16px;">
-          <div style="font-weight: 800; font-size: 14px; color: #0f172a; margin-bottom: 12px;" id="split-info-text">
-            Document Info</div>
-          <div class="resize-form-grid">
-            <div class="form-group">
-              <label for="split-page-from">From Page:</label>
-              <input type="number" id="split-page-from" class="form-input" min="1" value="1">
-            </div>
-            <div class="form-group">
-              <label for="split-page-to">To Page:</label>
-              <input type="number" id="split-page-to" class="form-input" min="1" value="1">
-            </div>
-          </div>
-        </div>
-      </div>
-      <div class="tool-dialog-footer">
-        <button type="button" class="btn-secondary"
-          onclick="document.getElementById('modal-split-pdf').style.display='none'">Cancel</button>
-        <button type="button" class="btn-primary" id="btn-do-split" disabled style="background:#ff6b00;">Extract &
-          Download PDF</button>
-      </div>
-    </div>
-  </div>
+  
 
   <!-- MODAL: Rotate PDF -->
-  <div class="tool-dialog-backdrop" id="modal-rotate-pdf" style="display: none;">
-    <div class="tool-dialog">
-      <div class="tool-dialog-header">
-        <h3>
-          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#0ea5e9" stroke-width="2.2">
-            <path d="M21.5 2v6h-6" />
-            <path d="M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67" />
-          </svg>
-          Rotate PDF Pages
-        </h3>
-        <button type="button" class="btn-icon" id="close-rotate-pdf">&times;</button>
-      </div>
-      <div class="tool-dialog-body">
-        <div class="tool-dropzone" id="rotate-dropzone">
-          <div class="tool-dropzone-icon" style="color: #0ea5e9;">
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <path d="M21.5 2v6h-6" />
-            </svg>
-          </div>
-          <div style="font-size: 16px; font-weight: 800; color: #0f172a;">Select PDF to Rotate</div>
-          <div style="font-size: 13px; color: #64748b;">Rotate orientation by 90°, 180°, or 270°</div>
-        </div>
-        <input type="file" id="rotate-file-picker" accept="application/pdf,.pdf,application/x-pdf" style="display: none;">
-
-        <div id="rotate-controls" style="display: none; margin-top: 18px; text-align: center;">
-          <div style="font-weight: 800; font-size: 14px; color: #0f172a; margin-bottom: 14px;" id="rotate-info-text">
-            Document Info</div>
-          <div style="display: flex; gap: 10px; justify-content: center;">
-            <button type="button" class="btn-secondary rotate-deg-btn selected" data-deg="90">90° Clockwise</button>
-            <button type="button" class="btn-secondary rotate-deg-btn" data-deg="180">180° Flip</button>
-            <button type="button" class="btn-secondary rotate-deg-btn" data-deg="270">270° Counter-Clockwise</button>
-          </div>
-        </div>
-      </div>
-      <div class="tool-dialog-footer">
-        <button type="button" class="btn-secondary"
-          onclick="document.getElementById('modal-rotate-pdf').style.display='none'">Cancel</button>
-        <button type="button" class="btn-primary" id="btn-do-rotate" disabled style="background:#0ea5e9;">Rotate &
-          Download PDF</button>
-      </div>
-    </div>
-  </div>
+  
 
   <!-- MODAL: PDF to JPG -->
-  <div class="tool-dialog-backdrop" id="modal-pdf-to-jpg" style="display: none;">
-    <div class="tool-dialog">
-      <div class="tool-dialog-header">
-        <h3>
-          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#9333ea" stroke-width="2.2">
-            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
-            <polyline points="7 10 12 15 17 10" />
-            <line x1="12" y1="15" x2="12" y2="3" />
-          </svg>
-          PDF to JPG Converter
-        </h3>
-        <button type="button" class="btn-icon" id="close-pdf-to-jpg">&times;</button>
-      </div>
-      <div class="tool-dialog-body">
-        <div class="tool-dropzone" id="pdf-to-jpg-dropzone">
-          <div class="tool-dropzone-icon" style="color: #9333ea;">
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
-            </svg>
-          </div>
-          <div style="font-size: 16px; font-weight: 800; color: #0f172a;">Select PDF to Convert to JPG</div>
-          <div style="font-size: 13px; color: #64748b;">Extract pages as crisp high-resolution images</div>
-        </div>
-        <input type="file" id="pdf-to-jpg-file-picker" accept="application/pdf,.pdf,application/x-pdf" style="display: none;">
-
-        <div id="pdf-to-jpg-controls" style="display: none; margin-top: 18px; text-align: center;">
-          <div style="font-weight: 800; font-size: 14px; color: #0f172a; margin-bottom: 8px;" id="pdf-to-jpg-info-text">
-            Document Info</div>
-          <div style="font-size: 13px; color: #64748b;">Ready to render pages into crystal-clear 300 DPI JPG format.
-          </div>
-        </div>
-      </div>
-      <div class="tool-dialog-footer">
-        <button type="button" class="btn-secondary"
-          onclick="document.getElementById('modal-pdf-to-jpg').style.display='none'">Cancel</button>
-        <button type="button" class="btn-primary" id="btn-do-pdf-to-jpg" disabled style="background:#9333ea;">Convert &
-          Download JPGs</button>
-      </div>
-    </div>
-  </div>
+  
 
   
   <!-- ======================================================================
@@ -999,529 +1562,40 @@
        ====================================================================== -->
 
   <!-- MODAL: Compress PDF (Custom Target Size in KB/MB/GB) -->
-  <div class="tool-dialog-backdrop" id="modal-compress-pdf" style="display: none;">
-    <div class="tool-dialog" style="max-width: 600px; width: 95%;">
-      <div class="tool-dialog-header">
-        <h3>
-          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="2.2">
-            <path d="M4 14h6v6" /><path d="M20 10h-6V4" /><path d="m14 10 7-7" /><path d="m3 21 7-7" />
-          </svg>
-          Compress PDF to Exact Target Size
-        </h3>
-        <button type="button" class="btn-icon" id="close-compress-pdf">&times;</button>
-      </div>
-      <div class="tool-dialog-body">
-        <div class="tool-dropzone" id="compress-pdf-dropzone">
-          <div class="tool-dropzone-icon" style="color: #10b981;">
-            <svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
-              <polyline points="14 2 14 8 20 8" />
-              <path d="M12 18v-6" /><path d="m9 15 3 3 3-3" />
-            </svg>
-          </div>
-          <div style="font-size: 16px; font-weight: 800; color: #0f172a;">Select or Drop PDF to Compress</div>
-          <div style="font-size: 13px; color: #64748b;">Specify exact KB, MB, or GB target size with lossless clarity</div>
-          <button type="button" class="btn-primary" id="btn-choose-compress-pdf" style="margin-top: 14px; background: #10b981; padding: 10px 22px; font-size: 14px; border-radius: 8px;">Choose PDF File</button>
-        </div>
-        <input type="file" id="compress-pdf-picker" accept="application/pdf,.pdf,application/x-pdf" style="display: none;">
-
-        <div id="compress-options-area" style="display: none; margin-top: 20px;">
-          <div id="compress-file-info" style="font-size: 14px; color: #1e293b; margin-bottom: 16px; padding: 10px 14px; background: #f8fafc; border-radius: 8px; border: 1px solid #e2e8f0;"></div>
-          
-          <label style="display: block; font-size: 13px; font-weight: 700; color: #334155; margin-bottom: 8px;">Target File Size (KB / MB / GB)</label>
-          <div style="display: flex; gap: 10px; align-items: center; margin-bottom: 12px;">
-            <input type="number" id="compress-target-val" value="200" min="1" step="1" style="flex: 1; padding: 10px 14px; border: 1.5px solid #cbd5e1; border-radius: 8px; font-size: 16px; font-weight: 700;">
-            <select id="compress-target-unit" style="padding: 10px 16px; border: 1.5px solid #cbd5e1; border-radius: 8px; font-size: 15px; font-weight: 700; background: #f8fafc; cursor: pointer;">
-              <option value="KB" selected>KB</option>
-              <option value="MB">MB</option>
-              <option value="GB">GB</option>
-            </select>
-          </div>
-
-          <div style="font-size: 12px; font-weight: 700; color: #64748b; margin-bottom: 8px;">Quick Target Presets:</div>
-          <div class="compress-presets-row" style="display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 16px;">
-            <button type="button" class="compress-preset-pill" data-val="100" data-unit="KB">100 KB (Govt Portals)</button>
-            <button type="button" class="compress-preset-pill active" data-val="200" data-unit="KB">200 KB (Job Apps)</button>
-            <button type="button" class="compress-preset-pill" data-val="500" data-unit="KB">500 KB (Email)</button>
-            <button type="button" class="compress-preset-pill" data-val="1" data-unit="MB">1 MB (High Quality)</button>
-            <button type="button" class="compress-preset-pill" data-val="auto-50">Recommended (-50%)</button>
-            <button type="button" class="compress-preset-pill" data-val="auto-80">Extreme (-80%)</button>
-          </div>
-
-          <div id="compress-progress-wrap" style="display: none; margin-bottom: 16px;">
-            <div style="height: 8px; background: #e2e8f0; border-radius: 4px; overflow: hidden;">
-              <div id="compress-progress-bar" style="width: 0%; height: 100%; background: #10b981; transition: width 0.2s ease;"></div>
-            </div>
-          </div>
-
-          <div id="compress-result-box" style="display: none; padding: 14px; background: #ecfdf5; border: 1.5px solid #a7f3d0; border-radius: 12px; margin-bottom: 16px; text-align: center;">
-            <div style="font-size: 12px; font-weight: 800; color: #047857; text-transform: uppercase;">Compression Complete</div>
-            <div style="font-size: 18px; font-weight: 800; color: #065f46; margin: 4px 0;">
-              <span id="compress-res-original"></span> &rarr; <span id="compress-res-new" style="color: #059669;"></span>
-            </div>
-            <div style="font-size: 13px; font-weight: 700; color: #047857;" id="compress-res-savings"></div>
-            <button type="button" class="btn-primary" id="btn-download-compressed" style="margin-top: 10px; background: #059669; width: 100%; padding: 11px;">Download Compressed PDF</button>
-          </div>
-
-          <button type="button" class="btn-primary" id="btn-start-compress" style="background: #10b981; width: 100%; padding: 12px; font-size: 15px; font-weight: 700;">Compress PDF</button>
-        </div>
-      </div>
-      <div class="tool-dialog-footer">
-        <button type="button" class="btn-secondary" onclick="document.getElementById('modal-compress-pdf').style.display='none'">Close</button>
-      </div>
-    </div>
-  </div>
+  
 
   <!-- MODAL: PDF to Word (.docx) -->
-  <div class="tool-dialog-backdrop" id="modal-pdf-to-word" style="display: none;">
-    <div class="tool-dialog" style="max-width: 620px; width: 95%;">
-      <div class="tool-dialog-header">
-        <h3>
-          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#2b579a" stroke-width="2.2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><path d="M9 13l2 5 2-5 2 5"/></svg>
-          Convert PDF to Microsoft Word (.docx)
-        </h3>
-        <button type="button" class="btn-icon" id="close-pdf-to-word">&times;</button>
-      </div>
-      <div class="tool-dialog-body">
-        <div class="tool-dropzone" id="pdf-to-word-dropzone">
-          <div class="tool-dropzone-icon" style="color: #2b579a;">
-            <svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
-          </div>
-          <div style="font-size: 16px; font-weight: 800; color: #0f172a;">Select PDF to Convert to Word</div>
-          <div style="font-size: 13px; color: #64748b;">Preserves headings, bold text, paragraphs, and document structure</div>
-          <button type="button" class="btn-primary" id="btn-choose-pdf-to-word" style="margin-top: 14px; background: #2b579a; padding: 10px 22px; font-size: 14px; border-radius: 8px;">Choose PDF File</button>
-        </div>
-        <input type="file" id="pdf-to-word-picker" accept="application/pdf,.pdf,application/x-pdf" style="display: none;">
-
-        <div id="pdf-to-word-preview-wrap" style="display: none; margin-top: 18px;">
-          <div id="pdf-to-word-status" style="font-size: 13px; font-weight: 700; color: #1e3a8a; margin-bottom: 10px;"></div>
-          <div class="word-preview-box" id="pdf-to-word-preview-text" style="max-height: 240px; overflow-y: auto; background: #f8fafc; border: 1.5px solid #e2e8f0; border-radius: 10px; padding: 14px; font-size: 13px; line-height: 1.5;"></div>
-          <button type="button" class="btn-primary" id="btn-start-pdf-to-word" disabled style="margin-top: 14px; background: #2b579a; width: 100%; padding: 12px; font-size: 15px; font-weight: 700;">Download Microsoft Word (.docx)</button>
-        </div>
-      </div>
-      <div class="tool-dialog-footer">
-        <button type="button" class="btn-secondary" onclick="document.getElementById('modal-pdf-to-word').style.display='none'">Cancel</button>
-      </div>
-    </div>
-  </div>
+  
 
   <!-- MODAL: PDF to Excel (.xlsx / .csv) -->
-  <div class="tool-dialog-backdrop" id="modal-pdf-to-excel" style="display: none;">
-    <div class="tool-dialog" style="max-width: 680px; width: 95%;">
-      <div class="tool-dialog-header">
-        <h3>
-          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#217346" stroke-width="2.2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><path d="M8 13h8"/><path d="M8 17h8"/><path d="M12 9v12"/></svg>
-          Extract PDF Tables to Excel (.xlsx / .csv)
-        </h3>
-        <button type="button" class="btn-icon" id="close-pdf-to-excel">&times;</button>
-      </div>
-      <div class="tool-dialog-body">
-        <div class="tool-dropzone" id="pdf-to-excel-dropzone">
-          <div class="tool-dropzone-icon" style="color: #217346;">
-            <svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18"/><path d="M9 3v18"/></svg>
-          </div>
-          <div style="font-size: 16px; font-weight: 800; color: #0f172a;">Select PDF with Tables, Invoices or Statements</div>
-          <div style="font-size: 13px; color: #64748b;">Automatically detects rows, columns, and numeric cells</div>
-          <button type="button" class="btn-primary" id="btn-choose-pdf-to-excel" style="margin-top: 14px; background: #217346; padding: 10px 22px; font-size: 14px; border-radius: 8px;">Choose PDF File</button>
-        </div>
-        <input type="file" id="pdf-to-excel-picker" accept="application/pdf,.pdf,application/x-pdf" style="display: none;">
-
-        <div id="pdf-to-excel-preview-wrap" style="display: none; margin-top: 18px;">
-          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
-            <span style="font-size: 13px; font-weight: 700; color: #166534;" id="pdf-to-excel-stats"></span>
-            <span style="font-size: 11px; color: #64748b;">Showing first 35 rows</span>
-          </div>
-          <div id="pdf-to-excel-preview-table" style="max-height: 220px; overflow: auto; border: 1.5px solid #cbd5e1; border-radius: 8px; margin-bottom: 14px;"></div>
-          <div style="display: flex; gap: 10px;">
-            <button type="button" class="btn-primary" id="btn-download-excel-xlsx" disabled style="flex: 1; background: #217346; padding: 11px; font-size: 14px; font-weight: 700;">Download Excel (.xlsx)</button>
-            <button type="button" class="btn-secondary" id="btn-download-excel-csv" disabled style="padding: 11px 18px; font-size: 14px; font-weight: 700;">Download CSV</button>
-          </div>
-        </div>
-      </div>
-      <div class="tool-dialog-footer">
-        <button type="button" class="btn-secondary" onclick="document.getElementById('modal-pdf-to-excel').style.display='none'">Close</button>
-      </div>
-    </div>
-  </div>
+  
 
   <!-- MODAL: PDF to PowerPoint (.pptx) -->
-  <div class="tool-dialog-backdrop" id="modal-pdf-to-pptx" style="display: none;">
-    <div class="tool-dialog" style="max-width: 620px; width: 95%;">
-      <div class="tool-dialog-header">
-        <h3>
-          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#d24726" stroke-width="2.2"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M9 7h4a2 2 0 0 1 0 4H9V7z"/></svg>
-          Convert PDF to PowerPoint Presentation (.pptx)
-        </h3>
-        <button type="button" class="btn-icon" id="close-pdf-to-pptx">&times;</button>
-      </div>
-      <div class="tool-dialog-body">
-        <div class="tool-dropzone" id="pdf-to-pptx-dropzone">
-          <div class="tool-dropzone-icon" style="color: #d24726;">
-            <svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
-          </div>
-          <div style="font-size: 16px; font-weight: 800; color: #0f172a;">Select PDF to Convert to Slides</div>
-          <div style="font-size: 13px; color: #64748b;">Creates a 16:9 widescreen presentation deck ready for PowerPoint</div>
-          <button type="button" class="btn-primary" id="btn-choose-pdf-to-pptx" style="margin-top: 14px; background: #d24726; padding: 10px 22px; font-size: 14px; border-radius: 8px;">Choose PDF File</button>
-        </div>
-        <input type="file" id="pdf-to-pptx-picker" accept="application/pdf,.pdf,application/x-pdf" style="display: none;">
-
-        <div id="pdf-to-pptx-status" style="margin-top: 14px; font-size: 13px; font-weight: 700; color: #9a3412;"></div>
-        <div id="pdf-to-pptx-preview-deck" style="display: flex; gap: 10px; overflow-x: auto; padding: 10px 0; margin-bottom: 14px;"></div>
-        <button type="button" class="btn-primary" id="btn-download-pptx" disabled style="background: #d24726; width: 100%; padding: 12px; font-size: 15px; font-weight: 700;">Download PowerPoint (.pptx)</button>
-      </div>
-      <div class="tool-dialog-footer">
-        <button type="button" class="btn-secondary" onclick="document.getElementById('modal-pdf-to-pptx').style.display='none'">Close</button>
-      </div>
-    </div>
-  </div>
+  
 
   <!-- MODAL: Word to PDF -->
-  <div class="tool-dialog-backdrop" id="modal-word-to-pdf" style="display: none;">
-    <div class="tool-dialog" style="max-width: 580px; width: 95%;">
-      <div class="tool-dialog-header">
-        <h3>
-          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#2b579a" stroke-width="2.2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><path d="M12 18v-6"/><path d="m9 15 3 3 3-3"/></svg>
-          Convert Word Document to PDF
-        </h3>
-        <button type="button" class="btn-icon" id="close-word-to-pdf">&times;</button>
-      </div>
-      <div class="tool-dialog-body">
-        <div class="tool-dropzone" id="word-to-pdf-dropzone">
-          <div class="tool-dropzone-icon" style="color: #2b579a;">
-            <svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
-          </div>
-          <div style="font-size: 16px; font-weight: 800; color: #0f172a;">Select Word File (.docx, .doc, .txt)</div>
-          <div style="font-size: 13px; color: #64748b;">Or paste your document text directly below</div>
-          <button type="button" class="btn-primary" id="btn-choose-word-to-pdf" style="margin-top: 14px; background: #2b579a; padding: 10px 22px; font-size: 14px; border-radius: 8px;">Choose File</button>
-        </div>
-        <input type="file" id="word-to-pdf-picker" accept=".docx,.doc,.rtf,.txt" style="display: none;">
-
-        <div style="margin-top: 16px;">
-          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
-            <label style="font-size: 12.5px; font-weight: 700; color: #334155;">Document Text Content:</label>
-            <select id="word-to-pdf-font" style="padding: 4px 10px; border-radius: 6px; border: 1px solid #cbd5e1; font-size: 12px;">
-              <option value="Helvetica" selected>Font: Helvetica (Modern)</option>
-              <option value="Times">Font: Times Roman (Formal)</option>
-            </select>
-          </div>
-          <textarea id="word-to-pdf-text-input" rows="7" style="width: 100%; padding: 10px; border: 1.5px solid #cbd5e1; border-radius: 8px; font-family: inherit; font-size: 13px;" placeholder="Type or paste document text here..."></textarea>
-          <button type="button" class="btn-primary" id="btn-convert-word-to-pdf" style="margin-top: 14px; background: #2b579a; width: 100%; padding: 12px; font-size: 15px; font-weight: 700;">Convert to PDF Document</button>
-        </div>
-      </div>
-      <div class="tool-dialog-footer">
-        <button type="button" class="btn-secondary" onclick="document.getElementById('modal-word-to-pdf').style.display='none'">Cancel</button>
-      </div>
-    </div>
-  </div>
+  
 
   <!-- MODAL: Excel to PDF Table -->
-  <div class="tool-dialog-backdrop" id="modal-excel-to-pdf" style="display: none;">
-    <div class="tool-dialog" style="max-width: 580px; width: 95%;">
-      <div class="tool-dialog-header">
-        <h3>
-          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#217346" stroke-width="2.2"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18"/><path d="M9 3v18"/></svg>
-          Convert Spreadsheet to PDF Table Report
-        </h3>
-        <button type="button" class="btn-icon" id="close-excel-to-pdf">&times;</button>
-      </div>
-      <div class="tool-dialog-body">
-        <div class="tool-dropzone" id="excel-to-pdf-dropzone">
-          <div class="tool-dropzone-icon" style="color: #217346;">
-            <svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
-          </div>
-          <div style="font-size: 16px; font-weight: 800; color: #0f172a;">Select .csv or .xlsx Spreadsheet File</div>
-          <div style="font-size: 13px; color: #64748b;">Or paste CSV rows directly into the box below</div>
-          <button type="button" class="btn-primary" id="btn-choose-excel-to-pdf" style="margin-top: 14px; background: #217346; padding: 10px 22px; font-size: 14px; border-radius: 8px;">Choose File</button>
-        </div>
-        <input type="file" id="excel-to-pdf-picker" accept=".csv,.xlsx,.xls,.txt" style="display: none;">
-
-        <div style="margin-top: 16px;">
-          <label style="display: block; font-size: 12.5px; font-weight: 700; color: #334155; margin-bottom: 6px;">CSV Data / Rows:</label>
-          <textarea id="excel-to-pdf-csv-input" rows="6" style="width: 100%; padding: 10px; border: 1.5px solid #cbd5e1; border-radius: 8px; font-family: monospace; font-size: 12.5px;" placeholder="Name,Department,Role,Salary&#10;Alice,Engineering,Lead,$120000&#10;Bob,Design,Senior,$95000"></textarea>
-          <button type="button" class="btn-primary" id="btn-convert-excel-to-pdf" style="margin-top: 14px; background: #217346; width: 100%; padding: 12px; font-size: 15px; font-weight: 700;">Convert to PDF Table</button>
-        </div>
-      </div>
-      <div class="tool-dialog-footer">
-        <button type="button" class="btn-secondary" onclick="document.getElementById('modal-excel-to-pdf').style.display='none'">Cancel</button>
-      </div>
-    </div>
-  </div>
+  
 
   <!-- MODAL: PowerPoint to PDF -->
-  <div class="tool-dialog-backdrop" id="modal-pptx-to-pdf" style="display: none;">
-    <div class="tool-dialog" style="max-width: 540px; width: 95%;">
-      <div class="tool-dialog-header">
-        <h3>
-          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#d24726" stroke-width="2.2"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="m10 9 5 3-5 3V9z"/></svg>
-          Convert PowerPoint Slides to PDF
-        </h3>
-        <button type="button" class="btn-icon" id="close-pptx-to-pdf">&times;</button>
-      </div>
-      <div class="tool-dialog-body">
-        <div class="tool-dropzone" id="pptx-to-pdf-dropzone">
-          <div class="tool-dropzone-icon" style="color: #d24726;">
-            <svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="3" width="20" height="14" rx="2"/><polyline points="10 9 15 12 10 15"/></svg>
-          </div>
-          <div style="font-size: 16px; font-weight: 800; color: #0f172a;">Select Presentation (.pptx, .ppt)</div>
-          <div style="font-size: 13px; color: #64748b;">Creates landscape presentation handout PDF pages</div>
-          <button type="button" class="btn-primary" id="btn-choose-pptx-to-pdf" style="margin-top: 14px; background: #d24726; padding: 10px 22px; font-size: 14px; border-radius: 8px;">Choose Presentation</button>
-        </div>
-        <input type="file" id="pptx-to-pdf-picker" accept=".pptx,.ppt,image/*" style="display: none;">
-
-        <div id="pptx-to-pdf-file-label" style="margin-top: 14px; font-size: 13px; font-weight: 700; color: #9a3412; text-align: center;"></div>
-        <button type="button" class="btn-primary" id="btn-convert-pptx-to-pdf" disabled style="margin-top: 14px; background: #d24726; width: 100%; padding: 12px; font-size: 15px; font-weight: 700;">Convert to PDF</button>
-      </div>
-      <div class="tool-dialog-footer">
-        <button type="button" class="btn-secondary" onclick="document.getElementById('modal-pptx-to-pdf').style.display='none'">Cancel</button>
-      </div>
-    </div>
-  </div>
+  
 
   <!-- MODAL: PDF AI Summarizer -->
-  <div class="tool-dialog-backdrop" id="modal-ai-summarizer" style="display: none;">
-    <div class="tool-dialog" style="max-width: 680px; width: 95%;">
-      <div class="tool-dialog-header">
-        <h3>
-          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#6366f1" stroke-width="2.2"><path d="m12 3-1.9 5.8a2 2 0 0 1-1.3 1.3L3 12l5.8 1.9a2 2 0 0 1 1.3 1.3L12 21l1.9-5.8a2 2 0 0 1 1.3-1.3L21 12l-5.8-1.9a2 2 0 0 1-1.3-1.3L12 3z"/></svg>
-          PDF AI Summarizer & Intelligence
-        </h3>
-        <button type="button" class="btn-icon" id="close-ai-summarizer">&times;</button>
-      </div>
-      <div class="tool-dialog-body">
-        <div class="tool-dropzone" id="ai-summarizer-dropzone">
-          <div class="tool-dropzone-icon" style="color: #6366f1;">
-            <svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m12 3-1.9 5.8a2 2 0 0 1-1.3 1.3L3 12l5.8 1.9a2 2 0 0 1 1.3 1.3L12 21l1.9-5.8a2 2 0 0 1 1.3-1.3L21 12l-5.8-1.9a2 2 0 0 1-1.3-1.3L12 3z"/></svg>
-          </div>
-          <div style="font-size: 16px; font-weight: 800; color: #0f172a;">Select PDF Document to Summarize</div>
-          <div style="font-size: 13px; color: #64748b;">Instant executive summary, key insights, and Q&A without uploading to cloud</div>
-          <button type="button" class="btn-primary" id="btn-choose-ai-summarizer" style="margin-top: 14px; background: linear-gradient(135deg, #6366f1, #8b5cf6); padding: 10px 22px; font-size: 14px; border-radius: 8px;">Choose PDF File</button>
-        </div>
-        <input type="file" id="ai-summarizer-picker" accept="application/pdf,.pdf,application/x-pdf" style="display: none;">
-
-        <div id="ai-summarizer-results" style="display: none; margin-top: 18px;">
-          <div id="ai-summary-stats" style="display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 12px;"></div>
-
-          <div style="font-size: 13px; font-weight: 800; color: #3730a3; margin-bottom: 6px; text-transform: uppercase;">Executive Summary</div>
-          <div id="ai-summary-text" style="background: #eef2ff; border: 1.5px solid #c7d2fe; border-radius: 10px; padding: 14px; font-size: 13.5px; line-height: 1.6; color: #1e1b4b; margin-bottom: 14px;"></div>
-
-          <div style="font-size: 13px; font-weight: 800; color: #3730a3; margin-bottom: 6px; text-transform: uppercase;">Key Insights & Highlights</div>
-          <ul id="ai-summary-bullets" style="padding-left: 20px; font-size: 13px; line-height: 1.55; color: #334155; margin-bottom: 16px;"></ul>
-
-          <div style="background: #f8fafc; border: 1.5px solid #e2e8f0; border-radius: 10px; padding: 12px; margin-bottom: 14px;">
-            <label style="display: block; font-size: 12px; font-weight: 800; color: #475569; margin-bottom: 6px;">ASK A QUESTION ABOUT THIS DOCUMENT:</label>
-            <div style="display: flex; gap: 8px;">
-              <input type="text" id="ai-ask-input" placeholder="e.g. What is the fee? What is the deadline?" style="flex: 1; padding: 8px 12px; border: 1.5px solid #cbd5e1; border-radius: 6px; font-size: 13px;">
-              <button type="button" class="btn-primary" id="btn-ai-ask" style="background: #6366f1; padding: 8px 16px; font-size: 13px;">Search</button>
-            </div>
-            <div id="ai-ask-answer" style="margin-top: 8px; font-size: 12.5px; color: #1e293b;"></div>
-          </div>
-
-          <div style="display: flex; gap: 10px;">
-            <button type="button" class="btn-primary" id="btn-copy-ai-summary" style="flex: 1; background: #4f46e5; padding: 10px;">Copy Summary</button>
-            <button type="button" class="btn-secondary" id="btn-download-ai-summary-pdf" style="padding: 10px 18px;">Download Summary PDF</button>
-          </div>
-        </div>
-      </div>
-      <div class="tool-dialog-footer">
-        <button type="button" class="btn-secondary" onclick="document.getElementById('modal-ai-summarizer').style.display='none'">Close</button>
-      </div>
-    </div>
-  </div>
+  
 
   <!-- MODAL: PDF Translator -->
-  <div class="tool-dialog-backdrop" id="modal-translator" style="display: none;">
-    <div class="tool-dialog" style="max-width: 720px; width: 95%;">
-      <div class="tool-dialog-header">
-        <h3>
-          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#06b6d4" stroke-width="2.2"><path d="m5 8 6 6"/><path d="m4 14 6-6 2-3"/><path d="M2 5h12"/><path d="m22 22-5-10-5 10"/><path d="M14 18h6"/></svg>
-          PDF Document Translator (Side-by-Side)
-        </h3>
-        <button type="button" class="btn-icon" id="close-translator">&times;</button>
-      </div>
-      <div class="tool-dialog-body">
-        <div class="tool-dropzone" id="translator-dropzone">
-          <div class="tool-dropzone-icon" style="color: #06b6d4;">
-            <svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
-          </div>
-          <div style="font-size: 16px; font-weight: 800; color: #0f172a;">Select PDF to Translate</div>
-          <div style="font-size: 13px; color: #64748b;">Translate into Hindi, Spanish, French, German, Bengali & more</div>
-          <button type="button" class="btn-primary" id="btn-choose-translator" style="margin-top: 14px; background: #06b6d4; padding: 10px 22px; font-size: 14px; border-radius: 8px;">Choose PDF File</button>
-        </div>
-        <input type="file" id="translator-picker" accept="application/pdf,.pdf,application/x-pdf" style="display: none;">
-
-        <div style="margin-top: 16px;">
-          <div style="display: flex; gap: 10px; align-items: center; margin-bottom: 12px;">
-            <label style="font-size: 13px; font-weight: 700; color: #334155;">Translate Target Language:</label>
-            <select id="translator-target-lang" style="flex: 1; padding: 8px 12px; border-radius: 8px; border: 1.5px solid #cbd5e1; font-weight: 700;">
-              <option value="hi" selected>Hindi (हिन्दी)</option>
-              <option value="es">Spanish (Español)</option>
-              <option value="fr">French (Français)</option>
-              <option value="de">German (Deutsch)</option>
-              <option value="bn">Bengali (বাংলা)</option>
-              <option value="ar">Arabic (العربية)</option>
-              <option value="ru">Russian (Русский)</option>
-              <option value="ja">Japanese (日本語)</option>
-              <option value="zh">Chinese (中文)</option>
-              <option value="pt">Portuguese (Português)</option>
-            </select>
-            <button type="button" class="btn-primary" id="btn-start-translation" disabled style="background: #0891b2; padding: 8px 18px; font-weight: 700;">Translate</button>
-          </div>
-
-          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 14px;">
-            <div>
-              <div style="font-size: 12px; font-weight: 800; color: #475569; margin-bottom: 4px;">ORIGINAL EXTRACTED TEXT:</div>
-              <div id="translator-orig-text" style="height: 190px; overflow-y: auto; background: #f8fafc; border: 1.5px solid #e2e8f0; border-radius: 8px; padding: 10px; font-size: 12px; line-height: 1.5; white-space: pre-wrap;"></div>
-            </div>
-            <div>
-              <div style="font-size: 12px; font-weight: 800; color: #0891b2; margin-bottom: 4px;">TRANSLATED OUTPUT:</div>
-              <div id="translator-trans-text" style="height: 190px; overflow-y: auto; background: #ecfeff; border: 1.5px solid #a5f3fc; border-radius: 8px; padding: 10px; font-size: 12px; line-height: 1.5; color: #155e75;"></div>
-            </div>
-          </div>
-
-          <button type="button" class="btn-primary" id="btn-download-translated-pdf" disabled style="background: #0891b2; width: 100%; padding: 11px; font-weight: 700;">Download Translated PDF Document</button>
-        </div>
-      </div>
-      <div class="tool-dialog-footer">
-        <button type="button" class="btn-secondary" onclick="document.getElementById('modal-translator').style.display='none'">Close</button>
-      </div>
-    </div>
-  </div>
+  
 
   <!-- MODAL: HTML to PDF -->
-  <div class="tool-dialog-backdrop" id="modal-html-to-pdf" style="display: none;">
-    <div class="tool-dialog" style="max-width: 720px; width: 95%;">
-      <div class="tool-dialog-header">
-        <h3>
-          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#ec4899" stroke-width="2.2"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg>
-          Convert HTML & Rich Code to PDF
-        </h3>
-        <button type="button" class="btn-icon" id="close-html-to-pdf">&times;</button>
-      </div>
-      <div class="tool-dialog-body">
-        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
-          <label style="font-size: 13px; font-weight: 700; color: #334155;">Template / Code Snippet:</label>
-          <select id="html-to-pdf-template" style="padding: 5px 12px; border-radius: 6px; border: 1.5px solid #cbd5e1; font-weight: 700; font-size: 12px;">
-            <option value="invoice">Preset: Commercial Invoice</option>
-            <option value="certificate">Preset: Formal Certificate</option>
-          </select>
-        </div>
-
-        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 14px;">
-          <div>
-            <div style="font-size: 11.5px; font-weight: 700; color: #64748b; margin-bottom: 4px;">HTML Code Editor:</div>
-            <textarea id="html-to-pdf-code" rows="12" style="width: 100%; height: 210px; padding: 10px; font-family: monospace; font-size: 12px; border: 1.5px solid #cbd5e1; border-radius: 8px; resize: none;"></textarea>
-          </div>
-          <div>
-            <div style="font-size: 11.5px; font-weight: 700; color: #ec4899; margin-bottom: 4px;">Live Document Preview:</div>
-            <iframe id="html-to-pdf-preview-iframe" style="width: 100%; height: 210px; border: 1.5px solid #cbd5e1; border-radius: 8px; background: #fff;"></iframe>
-          </div>
-        </div>
-
-        <button type="button" class="btn-primary" id="btn-convert-html-to-pdf" style="background: #db2777; width: 100%; padding: 12px; font-size: 15px; font-weight: 700;">Generate & Download PDF</button>
-      </div>
-      <div class="tool-dialog-footer">
-        <button type="button" class="btn-secondary" onclick="document.getElementById('modal-html-to-pdf').style.display='none'">Close</button>
-      </div>
-    </div>
-  </div>
+  
 
   <!-- MODAL: Unlock PDF -->
-  <div class="tool-dialog-backdrop" id="modal-unlock-pdf" style="display: none;">
-    <div class="tool-dialog" style="max-width: 540px; width: 95%;">
-      <div class="tool-dialog-header">
-        <h3>
-          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#8b5cf6" stroke-width="2.2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 9.9-1"/></svg>
-          Unlock PDF & Remove Permissions Lock
-        </h3>
-        <button type="button" class="btn-icon" id="close-unlock-pdf">&times;</button>
-      </div>
-      <div class="tool-dialog-body">
-        <div class="tool-dropzone" id="unlock-pdf-dropzone">
-          <div class="tool-dropzone-icon" style="color: #8b5cf6;">
-            <svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 9.9-1"/></svg>
-          </div>
-          <div style="font-size: 16px; font-weight: 800; color: #0f172a;">Select Encrypted or Restricted PDF</div>
-          <div style="font-size: 13px; color: #64748b;">Removes editing restrictions, printing locks, and passwords</div>
-          <button type="button" class="btn-primary" id="btn-choose-unlock-pdf" style="margin-top: 14px; background: #8b5cf6; padding: 10px 22px; font-size: 14px; border-radius: 8px;">Choose PDF</button>
-        </div>
-        <input type="file" id="unlock-pdf-picker" accept="application/pdf,.pdf,application/x-pdf" style="display: none;">
-
-        <div id="unlock-pdf-file-label" style="margin-top: 14px; font-size: 13px; color: #5b21b6; text-align: center;"></div>
-        <div style="margin-top: 14px;">
-          <label style="display: block; font-size: 12.5px; font-weight: 700; color: #334155; margin-bottom: 6px;">Password (if document is open-password protected):</label>
-          <input type="password" id="unlock-pdf-password" placeholder="Leave blank to strip printing/copying locks" style="width: 100%; padding: 10px 14px; border: 1.5px solid #cbd5e1; border-radius: 8px; font-size: 14px; margin-bottom: 14px;">
-          <button type="button" class="btn-primary" id="btn-start-unlock-pdf" disabled style="background: #8b5cf6; width: 100%; padding: 12px; font-size: 15px; font-weight: 700;">Unlock PDF & Remove Restrictions</button>
-        </div>
-      </div>
-      <div class="tool-dialog-footer">
-        <button type="button" class="btn-secondary" onclick="document.getElementById('modal-unlock-pdf').style.display='none'">Cancel</button>
-      </div>
-    </div>
-  </div>
+  
 
   <!-- MODAL: PDF Convert to Scanner -->
-  <div class="tool-dialog-backdrop" id="modal-pdf-scanner" style="display: none;">
-    <div class="tool-dialog" style="max-width: 660px; width: 95%;">
-      <div class="tool-dialog-header">
-        <h3>
-          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#f59e0b" stroke-width="2.2"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/><line x1="12" y1="21" x2="12" y2="17"/></svg>
-          Convert Digital PDF to Authentic Scanned Look
-        </h3>
-        <button type="button" class="btn-icon" id="close-pdf-scanner">&times;</button>
-      </div>
-      <div class="tool-dialog-body">
-        <div class="tool-dropzone" id="pdf-scanner-dropzone">
-          <div class="tool-dropzone-icon" style="color: #f59e0b;">
-            <svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/></svg>
-          </div>
-          <div style="font-size: 16px; font-weight: 800; color: #0f172a;">Select Digital PDF to Apply Scan Effect</div>
-          <div style="font-size: 13px; color: #64748b;">Adds realistic photocopy contrast, paper grain texture, and subtle tilt</div>
-          <button type="button" class="btn-primary" id="btn-choose-pdf-scanner" style="margin-top: 14px; background: #f59e0b; padding: 10px 22px; font-size: 14px; border-radius: 8px;">Choose PDF File</button>
-        </div>
-        <input type="file" id="pdf-scanner-picker" accept="application/pdf,.pdf,application/x-pdf" style="display: none;">
-
-        <div style="margin-top: 16px;">
-          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 12px;">
-            <div>
-              <label style="font-size: 12px; font-weight: 700; color: #334155; display: block; margin-bottom: 4px;">Scanner Preset:</label>
-              <select id="scanner-mode-select" style="width: 100%; padding: 6px 10px; border-radius: 6px; border: 1.5px solid #cbd5e1; font-weight: 700; font-size: 12.5px;">
-                <option value="photocopy" selected>Photocopy B&W (Monochrome)</option>
-                <option value="grayscale">Flatbed Grayscale Scanner</option>
-                <option value="vintage">Vintage Aged Office Fax</option>
-              </select>
-            </div>
-            <div>
-              <label style="font-size: 12px; font-weight: 700; color: #334155; display: block; margin-bottom: 4px;">Paper Noise & Grain:</label>
-              <input type="range" id="scanner-noise-slider" min="0" max="40" value="18" style="width: 100%;">
-            </div>
-          </div>
-
-          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 14px;">
-            <div>
-              <label style="font-size: 12px; font-weight: 700; color: #334155; display: block; margin-bottom: 4px;">Photocopy Contrast:</label>
-              <input type="range" id="scanner-contrast-slider" min="1.0" max="2.4" step="0.1" value="1.5" style="width: 100%;">
-            </div>
-            <div>
-              <label style="font-size: 12px; font-weight: 700; color: #334155; display: block; margin-bottom: 4px;">Feeder Tilt / Angle:</label>
-              <input type="range" id="scanner-tilt-slider" min="-1.0" max="1.0" step="0.1" value="0.3" style="width: 100%;">
-            </div>
-          </div>
-
-          <div style="text-align: center; margin-bottom: 14px;">
-            <div id="scanner-page-stepper" style="font-size: 12px; font-weight: 700; color: #64748b; margin-bottom: 6px;">Live Page Preview:</div>
-            <div style="max-height: 220px; overflow: hidden; display: inline-block; border: 1.5px solid #cbd5e1; border-radius: 8px; box-shadow: 0 4px 10px rgba(0,0,0,0.1);">
-              <canvas id="scanner-preview-canvas" style="max-height: 220px; width: auto; display: block;"></canvas>
-            </div>
-          </div>
-
-          <button type="button" class="btn-primary" id="btn-start-scanner" disabled style="background: #f59e0b; width: 100%; padding: 12px; font-size: 15px; font-weight: 700;">Apply Scan Effect & Download PDF</button>
-        </div>
-      </div>
-      <div class="tool-dialog-footer">
-        <button type="button" class="btn-secondary" onclick="document.getElementById('modal-pdf-scanner').style.display='none'">Close</button>
-      </div>
-    </div>
-  </div>
+  
 
   <!-- ======================================================================
        VIEW 2: FULL-FEATURED IN-PLACE PDF EDITOR WORKSPACE
@@ -2000,8 +2074,8 @@
   <div class="toast-container" id="toast-container"></div>
 
   <!-- Main ES Module Bootstrap (with cache-busting) -->
-  <script type="module" src="./js/portal.js?v=3.5"></script>
-  <script type="module" src="./js/app.js?v=3.5"></script>
+  <script type="module" src="./js/portal.js?v=3.6"></script>
+  <script type="module" src="./js/app.js?v=3.6"></script>
 
 </body>
 

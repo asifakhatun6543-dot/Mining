@@ -125,6 +125,19 @@ export class AdvancedToolsManager {
       performFilter();
       searchInput.focus();
     });
+
+    // Keyboard shortcut / to focus search, Escape to blur/clear
+    document.addEventListener("keydown", (e) => {
+      if (e.key === "/" && document.activeElement !== searchInput && !["INPUT", "TEXTAREA"].includes(document.activeElement?.tagName)) {
+        e.preventDefault();
+        searchInput.focus();
+        searchInput.select();
+      } else if (e.key === "Escape" && document.activeElement === searchInput) {
+        searchInput.value = "";
+        performFilter();
+        searchInput.blur();
+      }
+    });
   }
 
   // ------------------------------------------------------------------------
@@ -151,7 +164,7 @@ export class AdvancedToolsManager {
     let activeFile = null;
     let compressedBlob = null;
 
-    closeBtn?.addEventListener("click", () => { modal.style.display = "none"; });
+    closeBtn?.addEventListener("click", () => { if (this.portal && typeof this.portal.closeToolWorkspace === "function") this.portal.closeToolWorkspace(); modal.style.display = "none"; });
     modal.addEventListener("click", (e) => { if (e.target === modal) modal.style.display = "none"; });
 
     const openPicker = () => { if (picker) { picker.value = ""; picker.click(); } };
@@ -322,7 +335,7 @@ export class AdvancedToolsManager {
     let activeFile = null;
     let extractedDocxContent = null;
 
-    closeBtn?.addEventListener("click", () => { modal.style.display = "none"; });
+    closeBtn?.addEventListener("click", () => { if (this.portal && typeof this.portal.closeToolWorkspace === "function") this.portal.closeToolWorkspace(); modal.style.display = "none"; });
     modal.addEventListener("click", (e) => { if (e.target === modal) modal.style.display = "none"; });
 
     const openPicker = () => { if (picker) { picker.value = ""; picker.click(); } };
@@ -452,7 +465,7 @@ export class AdvancedToolsManager {
     let tableRows = [];
     let currentFileName = "data";
 
-    closeBtn?.addEventListener("click", () => { modal.style.display = "none"; });
+    closeBtn?.addEventListener("click", () => { if (this.portal && typeof this.portal.closeToolWorkspace === "function") this.portal.closeToolWorkspace(); modal.style.display = "none"; });
     modal.addEventListener("click", (e) => { if (e.target === modal) modal.style.display = "none"; });
 
     const openPicker = () => { if (picker) { picker.value = ""; picker.click(); } };
@@ -598,7 +611,7 @@ export class AdvancedToolsManager {
     let slideImages = [];
     let baseFileName = "Presentation";
 
-    closeBtn?.addEventListener("click", () => { modal.style.display = "none"; });
+    closeBtn?.addEventListener("click", () => { if (this.portal && typeof this.portal.closeToolWorkspace === "function") this.portal.closeToolWorkspace(); modal.style.display = "none"; });
     modal.addEventListener("click", (e) => { if (e.target === modal) modal.style.display = "none"; });
 
     const openPicker = () => { if (picker) { picker.value = ""; picker.click(); } };
@@ -685,7 +698,7 @@ export class AdvancedToolsManager {
     if (!modal) return;
     let baseFileName = "Document";
 
-    closeBtn?.addEventListener("click", () => { modal.style.display = "none"; });
+    closeBtn?.addEventListener("click", () => { if (this.portal && typeof this.portal.closeToolWorkspace === "function") this.portal.closeToolWorkspace(); modal.style.display = "none"; });
     modal.addEventListener("click", (e) => { if (e.target === modal) modal.style.display = "none"; });
 
     const openPicker = () => { if (picker) { picker.value = ""; picker.click(); } };
@@ -808,7 +821,7 @@ export class AdvancedToolsManager {
     if (!modal) return;
     let baseFileName = "Spreadsheet";
 
-    closeBtn?.addEventListener("click", () => { modal.style.display = "none"; });
+    closeBtn?.addEventListener("click", () => { if (this.portal && typeof this.portal.closeToolWorkspace === "function") this.portal.closeToolWorkspace(); modal.style.display = "none"; });
     modal.addEventListener("click", (e) => { if (e.target === modal) modal.style.display = "none"; });
 
     const openPicker = () => { if (picker) { picker.value = ""; picker.click(); } };
@@ -930,7 +943,7 @@ export class AdvancedToolsManager {
     if (!modal) return;
     let selectedFile = null;
 
-    closeBtn?.addEventListener("click", () => { modal.style.display = "none"; });
+    closeBtn?.addEventListener("click", () => { if (this.portal && typeof this.portal.closeToolWorkspace === "function") this.portal.closeToolWorkspace(); modal.style.display = "none"; });
     modal.addEventListener("click", (e) => { if (e.target === modal) modal.style.display = "none"; });
 
     const openPicker = () => { if (picker) { picker.value = ""; picker.click(); } };
@@ -1019,7 +1032,7 @@ export class AdvancedToolsManager {
     let documentSummaryText = "";
     let activeFileName = "Document";
 
-    closeBtn?.addEventListener("click", () => { modal.style.display = "none"; });
+    closeBtn?.addEventListener("click", () => { if (this.portal && typeof this.portal.closeToolWorkspace === "function") this.portal.closeToolWorkspace(); modal.style.display = "none"; });
     modal.addEventListener("click", (e) => { if (e.target === modal) modal.style.display = "none"; });
 
     const openPicker = () => { if (picker) { picker.value = ""; picker.click(); } };
@@ -1183,7 +1196,7 @@ export class AdvancedToolsManager {
     let currentTranslated = "";
     let activeFileName = "Document";
 
-    closeBtn?.addEventListener("click", () => { modal.style.display = "none"; });
+    closeBtn?.addEventListener("click", () => { if (this.portal && typeof this.portal.closeToolWorkspace === "function") this.portal.closeToolWorkspace(); modal.style.display = "none"; });
     modal.addEventListener("click", (e) => { if (e.target === modal) modal.style.display = "none"; });
 
     const openPicker = () => { if (picker) { picker.value = ""; picker.click(); } };
@@ -1300,7 +1313,7 @@ export class AdvancedToolsManager {
 
     if (!modal) return;
 
-    closeBtn?.addEventListener("click", () => { modal.style.display = "none"; });
+    closeBtn?.addEventListener("click", () => { if (this.portal && typeof this.portal.closeToolWorkspace === "function") this.portal.closeToolWorkspace(); modal.style.display = "none"; });
     modal.addEventListener("click", (e) => { if (e.target === modal) modal.style.display = "none"; });
 
     const templates = {
@@ -1396,7 +1409,7 @@ export class AdvancedToolsManager {
     if (!modal) return;
     let selectedFile = null;
 
-    closeBtn?.addEventListener("click", () => { modal.style.display = "none"; });
+    closeBtn?.addEventListener("click", () => { if (this.portal && typeof this.portal.closeToolWorkspace === "function") this.portal.closeToolWorkspace(); modal.style.display = "none"; });
     modal.addEventListener("click", (e) => { if (e.target === modal) modal.style.display = "none"; });
 
     const openPicker = () => { if (picker) { picker.value = ""; picker.click(); } };
@@ -1464,7 +1477,7 @@ export class AdvancedToolsManager {
     let selectedFile = null;
     let activePageNum = 1;
 
-    closeBtn?.addEventListener("click", () => { modal.style.display = "none"; });
+    closeBtn?.addEventListener("click", () => { if (this.portal && typeof this.portal.closeToolWorkspace === "function") this.portal.closeToolWorkspace(); modal.style.display = "none"; });
     modal.addEventListener("click", (e) => { if (e.target === modal) modal.style.display = "none"; });
 
     const openPicker = () => { if (picker) { picker.value = ""; picker.click(); } };

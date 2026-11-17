@@ -217,43 +217,53 @@
   margin-bottom: 28px;
 }
 
-/* Category Filter Tabs (Like iLovePDF Tool Filter) */
+/* ==========================================================================
+   CATEGORY FILTER TABS (Clean Separate Boxed Cards, No Emojis, No Numbers)
+   ========================================================================== */
 .portal-filter-tabs {
   display: flex;
   align-items: center;
   justify-content: center;
   flex-wrap: wrap;
-  gap: 8px;
-  margin-bottom: 36px;
-  background: #ffffff;
-  padding: 6px;
-  border-radius: 9999px;
-  border: 1px solid #e2e8f0;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+  gap: 10px;
+  margin: 28px auto 36px auto;
+  max-width: 960px;
+  padding: 0 12px;
 }
 
-.filter-tab-btn {
-  background: transparent;
-  border: none;
-  padding: 7px 18px;
-  border-radius: 9999px;
+.filter-tab-box {
+  background: #ffffff;
+  border: 1.5px solid #e2e8f0;
+  border-radius: 10px;
+  padding: 9px 18px;
   font-size: 13.5px;
   font-weight: 600;
-  color: #64748b;
+  color: #475569;
   cursor: pointer;
-  transition: all 0.15s ease;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  white-space: nowrap;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  letter-spacing: -0.01em;
   user-select: none;
 }
 
-.filter-tab-btn:hover {
+.filter-tab-box:hover {
+  background: #f8fafc;
+  border-color: #cbd5e1;
   color: #0f172a;
-  background: #f1f5f9;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.06);
 }
 
-.filter-tab-btn.active {
-  background: #e5322d;
+.filter-tab-box.active {
+  background: #0f172a;
   color: #ffffff;
-  box-shadow: 0 3px 10px rgba(229, 50, 45, 0.3);
+  border-color: #0f172a;
+  box-shadow: 0 4px 14px rgba(15, 23, 42, 0.22);
+  transform: translateY(-2px);
 }
 
 /* --------------------------------------------------------------------------
@@ -783,9 +793,11 @@
     grid-template-columns: 1fr;
     gap: 18px;
   }
+  .filter-tab-box,
   .filter-tab-btn {
-    padding: 6px 14px;
+    padding: 7px 12px;
     font-size: 12.5px;
+    border-radius: 8px;
   }
 }
 
@@ -1715,4 +1727,285 @@
 
 .table-preview-grid tr:nth-child(even) td {
   background: #f8fafc;
+}
+
+
+/* ==========================================================================
+   EXECUTIVE SEARCH BAR (Premium Luxury Redesign)
+   ========================================================================== */
+.hero-search-wrap {
+  width: 100%;
+  max-width: 620px;
+  margin: 24px auto 26px auto;
+  position: relative;
+  padding: 0 12px;
+}
+
+.hero-search-bar {
+  display: flex;
+  align-items: center;
+  background: #ffffff;
+  border: 1.5px solid #cbd5e1;
+  border-radius: 14px;
+  padding: 7px 14px;
+  box-shadow: 0 4px 16px -2px rgba(0, 0, 0, 0.05), 0 2px 6px -1px rgba(0, 0, 0, 0.02);
+  transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.hero-search-bar:focus-within {
+  border-color: #2563eb;
+  background: #ffffff;
+  box-shadow: 0 12px 28px -4px rgba(37, 99, 235, 0.16), 0 0 0 4px rgba(37, 99, 235, 0.12);
+  transform: translateY(-1px);
+}
+
+.hero-search-icon-box {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #64748b;
+  margin-right: 10px;
+  flex-shrink: 0;
+}
+
+#portal-tool-search {
+  flex: 1;
+  border: none;
+  outline: none;
+  background: transparent;
+  font-family: inherit;
+  font-size: 15px;
+  font-weight: 500;
+  color: #0f172a;
+  padding: 6px 0;
+}
+
+#portal-tool-search::placeholder {
+  color: #94a3b8;
+  font-size: 14px;
+  font-weight: 400;
+}
+
+.hero-search-clear-btn {
+  background: #f1f5f9;
+  border: none;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #64748b;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  padding: 0;
+  margin-right: 8px;
+}
+
+.hero-search-clear-btn:hover {
+  background: #e2e8f0;
+  color: #0f172a;
+}
+
+.search-shortcut-pill {
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 6px;
+  padding: 2px 8px;
+  color: #64748b;
+  font-size: 12px;
+  display: flex;
+  align-items: center;
+  user-select: none;
+}
+
+.shortcut-key {
+  font-family: 'JetBrains Mono', Consolas, monospace;
+  font-weight: 700;
+  color: #64748b;
+}
+
+.search-results-feedback {
+  margin-top: 10px;
+  text-align: center;
+  font-size: 13px;
+  font-weight: 600;
+  color: #2563eb;
+  background: rgba(37, 99, 235, 0.08);
+  padding: 6px 14px;
+  border-radius: 9999px;
+  display: inline-block;
+}
+
+/* ==========================================================================
+   DEDICATED TOOL WORKSPACE VIEW (SECOND FRONT PAGE - NO POPUPS)
+   ========================================================================== */
+.portal-tool-workspace {
+  min-height: calc(100vh - 72px);
+  background: linear-gradient(180deg, #f8fafc 0%, #ffffff 100%);
+  padding: 28px 20px 80px 20px;
+}
+
+.tw-nav-bar {
+  max-width: 980px;
+  margin: 0 auto 24px auto;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.tw-back-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background: #ffffff;
+  border: 1.5px solid #e2e8f0;
+  border-radius: 10px;
+  padding: 9px 18px;
+  font-size: 14px;
+  font-weight: 700;
+  color: #1e293b;
+  cursor: pointer;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  text-decoration: none;
+}
+
+.tw-back-btn:hover {
+  background: #f1f5f9;
+  border-color: #cbd5e1;
+  color: #e5322d;
+  transform: translateX(-3px);
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.08);
+}
+
+.tw-breadcrumb {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13.5px;
+  font-weight: 500;
+  color: #64748b;
+}
+
+.tw-breadcrumb-sep {
+  color: #cbd5e1;
+}
+
+.tw-breadcrumb-active {
+  color: #0f172a;
+  font-weight: 700;
+}
+
+.tw-hero-header {
+  text-align: center;
+  max-width: 720px;
+  margin: 0 auto 36px auto;
+}
+
+.tw-tool-icon {
+  width: 56px;
+  height: 56px;
+  border-radius: 16px;
+  background: #eff6ff;
+  color: #2563eb;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 14px;
+  box-shadow: 0 4px 14px rgba(37, 99, 235, 0.15);
+}
+
+.tw-tool-title {
+  font-size: 32px;
+  font-weight: 800;
+  color: #0f172a;
+  letter-spacing: -0.025em;
+  margin: 0 0 10px 0;
+}
+
+.tw-tool-desc {
+  font-size: 16px;
+  color: #64748b;
+  line-height: 1.55;
+  margin: 0;
+}
+
+.tw-panels-container {
+  max-width: 980px;
+  margin: 0 auto;
+}
+
+.tool-workspace-panel {
+  display: none;
+  width: 100%;
+}
+
+.tool-workspace-card {
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 20px;
+  box-shadow: 0 10px 30px -5px rgba(0, 0, 0, 0.05), 0 4px 12px -2px rgba(0, 0, 0, 0.02);
+  padding: 36px 40px;
+  position: relative;
+}
+
+@media (max-width: 768px) {
+  .tool-workspace-card {
+    padding: 24px 20px;
+    border-radius: 16px;
+  }
+  .tw-tool-title {
+    font-size: 26px;
+  }
+}
+
+/* Big "Select PDF files" Action Button */
+.btn-select-pdf-hero {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  background: linear-gradient(135deg, #e5322d, #dc2626);
+  color: #ffffff !important;
+  border: none;
+  border-radius: 12px;
+  padding: 16px 42px;
+  font-size: 17px;
+  font-weight: 800;
+  cursor: pointer;
+  box-shadow: 0 10px 25px -4px rgba(229, 50, 45, 0.4), 0 4px 10px -2px rgba(229, 50, 45, 0.2);
+  transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+  letter-spacing: 0.01em;
+  margin-top: 16px;
+}
+
+.btn-select-pdf-hero:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 16px 32px -4px rgba(229, 50, 45, 0.5), 0 6px 14px -2px rgba(229, 50, 45, 0.3);
+  background: linear-gradient(135deg, #dc2626, #b91c1c);
+}
+
+.tool-workspace-card .tool-dropzone {
+  border: 2px dashed #cbd5e1;
+  border-radius: 16px;
+  padding: 48px 24px;
+  text-align: center;
+  background: #fafafa;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+
+.tool-workspace-card .tool-dropzone:hover,
+.tool-workspace-card .tool-dropzone.drag-over {
+  background: #fff5f5;
+  border-color: #e5322d;
+}
+
+.tool-workspace-card .tool-dialog-header {
+  display: none !important; /* Header is now part of the page workspace! */
 }

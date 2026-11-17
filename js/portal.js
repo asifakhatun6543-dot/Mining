@@ -42,6 +42,14 @@ export class PortalManager {
     this._bindSplitPdfModal();
     this._bindRotatePdfModal();
     this._bindPdfToJpgModal();
+    document.getElementById("btn-back-to-tools")?.addEventListener("click", () => this.closeToolWorkspace());
+    window.addEventListener("keydown", (e) => {
+      if (e.key === "Escape") {
+        const ws = document.getElementById("portal-tool-workspace");
+        if (ws && ws.style.display !== "none") this.closeToolWorkspace();
+      }
+    });
+
     this.advancedTools = new AdvancedToolsManager(this);
   }
 
@@ -96,17 +104,104 @@ export class PortalManager {
     document.getElementById("nav-btn-pdf-to-jpg")?.addEventListener("click", () => this.openPdfToJpgModal());
     document.getElementById("nav-btn-resize")?.addEventListener("click", () => this.openImageResizeModal());
 
-    // Handle hash on initial load
-    if (window.location.hash === "#editor") {
-      this.switchView("editor");
-    }
+    // Handle hash on initial load & navigation
+    const handleHash = () => {
+      const h = (window.location.hash || "").toLowerCase();
+      if (h === "#editor") {
+        this.switchView("editor");
+      } else if (h === "#compress" || h === "#compress-pdf") {
+        this.openCompressModal();
+      } else if (h === "#pdf-to-word" || h === "#word") {
+        this.openPdfToWordModal();
+      } else if (h === "#pdf-to-excel" || h === "#excel") {
+        this.openPdfToExcelModal();
+      } else if (h === "#pdf-to-pptx" || h === "#pptx") {
+        this.openPdfToPptxModal();
+      } else if (h === "#ai" || h === "#summarizer" || h === "#ai-summarizer") {
+        this.openAiSummarizerModal();
+      } else if (h === "#translator" || h === "#translate") {
+        this.openTranslatorModal();
+      } else if (h === "#scanner" || h === "#pdf-scanner") {
+        this.openPdfScannerModal();
+      } else if (h === "#unlock" || h === "#unlock-pdf") {
+        this.openUnlockPdfModal();
+      } else if (h === "#html-to-pdf") {
+        this.openHtmlToPdfModal();
+      } else if (h === "#merge" || h === "#merge-pdf") {
+        this.openMergeModal();
+      } else if (h === "#split" || h === "#split-pdf") {
+        this.openSplitModal();
+      } else if (h === "#rotate" || h === "#rotate-pdf") {
+        this.openRotateModal();
+      } else if (h === "#jpg-to-pdf") {
+        this.openJpgToPdfModal();
+      } else if (h === "#pdf-to-jpg") {
+        this.openPdfToJpgModal();
+      } else if (h === "#resize") {
+        this.openImageResizeModal();
+      } else if (!h || h === "#home" || h === "#all" || h === "#tools") {
+        const ws = document.getElementById("portal-tool-workspace");
+        if (ws && ws.style.display !== "none") {
+          this.closeToolWorkspace();
+        }
+      }
+    };
+
+    window.addEventListener("hashchange", handleHash);
+    setTimeout(handleHash, 60);
   }
 
   // ------------------------------------------------------------------------
   // Filter Category Tabs
   // ------------------------------------------------------------------------
+  
+  // ------------------------------------------------------------------------
+  // Dedicated Tool Workspace Navigation (Second Front Page - No Popups)
+  // ------------------------------------------------------------------------
+  openToolWorkspace(panelId, title, desc, iconSvg) {
+    const homeContent = document.getElementById("portal-home-content");
+    const workspace = document.getElementById("portal-tool-workspace");
+    if (homeContent) homeContent.style.display = "none";
+    if (workspace) workspace.style.display = "block";
+
+    const titleEl = document.getElementById("tw-tool-title");
+    const descEl = document.getElementById("tw-tool-desc");
+    const breadcrumbEl = document.getElementById("tw-breadcrumb-title");
+    const iconEl = document.getElementById("tw-tool-icon");
+
+    if (titleEl) titleEl.textContent = title;
+    if (descEl) descEl.textContent = desc;
+    if (breadcrumbEl) breadcrumbEl.textContent = title;
+    if (iconEl && iconSvg) iconEl.innerHTML = iconSvg;
+
+    const allPanels = document.querySelectorAll(".tool-workspace-panel");
+    allPanels.forEach(p => p.style.display = "none");
+
+    const targetPanel = document.getElementById(panelId);
+    if (targetPanel) {
+      targetPanel.style.display = "block";
+    }
+
+    window.scrollTo({ top: 0, behavior: "instant" });
+  }
+
+  closeToolWorkspace() {
+    const homeContent = document.getElementById("portal-home-content");
+    const workspace = document.getElementById("portal-tool-workspace");
+    if (workspace) workspace.style.display = "none";
+    if (homeContent) homeContent.style.display = "block";
+
+    const allPanels = document.querySelectorAll(".tool-workspace-panel");
+    allPanels.forEach(p => p.style.display = "none");
+
+    if (window.location.hash) {
+      history.pushState("", document.title, window.location.pathname + window.location.search);
+    }
+    window.scrollTo({ top: 0, behavior: "instant" });
+  }
+
   _bindFilterTabs() {
-    const tabs = document.querySelectorAll(".filter-tab-btn");
+    const tabs = document.querySelectorAll(".filter-tab-box, .filter-tab-btn");
     const cards = document.querySelectorAll(".tool-card");
 
     tabs.forEach(tab => {
@@ -263,11 +358,9 @@ export class PortalManager {
   // TOOL: Edit PDF Upload
   // ------------------------------------------------------------------------
   openEditModal() {
-    const modal = document.getElementById("modal-edit-pdf");
     const picker = document.getElementById("edit-modal-file-picker");
     if (picker) picker.value = "";
-    if (!modal) return;
-    modal.style.display = "flex";
+    this.openToolWorkspace("modal-edit-pdf", "Edit PDF", "Edit existing text, modify fonts, insert signatures, and annotate in-place.", '<svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#4f46e5" stroke-width="2.2"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>');
   }
 
   _bindEditPdfModal() {
@@ -279,6 +372,7 @@ export class PortalManager {
     if (!modal) return;
 
     closeBtn?.addEventListener("click", () => {
+      this.closeToolWorkspace();
       modal.style.display = "none";
     });
 
@@ -330,13 +424,11 @@ export class PortalManager {
   // TOOL 1: Merge PDF
   // ------------------------------------------------------------------------
   openMergeModal(initialFiles = []) {
-    const modal = document.getElementById("modal-merge-pdf");
-    if (!modal) return;
     const picker = document.getElementById("merge-file-picker");
     if (picker) picker.value = "";
     this.mergeFiles = initialFiles.length > 0 ? [...initialFiles] : [];
     this._renderMergeQueue();
-    modal.style.display = "flex";
+    this.openToolWorkspace("modal-merge-pdf", "Merge PDF", "Combine multiple PDF documents into a single organized file.", '<svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#e5322d" stroke-width="2.2"><path d="m8 6 4-4 4 4"/><path d="M12 2v10.3a4 4 0 0 1-1.172 2.872L4 22"/><path d="m20 22-5-5"/></svg>');
   }
 
   _bindMergePdfModal() {
@@ -347,6 +439,7 @@ export class PortalManager {
     const mergeBtn = document.getElementById("btn-merge-pdfs");
 
     closeBtn?.addEventListener("click", () => {
+      this.closeToolWorkspace();
       modal.style.display = "none";
       this.mergeFiles = [];
       this._renderMergeQueue();
@@ -488,13 +581,11 @@ export class PortalManager {
   // TOOL 2: JPG to PDF Converter
   // ------------------------------------------------------------------------
   openJpgToPdfModal(initialFiles = []) {
-    const modal = document.getElementById("modal-jpg-to-pdf");
-    if (!modal) return;
     const picker = document.getElementById("jpg-file-picker");
     if (picker) picker.value = "";
     this.jpgFiles = initialFiles.length > 0 ? [...initialFiles] : [];
     this._renderJpgQueue();
-    modal.style.display = "flex";
+    this.openToolWorkspace("modal-jpg-to-pdf", "JPG to PDF", "Convert JPG, PNG, and WebP images into a clean PDF document.", '<svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#8b5cf6" stroke-width="2.2"><rect width="18" height="18" x="3" y="3" rx="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/></svg>');
   }
 
   _bindJpgToPdfModal() {
@@ -505,6 +596,7 @@ export class PortalManager {
     const convertBtn = document.getElementById("btn-convert-jpg-to-pdf");
 
     closeBtn?.addEventListener("click", () => {
+      this.closeToolWorkspace();
       modal.style.display = "none";
       this.jpgFiles = [];
       this._renderJpgQueue();
@@ -664,10 +756,8 @@ export class PortalManager {
   // TOOL 3: Image Resize & Compressor
   // ------------------------------------------------------------------------
   openImageResizeModal() {
-    const modal = document.getElementById("modal-image-resize");
-    if (!modal) return;
     this.resetImageResizeModal();
-    modal.style.display = "flex";
+    this.openToolWorkspace("modal-image-resize", "Resize Image", "Resize images by exact pixel dimensions or percentage with aspect ratio lock.", '<svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#059669" stroke-width="2.2"><polyline points="15 3 21 3 21 9"/><polyline points="9 21 3 21 3 15"/><line x1="21" y1="3" x2="14" y2="10"/><line x1="3" y1="21" x2="10" y2="14"/></svg>');
   }
 
   resetImageResizeModal() {
@@ -860,10 +950,8 @@ export class PortalManager {
   // TOOL 4: Split PDF
   // ------------------------------------------------------------------------
   openSplitModal() {
-    const modal = document.getElementById("modal-split-pdf");
-    if (!modal) return;
     this.resetSplitPdfModal();
-    modal.style.display = "flex";
+    this.openToolWorkspace("modal-split-pdf", "Split PDF", "Extract custom page ranges or separate all pages into individual files.", '<svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#f59e0b" stroke-width="2.2"><path d="M16 3h5v5"/><path d="M8 3H3v5"/><path d="M12 22v-8.3"/><path d="m9 16 3 3 3-3"/></svg>');
   }
 
   resetSplitPdfModal() {
@@ -967,10 +1055,8 @@ export class PortalManager {
   // TOOL 5: Rotate PDF
   // ------------------------------------------------------------------------
   openRotateModal() {
-    const modal = document.getElementById("modal-rotate-pdf");
-    if (!modal) return;
     this.resetRotatePdfModal();
-    modal.style.display = "flex";
+    this.openToolWorkspace("modal-rotate-pdf", "Rotate PDF", "Rotate pages permanently clockwise or counter-clockwise.", '<svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#06b6d4" stroke-width="2.2"><path d="M21 12a9 9 0 1 1-9-9c2.52 0 4.93 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/></svg>');
   }
 
   resetRotatePdfModal() {
@@ -1076,107 +1162,81 @@ export class PortalManager {
   // TOOL 6: Compress PDF (Custom Target Size in KB / MB / GB)
   // ------------------------------------------------------------------------
   openCompressModal() {
-    const modal = document.getElementById("modal-compress-pdf");
-    if (!modal) return;
     const picker = document.getElementById("compress-pdf-picker");
     if (picker) picker.value = "";
-    modal.style.display = "flex";
+    this.openToolWorkspace("modal-compress-pdf", "Compress PDF", "Reduce PDF file size to custom KB, MB, or GB with smart lossless compression.", '<svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="2.2"><path d="M4 14h6v6"/><path d="M20 10h-6V4"/><path d="m14 10 7-7"/><path d="m3 21 7-7"/></svg>');
   }
 
   openPdfToWordModal() {
-    const modal = document.getElementById("modal-pdf-to-word");
-    if (!modal) return;
     const picker = document.getElementById("pdf-to-word-picker");
     if (picker) picker.value = "";
-    modal.style.display = "flex";
+    this.openToolWorkspace("modal-pdf-to-word", "PDF to Word (.docx)", "Convert PDF documents to editable Microsoft Word (.docx) files with layout preservation.", '<svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#2563eb" stroke-width="2.2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>');
   }
 
   openPdfToExcelModal() {
-    const modal = document.getElementById("modal-pdf-to-excel");
-    if (!modal) return;
     const picker = document.getElementById("pdf-to-excel-picker");
     if (picker) picker.value = "";
-    modal.style.display = "flex";
+    this.openToolWorkspace("modal-pdf-to-excel", "PDF to Excel (.xlsx, .csv)", "Extract tables and structured data from PDF into Microsoft Excel spreadsheets.", '<svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="2.2"><rect width="18" height="18" x="3" y="3" rx="2"/><path d="M3 9h18"/><path d="M3 15h18"/><path d="M9 3v18"/><path d="M15 3v18"/></svg>');
   }
 
   openPdfToPptxModal() {
-    const modal = document.getElementById("modal-pdf-to-pptx");
-    if (!modal) return;
     const picker = document.getElementById("pdf-to-pptx-picker");
     if (picker) picker.value = "";
-    modal.style.display = "flex";
+    this.openToolWorkspace("modal-pdf-to-pptx", "PDF to PowerPoint (.pptx)", "Convert PDF pages into editable widescreen 16:9 presentation slide decks.", '<svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#f97316" stroke-width="2.2"><rect width="20" height="15" x="2" y="3" rx="2"/><line x1="12" y1="18" x2="12" y2="22"/><line x1="8" y1="22" x2="16" y2="22"/></svg>');
   }
 
   openWordToPdfModal() {
-    const modal = document.getElementById("modal-word-to-pdf");
-    if (!modal) return;
     const picker = document.getElementById("word-to-pdf-picker");
     if (picker) picker.value = "";
-    modal.style.display = "flex";
+    this.openToolWorkspace("modal-word-to-pdf", "Word to PDF", "Convert Word documents (.docx, .doc, .txt) into clean, paginated PDF documents.", '<svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#2563eb" stroke-width="2.2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><path d="M12 18v-6"/><path d="m9 15 3 3 3-3"/></svg>');
   }
 
   openExcelToPdfModal() {
-    const modal = document.getElementById("modal-excel-to-pdf");
-    if (!modal) return;
     const picker = document.getElementById("excel-to-pdf-picker");
     if (picker) picker.value = "";
-    modal.style.display = "flex";
+    this.openToolWorkspace("modal-excel-to-pdf", "Excel to PDF", "Convert Excel spreadsheets (.xlsx, .csv) into executive table PDF reports.", '<svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="2.2"><rect width="18" height="18" x="3" y="3" rx="2"/><path d="M3 9h18"/><path d="M9 3v18"/></svg>');
   }
 
   openPptxToPdfModal() {
-    const modal = document.getElementById("modal-pptx-to-pdf");
-    if (!modal) return;
     const picker = document.getElementById("pptx-to-pdf-picker");
     if (picker) picker.value = "";
-    modal.style.display = "flex";
+    this.openToolWorkspace("modal-pptx-to-pdf", "PowerPoint to PDF", "Convert presentation slide decks (.pptx) into high-resolution PDF documents.", '<svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#f97316" stroke-width="2.2"><rect width="20" height="15" x="2" y="3" rx="2"/><line x1="12" y1="18" x2="12" y2="22"/></svg>');
   }
 
   openAiSummarizerModal() {
-    const modal = document.getElementById("modal-ai-summarizer");
-    if (!modal) return;
     const picker = document.getElementById("ai-summarizer-picker");
     if (picker) picker.value = "";
-    modal.style.display = "flex";
+    this.openToolWorkspace("modal-ai-summarizer", "PDF AI Summarizer", "Extract executive summaries, key bullet takeaways, or ask questions to your document offline.", '<svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#7c3aed" stroke-width="2.2"><path d="m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 21l1.912-5.813a2 2 0 0 1 1.275-1.275L21 12l-5.813-1.912a2 2 0 0 1-1.275-1.275L12 3Z"/></svg>');
   }
 
   openTranslatorModal() {
-    const modal = document.getElementById("modal-translator");
-    if (!modal) return;
     const picker = document.getElementById("translator-picker");
     if (picker) picker.value = "";
-    modal.style.display = "flex";
+    this.openToolWorkspace("modal-translator", "PDF Translator", "Side-by-side multi-language translation for Hindi, Spanish, French, German, Bengali, and more.", '<svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#0284c7" stroke-width="2.2"><path d="m5 8 6 6"/><path d="m4 14 6-6 2-3"/><path d="M2 5h12"/><path d="M7 2h1"/><path d="m22 22-5-10-5 10"/><path d="M14 18h6"/></svg>');
   }
 
   openHtmlToPdfModal() {
-    const modal = document.getElementById("modal-html-to-pdf");
-    if (!modal) return;
-    modal.style.display = "flex";
+    this.openToolWorkspace("modal-html-to-pdf", "HTML to PDF", "Real-time HTML/CSS code editor with live preview and instant A4 PDF export.", '<svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#0d9488" stroke-width="2.2"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg>');
   }
 
   openUnlockPdfModal() {
-    const modal = document.getElementById("modal-unlock-pdf");
-    if (!modal) return;
     const picker = document.getElementById("unlock-pdf-picker");
     if (picker) picker.value = "";
-    modal.style.display = "flex";
+    this.openToolWorkspace("modal-unlock-pdf", "Unlock PDF", "Strip passwords, editing locks, and printing restrictions from protected PDF files.", '<svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#f59e0b" stroke-width="2.2"><rect width="18" height="11" x="3" y="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 9.9-1"/></svg>');
   }
 
   openPdfScannerModal() {
-    const modal = document.getElementById("modal-pdf-scanner");
-    if (!modal) return;
     const picker = document.getElementById("pdf-scanner-picker");
     if (picker) picker.value = "";
-    modal.style.display = "flex";
+    this.openToolWorkspace("modal-pdf-scanner", "PDF Convert to Scanner", "Transform clean digital PDFs into authentic photocopies with contrast, paper grain, and skew.", '<svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#4f46e5" stroke-width="2.2"><path d="M3 7V5a2 2 0 0 1 2-2h2"/><path d="M17 3h2a2 2 0 0 1 2 2v2"/><path d="M21 17v2a2 2 0 0 1-2 2h-2"/><path d="M7 21H5a2 2 0 0 1-2-2v-2"/><rect width="10" height="8" x="7" y="8" rx="1"/></svg>');
   }
 
   // ------------------------------------------------------------------------
   // TOOL 7: PDF to JPG Converter
   // ------------------------------------------------------------------------
   openPdfToJpgModal() {
-    const modal = document.getElementById("modal-pdf-to-jpg");
-    if (!modal) return;
     this.resetPdfToJpgModal();
-    modal.style.display = "flex";
+    this.openToolWorkspace("modal-pdf-to-jpg", "PDF to JPG", "Convert and render PDF pages into high-resolution JPG images.", '<svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#ec4899" stroke-width="2.2"><rect width="18" height="18" x="3" y="3" rx="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/></svg>');
   }
 
   resetPdfToJpgModal() {
