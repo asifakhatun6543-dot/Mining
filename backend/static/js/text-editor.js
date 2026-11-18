@@ -15,13 +15,13 @@ import { State } from "./state.js";
 import { HistoryManager } from "./history.js";
 
 export const FONT_DEFINITIONS = [
-  // Standard & System
-  { key: "times-roman", label: "Times New Roman", group: "Standard & System", css: '"Times New Roman", Times, Tinos, "Liberation Serif", "Nimbus Roman No9 L", serif' },
-  { key: "calibri", label: "Calibri", group: "Standard & System", css: 'Calibri, Carlito, "Segoe UI", Arial, sans-serif' },
-  { key: "arial", label: "Arial", group: "Standard & System", css: 'Arial, "Helvetica Neue", Helvetica, sans-serif' },
-  { key: "helvetica", label: "Helvetica", group: "Standard & System", css: 'Helvetica, Arial, "Helvetica Neue", sans-serif' },
-  { key: "georgia", label: "Georgia", group: "Standard & System", css: 'Georgia, "Times New Roman", serif' },
-  { key: "cambria", label: "Cambria", group: "Standard & System", css: 'Cambria, Georgia, serif' },
+  // Standard & System (with metric-compatible cross-platform web fonts for Android/iOS/Linux)
+  { key: "times-roman", label: "Times New Roman", group: "Standard & System", css: '"Times New Roman", Tinos, Times, "Liberation Serif", "Nimbus Roman No9 L", serif' },
+  { key: "calibri", label: "Calibri", group: "Standard & System", css: 'Calibri, Carlito, "Segoe UI", Arimo, Arial, sans-serif' },
+  { key: "arial", label: "Arial", group: "Standard & System", css: 'Arial, Arimo, "Helvetica Neue", Helvetica, "Liberation Sans", sans-serif' },
+  { key: "helvetica", label: "Helvetica", group: "Standard & System", css: 'Helvetica, "Helvetica Neue", Arimo, Arial, "Liberation Sans", sans-serif' },
+  { key: "georgia", label: "Georgia", group: "Standard & System", css: 'Georgia, Caladea, "Times New Roman", Tinos, serif' },
+  { key: "cambria", label: "Cambria", group: "Standard & System", css: 'Cambria, Caladea, Georgia, serif' },
   { key: "cambria-math", label: "Cambria Math", group: "Standard & System", css: '"Cambria Math", Cambria, serif' },
   { key: "constantia", label: "Constantia", group: "Standard & System", css: 'Constantia, "Times New Roman", serif' },
   { key: "calisto-mt", label: "Calisto MT", group: "Standard & System", css: '"Calisto MT", "Book Antiqua", Palatino, serif' },
@@ -110,7 +110,7 @@ export const FONT_DEFINITIONS = [
   { key: "urbanist", label: "Urbanist", group: "Modern Sans-Serif", css: 'Urbanist, sans-serif' },
 
   // Monospace & Code
-  { key: "courier", label: "Courier New", group: "Monospace & Code", css: '"Courier New", Courier, monospace' },
+  { key: "courier", label: "Courier New", group: "Monospace & Code", css: '"Courier New", Cousine, Courier, "Liberation Mono", monospace' },
   { key: "consolas", label: "Consolas", group: "Monospace & Code", css: 'Consolas, "Courier New", monospace' },
   { key: "dejavu-sans-mono", label: "DejaVu Sans Mono", group: "Monospace & Code", css: '"DejaVu Sans Mono", monospace' },
   { key: "fira-code", label: "Fira Code", group: "Monospace & Code", css: '"Fira Code", monospace' },
@@ -179,10 +179,18 @@ export class InlineTextEditor {
     this.currentAlignment = "left";
     this.currentColorHex = "#000000";
     this.currentColorRgb = [0.0, 0.0, 0.0];
+    this.currentBgColorHex = "#ffffff";
+    this.currentBgColorRgb = [1.0, 1.0, 1.0];
+    this.currentLetterSpacing = 0;
     this.currentFitMode = "expand"; // Default to expand bounds rather than shrink font size
+    this._loadedGoogleFonts = new Set();
 
     this._createDOM();
     this._initEvents();
+  }
+
+  get isVisible() {
+    return !!(this.activeBoxEl && this.currentSpanData);
   }
 
   _createDOM() {
@@ -662,11 +670,217 @@ export class InlineTextEditor {
 
   _getCssFontFamily(fontKey) {
     if (fontKey === "times-roman" || /times|roman|tinos/i.test(fontKey)) {
-      return '"Times New Roman", Times, Tinos, "Liberation Serif", "Nimbus Roman No9 L", serif';
+      return '"Times New Roman", Tinos, Times, "Liberation Serif", "Nimbus Roman No9 L", serif';
     }
     const found = FONT_DEFINITIONS.find(f => f.key === fontKey);
     if (found) return found.css;
-    return `"${fontKey}", Arial, sans-serif`;
+    return `"${fontKey}", Arimo, Arial, sans-serif`;
+  }
+
+  _ensureGoogleFontLoaded(fontKey) {
+    const GOOGLE_FONT_MAP = {
+      "roboto": "Roboto:ital,wght@0,400;0,700;1,400;1,700",
+      "roboto-condensed": "Roboto+Condensed:ital,wght@0,400;0,700;1,400;1,700",
+      "roboto-slab": "Roboto+Slab:wght@400;700",
+      "roboto-mono": "Roboto+Mono:ital,wght@0,400;0,700;1,400;1,700",
+      "open-sans": "Open+Sans:ital,wght@0,400;0,700;1,400;1,700",
+      "lato": "Lato:ital,wght@0,400;0,700;1,400;1,700",
+      "poppins": "Poppins:ital,wght@0,400;0,700;1,400;1,700",
+      "montserrat": "Montserrat:ital,wght@0,400;0,700;1,400;1,700",
+      "merriweather": "Merriweather:ital,wght@0,400;0,700;1,400;1,700",
+      "merriweather-sans": "Merriweather+Sans:ital,wght@0,400;0,700;1,400;1,700",
+      "lora": "Lora:ital,wght@0,400;0,700;1,400;1,700",
+      "pt-sans": "PT+Sans:ital,wght@0,400;0,700;1,400;1,700",
+      "pt-serif": "PT+Serif:ital,wght@0,400;0,700;1,400;1,700",
+      "source-sans-3": "Source+Sans+3:ital,wght@0,400;0,700;1,400;1,700",
+      "source-serif-4": "Source+Serif+4:ital,wght@0,400;0,700;1,400;1,700",
+      "source-code-pro": "Source+Code+Pro:wght@400;700",
+      "ibm-plex-sans": "IBM+Plex+Sans:ital,wght@0,400;0,700;1,400;1,700",
+      "ibm-plex-serif": "IBM+Plex+Serif:ital,wght@0,400;0,700;1,400;1,700",
+      "ibm-plex-mono": "IBM+Plex+Mono:wght@400;700",
+      "noto-sans": "Noto+Sans:ital,wght@0,400;0,700;1,400;1,700",
+      "noto-serif": "Noto+Serif:ital,wght@0,400;0,700;1,400;1,700",
+      "noto-sans-devanagari": "Noto+Sans+Devanagari:wght@400;700",
+      "noto-serif-devanagari": "Noto+Serif+Devanagari:wght@400;700",
+      "noto-sans-bengali": "Noto+Sans+Bengali:wght@400;700",
+      "noto-sans-arabic": "Noto+Sans+Arabic:wght@400;700",
+      "nunito": "Nunito:ital,wght@0,400;0,700;1,400;1,700",
+      "nunito-sans": "Nunito+Sans:ital,wght@0,400;0,700;1,400;1,700",
+      "raleway": "Raleway:ital,wght@0,400;0,700;1,400;1,700",
+      "ubuntu": "Ubuntu:ital,wght@0,400;0,700;1,400;1,700",
+      "work-sans": "Work+Sans:ital,wght@0,400;0,700;1,400;1,700",
+      "dm-sans": "DM+Sans:ital,wght@0,400;0,700;1,400;1,700",
+      "rubik": "Rubik:ital,wght@0,400;0,700;1,400;1,700",
+      "oswald": "Oswald:wght@400;700",
+      "playfair-display": "Playfair+Display:ital,wght@0,400;0,700;1,400;1,700",
+      "garamond": "EB+Garamond:ital,wght@0,400;0,700;1,400;1,700",
+      "fira-sans": "Fira+Sans:ital,wght@0,400;0,700;1,400;1,700",
+      "fira-code": "Fira+Code:wght@400;700",
+      "manrope": "Manrope:wght@400;700",
+      "mulish": "Mulish:ital,wght@0,400;0,700;1,400;1,700",
+      "outfit": "Outfit:wght@400;700",
+      "quicksand": "Quicksand:wght@400;700",
+      "karla": "Karla:ital,wght@0,400;0,700;1,400;1,700",
+      "barlow": "Barlow:ital,wght@0,400;0,700;1,400;1,700"
+    };
+
+    const spec = GOOGLE_FONT_MAP[fontKey];
+    if (!spec || this._loadedGoogleFonts.has(fontKey)) return;
+    this._loadedGoogleFonts.add(fontKey);
+
+    try {
+      const link = document.createElement("link");
+      link.rel = "stylesheet";
+      link.href = `https://fonts.googleapis.com/css2?family=${spec}&display=swap`;
+      document.head.appendChild(link);
+    } catch (_) {}
+  }
+
+  /**
+   * Pixel-accurate Canvas Visual Sampler:
+   * Extracts exact background color (bgHex) and foreground text ink color (fgHex)
+   * directly from the rendered PDF page canvas at span.bbox!
+   */
+  _sampleSpanVisualMetrics(pageIndex, span) {
+    try {
+      const canvas = document.getElementById(`page-canvas-${pageIndex}`);
+      if (!canvas || !canvas.width || !canvas.height) return null;
+
+      const pageDim = State.pageDimensions[pageIndex] || { width: 612, height: 792 };
+      const scaleX = canvas.width / pageDim.width;
+      const scaleY = canvas.height / pageDim.height;
+
+      const [x0, y0, x1, y1] = span.bbox;
+      const padPx = Math.max(2, Math.round(2 * scaleX));
+      const rx0 = Math.max(0, Math.floor(x0 * scaleX) - padPx);
+      const ry0 = Math.max(0, Math.floor(y0 * scaleY) - padPx);
+      const rx1 = Math.min(canvas.width, Math.ceil(x1 * scaleX) + padPx);
+      const ry1 = Math.min(canvas.height, Math.ceil(y1 * scaleY) + padPx);
+      const rw = rx1 - rx0;
+      const rh = ry1 - ry0;
+      if (rw < 4 || rh < 4) return null;
+
+      const ctx = canvas.getContext("2d", { willReadFrequently: true });
+      const imgData = ctx.getImageData(rx0, ry0, rw, rh).data;
+
+      // 1. Sample Background Color from outer 1px perimeter ring
+      const bgR = [], bgG = [], bgB = [];
+      const addBg = (px, py) => {
+        const idx = (py * rw + px) * 4;
+        if (imgData[idx + 3] < 200) return;
+        bgR.push(imgData[idx]);
+        bgG.push(imgData[idx + 1]);
+        bgB.push(imgData[idx + 2]);
+      };
+      for (let x = 0; x < rw; x += Math.max(1, Math.floor(rw / 40))) {
+        addBg(x, 0);
+        addBg(x, rh - 1);
+      }
+      for (let y = 1; y < rh - 1; y += Math.max(1, Math.floor(rh / 20))) {
+        addBg(0, y);
+        addBg(rw - 1, y);
+      }
+      if (bgR.length === 0) return null;
+
+      const median = (arr) => {
+        const s = arr.slice().sort((a, b) => a - b);
+        return s[Math.floor(s.length / 2)];
+      };
+
+      let bR = median(bgR);
+      let bG = median(bgG);
+      let bB = median(bgB);
+      // Snap near-pure-white background cleanly to #ffffff
+      if (bR > 246 && bG > 246 && bB > 246) {
+        bR = 255; bG = 255; bB = 255;
+      }
+
+      // 2. Sample Foreground Text Ink Color from interior pixels with highest contrast vs background
+      const inkPixels = [];
+      let totalInterior = 0;
+      const ix0 = Math.min(padPx, Math.floor(rw / 4));
+      const iy0 = Math.min(padPx, Math.floor(rh / 4));
+      const ix1 = Math.max(ix0 + 1, rw - ix0);
+      const iy1 = Math.max(iy0 + 1, rh - iy0);
+
+      for (let y = iy0; y < iy1; y++) {
+        for (let x = ix0; x < ix1; x++) {
+          totalInterior++;
+          const idx = (y * rw + x) * 4;
+          const r = imgData[idx];
+          const g = imgData[idx + 1];
+          const b = imgData[idx + 2];
+          const dist = Math.hypot(r - bR, g - bG, b - bB);
+          if (dist > 32) {
+            inkPixels.push({ r, g, b, dist });
+          }
+        }
+      }
+
+      const toHex = (r, g, b) => `#${[r, g, b].map(v => Math.max(0, Math.min(255, Math.round(v))).toString(16).padStart(2, "0")).join("")}`;
+      const bgHex = toHex(bR, bG, bB);
+      const bgRgb = [bR / 255, bG / 255, bB / 255];
+
+      if (inkPixels.length < 3) {
+        return { bgHex, bgRgb, fgHex: null, fgRgb: null, visualBold: false };
+      }
+
+      // Take top 20% highest-contrast core ink pixels (eliminates anti-aliased gray fringes!)
+      inkPixels.sort((a, b) => b.dist - a.dist);
+      const coreCount = Math.max(3, Math.floor(inkPixels.length * 0.22));
+      const core = inkPixels.slice(0, coreCount);
+
+      let fR = median(core.map(p => p.r));
+      let fG = median(core.map(p => p.g));
+      let fB = median(core.map(p => p.b));
+
+      // Clean snap for crisp black/white ink
+      const bgLuma = 0.299 * bR + 0.587 * bG + 0.114 * bB;
+      if (bgLuma > 180 && fR < 28 && fG < 28 && fB < 28) {
+        fR = 0; fG = 0; fB = 0;
+      } else if (bgLuma < 80 && fR > 232 && fG > 232 && fB > 232) {
+        fR = 255; fG = 255; fB = 255;
+      }
+
+      const fgHex = toHex(fR, fG, fB);
+      const fgRgb = [fR / 255, fG / 255, fB / 255];
+
+      // Estimate visual bold from ink density (only used if font metadata had no bold info)
+      const inkRatio = totalInterior > 0 ? (inkPixels.length / totalInterior) : 0;
+      const visualBold = inkRatio > 0.34;
+
+      return { bgHex, bgRgb, fgHex, fgRgb, visualBold };
+    } catch (err) {
+      console.warn("Canvas visual sampling skipped:", err);
+      return null;
+    }
+  }
+
+  _calibrateLetterSpacing(span) {
+    try {
+      const text = span.original_text || span.text || "";
+      if (!text || text.length < 3) return 0;
+      const targetWidth = (span.bbox[2] - span.bbox[0]);
+      if (!targetWidth || targetWidth < 10) return 0;
+
+      const c = document.createElement("canvas");
+      const ctx = c.getContext("2d");
+      const wt = this.isBold ? "bold" : "normal";
+      const st = this.isItalic ? "italic" : "normal";
+      ctx.font = `${st} ${wt} ${this.currentFontSize}px ${this._getCssFontFamily(this.currentFont)}`;
+      const measured = ctx.measureText(text).width;
+      if (!measured || measured < 5) return 0;
+
+      const ratio = targetWidth / measured;
+      // Only calibrate subtle metric differences (within ±16%)
+      if (ratio >= 0.84 && ratio <= 1.16) {
+        const diffPerChar = (targetWidth - measured) / Math.max(1, text.length - 1);
+        return Math.max(-0.6, Math.min(1.2, Math.round(diffPerChar * 100) / 100));
+      }
+      return 0;
+    } catch (_) {
+      return 0;
+    }
   }
 
   _updateEditableStyle() {
@@ -675,6 +889,8 @@ export class InlineTextEditor {
     if (!editableDiv) return;
 
     const scale = State.zoomScale;
+    this._ensureGoogleFontLoaded(this.currentFont);
+    this.activeBoxEl.style.background = this.currentBgColorHex || "#ffffff";
     editableDiv.style.fontFamily = this._getCssFontFamily(this.currentFont);
     editableDiv.style.fontSize = `${this.currentFontSize * scale}px`;
     editableDiv.style.fontWeight = this.isBold ? "bold" : "normal";
@@ -682,6 +898,7 @@ export class InlineTextEditor {
     editableDiv.style.textDecoration = this.isUnderline ? "underline" : "none";
     editableDiv.style.color = this.currentColorHex;
     editableDiv.style.textAlign = this.currentAlignment;
+    editableDiv.style.letterSpacing = this.currentLetterSpacing ? `${this.currentLetterSpacing * scale}px` : "normal";
   }
 
   _initEvents() {
@@ -747,56 +964,88 @@ export class InlineTextEditor {
     // Use current replacement text if already edited, otherwise original text
     const textToShow = span.currentText !== undefined ? span.currentText : span.text;
 
-    // Auto-detect and select original font
+    // 1. Sample exact pixel colors (foreground ink & background) from rendered PDF canvas!
+    const sampled = (!span.currentColorHex || !span.bgColorHex)
+      ? this._sampleSpanVisualMetrics(pageIndex, span)
+      : null;
+
+    if (span.bgColorHex) {
+      this.currentBgColorHex = span.bgColorHex;
+      this.currentBgColorRgb = span.bgColorRgb || this._hexToRgbArray(span.bgColorHex);
+    } else if (sampled && sampled.bgHex) {
+      this.currentBgColorHex = sampled.bgHex;
+      this.currentBgColorRgb = sampled.bgRgb;
+      span.bgColorHex = sampled.bgHex;
+      span.bgColorRgb = sampled.bgRgb;
+    } else {
+      this.currentBgColorHex = "#ffffff";
+      this.currentBgColorRgb = [1.0, 1.0, 1.0];
+    }
+
+    // 2. Auto-detect exact original font (prioritize real embedded font name from commonObjs!)
     const flags = span.flags || 0;
     const isSerifFlag = (flags & 4) !== 0;
+    const isMonoFlag = (flags & 1) !== 0 || (flags & 8) !== 0;
 
-    // Check if document has detected serif fonts
-    const docFonts = State.documentInfo?.detected_fonts || [];
-    const docHasSerif = docFonts.some(f => /times|roman|serif|georgia|cambria|tinos|lora/i.test(f));
-
-    let fontToUse = span.currentFont || span.font;
-    if (!fontToUse || fontToUse === "Helvetica" || fontToUse === "Standard Base-14" || fontToUse.toLowerCase() === "unknown") {
-      if (isSerifFlag || docHasSerif) {
-        fontToUse = "times-roman";
-      } else {
-        fontToUse = "arial";
-      }
+    let fontToUse = span.currentFont || span.rawFontName || span.font;
+    if (!fontToUse || fontToUse === "Standard Base-14" || fontToUse.toLowerCase() === "unknown") {
+      if (isMonoFlag) fontToUse = "courier";
+      else if (isSerifFlag) fontToUse = "times-roman";
+      else fontToUse = "arial";
     }
 
     this._detectAndSelectFont(fontToUse, flags);
+    this._ensureGoogleFontLoaded(this.currentFont);
 
-    const fontLower = (fontToUse || "").toLowerCase();
+    const fontLower = (span.rawFontName || fontToUse || "").toLowerCase();
 
-    // AUTOMATIC FONT SIZE: Use exact original font size rounded to 1 decimal place (e.g. 14, 13.5, 18, 12)
+    // 3. AUTOMATIC FONT SIZE: exact PDF font size rounded to 1 decimal place
     const rawSize = span.currentFontSize || span.size || 12;
     this.currentFontSize = Math.round(rawSize * 10) / 10;
 
-    this.isBold = span.isBold !== undefined ? span.isBold : ((flags & 16) !== 0 || (flags & 262144) !== 0 || /bold|black|heavy|semibold|demi/.test(fontLower));
-    this.isItalic = span.isItalic !== undefined ? span.isItalic : ((flags & 2) !== 0 || (flags & 64) !== 0 || /italic|oblique/.test(fontLower));
+    // 4. AUTOMATIC BOLD / ITALIC / UNDERLINE
+    const metaBold = ((flags & 16) !== 0 || (flags & 262144) !== 0 || /bold|black|heavy|semibold|demi|extrabold|700|800|900|[-,]bd\b|[-_]b\b/.test(fontLower));
+    const hasExplicitRegular = /regular|normal|light|thin|book|roman\b/i.test(fontLower) && !metaBold;
+    this.isBold = span.isBold !== undefined
+      ? span.isBold
+      : (metaBold || (!hasExplicitRegular && !span.rawFontName && sampled?.visualBold) || false);
+    this.isItalic = span.isItalic !== undefined
+      ? span.isItalic
+      : ((flags & 2) !== 0 || (flags & 64) !== 0 || /italic|oblique|slant|[-,]it\b/.test(fontLower));
     this.isUnderline = span.isUnderline !== undefined ? span.isUnderline : false;
 
-    // Color decoding
+    // 5. AUTOMATIC EXACT COLOR MATCHING (Canvas pixel ink > PDF operator color > fallback black)
     if (span.currentColorHex) {
       this.currentColorHex = span.currentColorHex;
-      this.currentColorRgb = span.currentColorRgb;
-    } else {
-      const colorInt = span.color || 0;
+      this.currentColorRgb = span.currentColorRgb || this._hexToRgbArray(span.currentColorHex);
+    } else if (sampled && sampled.fgHex) {
+      this.currentColorHex = sampled.fgHex;
+      this.currentColorRgb = sampled.fgRgb;
+    } else if (span.color) {
+      const colorInt = span.color;
       const r = (colorInt >> 16) & 255;
       const g = (colorInt >> 8) & 255;
       const b = colorInt & 255;
       this.currentColorHex = `#${[r, g, b].map(x => x.toString(16).padStart(2, "0")).join("")}`;
       this.currentColorRgb = [r / 255, g / 255, b / 255];
+    } else {
+      this.currentColorHex = "#000000";
+      this.currentColorRgb = [0, 0, 0];
     }
 
-    // Auto-detect horizontal alignment if not already set
+    // 6. Calibrate exact horizontal letter spacing to match PDF glyph rhythm
+    this.currentLetterSpacing = span.letterSpacing !== undefined
+      ? span.letterSpacing
+      : this._calibrateLetterSpacing(span);
+
+    // 7. Auto-detect horizontal alignment
     if (span.currentAlignment) {
       this.currentAlignment = span.currentAlignment;
     } else {
       const pageDim = State.pageDimensions[pageIndex] || { width: 612, height: 792 };
       const distLeft = span.bbox[0];
       const distRight = pageDim.width - span.bbox[2];
-      const isCentered = Math.abs(distLeft - distRight) < 35;
+      const isCentered = Math.abs(distLeft - distRight) < 35 && (span.bbox[2] - span.bbox[0]) < pageDim.width * 0.75;
       this.currentAlignment = isCentered ? "center" : "left";
     }
 
@@ -844,20 +1093,20 @@ export class InlineTextEditor {
     const scale = State.zoomScale;
     const [x0, y0, x1, y1] = span.bbox;
     const width = Math.max(16, (x1 - x0) * scale);
-    const height = Math.max(14, (y1 - y0) * scale);
+    const height = Math.max(12, (y1 - y0) * scale);
 
     const box = document.createElement("div");
     box.className = "inplace-text-box word-style-editor";
     box.style.position = "absolute";
     box.style.left = `${(x0 - 1) * scale}px`;
     box.style.top = `${(y0 - 1) * scale}px`;
-    box.style.minWidth = `${width + 2}px`;
+    box.style.minWidth = `${width + 2 * scale}px`;
     box.style.width = "max-content";
     box.style.maxWidth = `calc(100% - ${(x0 - 1) * scale + 6}px)`;
-    box.style.height = `${height + 2}px`;
-    box.style.minHeight = `${height + 2}px`;
+    box.style.height = `${height + 2 * scale}px`;
+    box.style.minHeight = `${height + 2 * scale}px`;
     box.style.boxSizing = "border-box";
-    box.style.background = "#ffffff";
+    box.style.background = this.currentBgColorHex || "#ffffff";
     box.style.border = "1.5px solid #2563eb";
     box.style.borderRadius = "2px";
     box.style.boxShadow = "0 1px 6px rgba(37, 99, 235, 0.22)";
@@ -998,6 +1247,9 @@ export class InlineTextEditor {
     span.isUnderline = this.isUnderline;
     span.currentColorHex = this.currentColorHex;
     span.currentColorRgb = [...this.currentColorRgb];
+    span.bgColorHex = this.currentBgColorHex;
+    span.bgColorRgb = [...this.currentBgColorRgb];
+    span.letterSpacing = this.currentLetterSpacing;
     span.currentAlignment = this.currentAlignment;
 
     const editItem = {
@@ -1006,7 +1258,7 @@ export class InlineTextEditor {
       replacement_text: replacementText,
       bbox: [...span.bbox],
       font_name: this.currentFont,
-      original_font: span.font,
+      original_font: span.rawFontName || span.font,
       font_size: this.currentFontSize,
       fit_mode: this.currentFitMode,
       alignment: this.currentAlignment,
@@ -1015,7 +1267,10 @@ export class InlineTextEditor {
       is_underline: this.isUnderline,
       flags: span.flags || 0,
       text_color: [...this.currentColorRgb],
-      text_color_hex: this.currentColorHex
+      text_color_hex: this.currentColorHex,
+      bg_color: [...this.currentBgColorRgb],
+      bg_color_hex: this.currentBgColorHex,
+      letter_spacing: this.currentLetterSpacing
     };
 
     State.addTextEdit(editItem);
@@ -1106,7 +1361,9 @@ export class InlineTextEditor {
       bbox: span.bbox,
       font_name: this.currentFont,
       font_size: this.currentFontSize,
-      alignment: this.currentAlignment
+      alignment: this.currentAlignment,
+      bg_color: [...this.currentBgColorRgb],
+      bg_color_hex: this.currentBgColorHex
     };
 
     State.addTextEdit(deleteItem);
@@ -1240,6 +1497,7 @@ export class InlineTextEditor {
       cover.addEventListener("mousedown", (e) => e.stopPropagation());
     }
 
+    const bgHex = editItem.bg_color_hex || origSpan.bgColorHex || "#ffffff";
     cover.style.position = "absolute";
     cover.style.left = `${(x0 - 1) * scale}px`;
     cover.style.top = `${(y0 - 1) * scale}px`;
@@ -1248,7 +1506,7 @@ export class InlineTextEditor {
     cover.style.maxWidth = `calc(100% - ${(x0 - 1) * scale + 10}px)`;
     cover.style.height = `${origHeight + 2 * scale}px`;
     cover.style.minHeight = `${origHeight + 2 * scale}px`;
-    cover.style.background = "#ffffff";
+    cover.style.background = bgHex;
     cover.style.zIndex = "6";
     cover.style.visibility = "visible";
     cover.title = `Edited: "${replacementText}" (Click to edit again)`;
@@ -1269,6 +1527,7 @@ export class InlineTextEditor {
 
     // Use color from the edit item, not from current editor state
     const colorHex = editItem.text_color_hex || origSpan.currentColorHex || this._rgbArrayToHex(editItem.text_color) || "#000000";
+    const letterSpacingVal = editItem.letter_spacing !== undefined ? editItem.letter_spacing : (origSpan.letterSpacing || 0);
 
     cover.innerHTML = "";
     const textEl = document.createElement("span");
@@ -1279,8 +1538,9 @@ export class InlineTextEditor {
     textEl.style.fontWeight = editItem.is_bold ? "bold" : "normal";
     textEl.style.fontStyle = editItem.is_italic ? "italic" : "normal";
     textEl.style.textDecoration = editItem.is_underline ? "underline" : "none";
+    textEl.style.letterSpacing = letterSpacingVal ? `${letterSpacingVal * scale}px` : "normal";
     textEl.style.whiteSpace = "pre";
-    textEl.style.lineHeight = "1.1";
+    textEl.style.lineHeight = "1.05";
     textEl.style.pointerEvents = "none"; // Text inside cover shouldn't eat clicks
 
     cover.appendChild(textEl);

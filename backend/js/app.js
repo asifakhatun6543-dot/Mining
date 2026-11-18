@@ -6,10 +6,10 @@ import { State, getApiUrl } from "./state.js";
 import { HistoryManager } from "./history.js";
 import { PDFRenderer } from "./pdf-renderer.js";
 import { TextSelectionManager } from "./text-selection.js";
-import { InlineTextEditor } from "./text-editor.js";
+import { InlineTextEditor } from "./text-editor.js?v=3.8";
 import { ScannedEditor } from "./scanned-editor.js";
 import { ToolbarManager } from "./toolbar.js";
-import { ExportClient } from "./export-client.js?v=3.7";
+import { ExportClient } from "./export-client.js?v=3.8";
 
 class OpenPDFStudioApp {
   constructor() {
@@ -578,10 +578,15 @@ class OpenPDFStudioApp {
     const pages = [];
     const detectedFonts = new Set();
     const pageDimensions = [];
+    const OPS = window.pdfjsLib?.OPS || {};
 
     const rawDocFonts = this._extractRawPDFFonts(safeBytes);
-    const docHasSerif = rawDocFonts.some(f => /times|roman|serif|georgia|cambria|garamond|palatino|century|tinos/i.test(f));
-    const docHasMono = rawDocFonts.some(f => /courier|mono|consolas|fixed/i.test(f));
+    rawDocFonts.forEach(f => {
+      if (f && f.length > 1) detectedFonts.add(f);
+    });
+
+    const clampByte = (v) => Math.max(0, Math.min(255, Math.round(v)));
+    const rgbToInt = (r, g, b) => ((clampByte(r) << 16) | (clampByte(g) << 8) | clampByte(b));
 
     for (let pageNum = 1; pageNum <= pdfJsDoc.numPages; pageNum++) {
       const page = await pdfJsDoc.getPage(pageNum);
@@ -590,6 +595,62 @@ class OpenPDFStudioApp {
       const pageH = viewport.height;
       pageDimensions.push({ width: pageW, height: pageH });
 
+      // CRITICAL: Call getOperatorList() FIRST so PDF.js populates page.commonObjs
+      // with EVERY real embedded font object (name, bold, italic, loadedName) AND fill colors!
+      const fontColorMap = new Map();
+      const fontFakeBoldSet = new Set();
+      try {
+        const opList = await page.getOperatorList();
+        if (opList && opList.fnArray && opList.argsArray) {
+          let curColor = 0; // default black
+          let curFontId = null;
+          let curRenderMode = 0;
+          const colorStack = [];
+
+          for (let k = 0; k < opList.fnArray.length; k++) {
+            const fn = opList.fnArray[k];
+            const args = opList.argsArray[k];
+
+            if (fn === OPS.save) {
+              colorStack.push({ color: curColor, mode: curRenderMode });
+            } else if (fn === OPS.restore) {
+              const prev = colorStack.pop();
+              if (prev) {
+                curColor = prev.color;
+                curRenderMode = prev.mode;
+              }
+            } else if (fn === OPS.setFillRGBColor && args && args.length >= 3) {
+              const r = args[0] <= 1 && args[1] <= 1 && args[2] <= 1 ? args[0] * 255 : args[0];
+              const g = args[0] <= 1 && args[1] <= 1 && args[2] <= 1 ? args[1] * 255 : args[1];
+              const b = args[0] <= 1 && args[1] <= 1 && args[2] <= 1 ? args[2] * 255 : args[2];
+              curColor = rgbToInt(r, g, b);
+            } else if (fn === OPS.setFillGray && args && args.length >= 1) {
+              const gVal = args[0] <= 1 ? args[0] * 255 : args[0];
+              curColor = rgbToInt(gVal, gVal, gVal);
+            } else if (fn === OPS.setFillCMYKColor && args && args.length >= 4) {
+              const [c, m, y, kVal] = args;
+              const r = 255 * (1 - c) * (1 - kVal);
+              const g = 255 * (1 - m) * (1 - kVal);
+              const b = 255 * (1 - y) * (1 - kVal);
+              curColor = rgbToInt(r, g, b);
+            } else if (fn === OPS.setTextRenderingMode && args && args.length >= 1) {
+              curRenderMode = args[0];
+            } else if (fn === OPS.setFont && args && args.length >= 1) {
+              curFontId = args[0];
+            } else if ((fn === OPS.showText || fn === OPS.showSpacedText) && curFontId) {
+              if (!fontColorMap.has(curFontId)) {
+                fontColorMap.set(curFontId, curColor);
+              }
+              if (curRenderMode === 2) {
+                fontFakeBoldSet.add(curFontId);
+              }
+            }
+          }
+        }
+      } catch (opErr) {
+        console.warn("Operator list inspection skipped on page", pageNum, opErr);
+      }
+
       const textContent = await page.getTextContent();
       const rawSpans = [];
 
@@ -597,68 +658,81 @@ class OpenPDFStudioApp {
         const text = item.str;
         if (!text || !text.trim()) return;
 
-        const tx = item.transform[4];
-        const ty = item.transform[5];
-        const fontH = Math.hypot(item.transform[2], item.transform[3]) || item.height || 12;
+        // Transform coordinates cleanly through viewport.transform (handles CropBox offsets & rotations!)
+        let x0, baselineY, fontH;
+        if (window.pdfjsLib?.Util?.transform) {
+          const txMat = window.pdfjsLib.Util.transform(viewport.transform, item.transform);
+          x0 = txMat[4];
+          baselineY = txMat[5];
+          const vScale = Math.hypot(txMat[2], txMat[3]);
+          const hScale = Math.hypot(txMat[0], txMat[1]);
+          fontH = vScale || hScale || item.height || 12;
+        } else {
+          x0 = item.transform[4];
+          baselineY = pageH - item.transform[5];
+          fontH = Math.hypot(item.transform[2], item.transform[3]) || item.height || 12;
+        }
 
-        // Top-left coordinate conversion
-        const baselineY = pageH - ty;
-        const topY = Math.max(0, baselineY - fontH);
-        const bottomY = baselineY + fontH * 0.25;
-        const x0 = tx;
-        const x1 = tx + item.width;
+        // True typographic ascent (~0.88em) & descent (~0.24em) bounding box
+        const topY = Math.max(0, baselineY - fontH * 0.88);
+        const bottomY = Math.min(pageH, baselineY + fontH * 0.24);
+        const spanWidth = Math.max(item.width || 0, fontH * 0.4);
+        const x1 = x0 + spanWidth;
 
-        // Retrieve real font object from PDF.js commonObjs if available
+        // Retrieve REAL embedded font object from PDF.js commonObjs (now populated!)
         let realFontName = "";
-        let isFontBold = false;
+        let loadedFontName = "";
+        let isFontBold = fontFakeBoldSet.has(item.fontName);
         let isFontItalic = false;
+        let isFontSerif = false;
+        let isFontMono = false;
 
         if (page.commonObjs && typeof page.commonObjs.has === "function" && page.commonObjs.has(item.fontName)) {
           try {
             const fontObj = page.commonObjs.get(item.fontName);
             if (fontObj && typeof fontObj === "object") {
-              realFontName = fontObj.name || fontObj.loadedName || "";
-              isFontBold = !!fontObj.bold || !!fontObj.black;
-              isFontItalic = !!fontObj.italic;
+              realFontName = fontObj.name || "";
+              loadedFontName = fontObj.loadedName || "";
+              if (fontObj.bold || fontObj.black) isFontBold = true;
+              if (fontObj.italic) isFontItalic = true;
+              if (fontObj.isSerifFont) isFontSerif = true;
+              if (fontObj.isMonospace) isFontMono = true;
             }
           } catch (_) {}
         }
 
-        const cleanReal = realFontName.replace(/^[A-Z]{6}\+/, "");
+        const cleanReal = realFontName.replace(/^[A-Za-z0-9]{6}\+/, "").trim();
         const style = textContent.styles?.[item.fontName];
         const fontFam = (style?.fontFamily || "").toLowerCase();
-        const combined = `${cleanReal} ${item.fontName} ${fontFam}`.toLowerCase();
+        const combined = `${cleanReal} ${fontFam}`.toLowerCase();
 
-        let detectedFamily = "Helvetica";
+        if (cleanReal) detectedFonts.add(cleanReal);
+
+        // Compute accurate typographic flags
         let flags = 0;
-
-        if (/times|roman|georgia|cambria|serif|garamond|palatino|century|tinos/i.test(combined) || (docHasSerif && !/sans|arial|helvetica|calibri/i.test(combined))) {
-          detectedFamily = "times-roman";
-          flags |= 4; // Serif flag
-          detectedFonts.add("Times New Roman / Serif");
-        } else if (/courier|mono|consolas|fixed/i.test(combined) || (docHasMono && !/sans|arial|helvetica/i.test(combined))) {
-          detectedFamily = "courier";
-          flags |= 1; // Monospace flag
-          detectedFonts.add("Courier New / Monospace");
-        } else if (/calibri|carlito/i.test(combined)) {
-          detectedFamily = "calibri";
-          flags |= 0;
-          detectedFonts.add("Calibri");
-        } else if (/arial/i.test(combined)) {
-          detectedFamily = "arial";
-          flags |= 0;
-          detectedFonts.add("Arial");
-        } else {
-          detectedFamily = "helvetica";
-          detectedFonts.add("Helvetica / Arial (Standard)");
+        if (isFontMono || fontFam.includes("monospace") || /courier|mono|consolas|code|typewriter|fixed|cousine/i.test(combined)) {
+          flags |= 1; // Monospace
+          flags |= 8;
+        } else if (isFontSerif || (fontFam.includes("serif") && !fontFam.includes("sans-serif")) || /times|roman|georgia|cambria|serif|garamond|palatino|century|tinos|caladea|charter|baskerville|book|antiqua|minion|lora|merriweather/i.test(combined)) {
+          flags |= 4; // Serif
         }
 
-        if (isFontBold || /bold|black|heavy|semibold/i.test(combined)) {
-          flags |= 16; // Bold flag
+        if (isFontBold || /bold|black|heavy|semibold|demi|extrabold|medium|700|800|900|[-,]bd\b|[-_]b\b|ps-bold|mt-bold/i.test(cleanReal)) {
+          flags |= 16; // Bold
         }
-        if (isFontItalic || /italic|oblique/i.test(combined)) {
-          flags |= 2; // Italic flag
+        if (isFontItalic || /italic|oblique|slant|[-,]it\b|[-_]i\b|ps-italic|mt-italic/i.test(cleanReal)) {
+          flags |= 2; // Italic
         }
+
+        // Preserve the EXACT real font name for _detectAndSelectFont (never blindly overwrite!)
+        let detectedFont = cleanReal;
+        if (!detectedFont) {
+          if (flags & 1) detectedFont = "courier";
+          else if (flags & 4) detectedFont = "times-roman";
+          else detectedFont = "arial";
+        }
+
+        const opColor = fontColorMap.has(item.fontName) ? fontColorMap.get(item.fontName) : null;
 
         rawSpans.push({
           id: `span_${pageNum - 1}_${itemIdx}`,
@@ -670,11 +744,15 @@ class OpenPDFStudioApp {
             Math.round(x1 * 100) / 100,
             Math.round(bottomY * 100) / 100
           ],
+          baselineY: Math.round(baselineY * 100) / 100,
           size: Math.round(fontH * 10) / 10,
-          font: detectedFamily,
+          font: detectedFont,
+          rawFontName: cleanReal,
+          loadedFontName: loadedFontName,
           fontName: item.fontName,
           flags: flags,
-          color: 0
+          color: opColor !== null ? opColor : 0,
+          hasOpColor: opColor !== null
         });
       });
 

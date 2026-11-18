@@ -496,13 +496,16 @@ export class ExportClient {
       const h = Math.max(y1 - y0, 8);
       const rectY = box.y + box.height - y1 - pad;
 
-      // Whiteout original text cleanly
+      // Cover original text seamlessly with exact sampled background color (defaults to white)
+      const bgFill = (edit.bg_color || edit.bg_color_hex)
+        ? this._parseRgb(edit.bg_color, edit.bg_color_hex || "#ffffff", rgb)
+        : rgb(1, 1, 1);
       page.drawRectangle({
         x: box.x + x0 - pad,
         y: rectY,
         width: w + pad * 2,
         height: h + pad * 2,
-        color: rgb(1, 1, 1)
+        color: bgFill
       });
 
       if (edit.replacement_text && String(edit.replacement_text).length > 0) {
@@ -786,7 +789,7 @@ export class ExportClient {
       // Paint text edits
       for (const edit of (State.pendingTextEdits || []).filter(e => e.page_number === i)) {
         const [x0, y0, x1, y1] = edit.bbox.map(Number);
-        ctx.fillStyle = "#ffffff";
+        ctx.fillStyle = edit.bg_color_hex || (edit.bg_color ? this._colorToCss(edit.bg_color, "#ffffff") : "#ffffff");
         ctx.fillRect(x0 - 1.5, y0 - 1.5, Math.max(8, x1 - x0) + 3, Math.max(8, y1 - y0) + 3);
         if (edit.replacement_text) {
           const fs = edit.font_size || 12;
