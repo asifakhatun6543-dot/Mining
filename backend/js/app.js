@@ -9,7 +9,7 @@ import { TextSelectionManager } from "./text-selection.js";
 import { InlineTextEditor } from "./text-editor.js";
 import { ScannedEditor } from "./scanned-editor.js";
 import { ToolbarManager } from "./toolbar.js";
-import { ExportClient } from "./export-client.js";
+import { ExportClient } from "./export-client.js?v=3.7";
 
 class OpenPDFStudioApp {
   constructor() {
@@ -109,33 +109,17 @@ class OpenPDFStudioApp {
       window.print();
     });
 
-    // Save project snapshot
+    // Save As PDF (Desktop Save button)
     document.getElementById("header-save-btn")?.addEventListener("click", () => {
-      const projectData = {
-        documentId: State.documentId,
-        filename: State.filename,
-        edits: State.pendingTextEdits,
-        redactions: State.pendingRedactions,
-        scannedEdits: State.pendingScannedEdits,
-        annotations: State.pendingAnnotations,
-        pageOperations: State.pendingPageOperations
-      };
-      const blob = new Blob([JSON.stringify(projectData, null, 2)], { type: "application/json" });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = `${State.filename.replace(/\.pdf$/i, "")}_project.json`;
-      a.click();
-      URL.revokeObjectURL(url);
-      this.showToast("success", "Project state saved successfully.");
+      this.exportClient.exportCurrentDocument({ saveAs: true });
     });
 
-    // Done button (Desktop & Mobile)
+    // Done button (Desktop & Mobile) -> Instant Export & Download PDF
     document.getElementById("header-done-btn")?.addEventListener("click", () => {
-      this.exportClient.exportCurrentDocument();
+      this.exportClient.exportCurrentDocument({ autoDownload: true });
     });
     document.getElementById("mobile-toolbar-done-btn")?.addEventListener("click", () => {
-      this.exportClient.exportCurrentDocument();
+      this.exportClient.exportCurrentDocument({ autoDownload: true });
     });
 
     // Filename input
@@ -167,12 +151,12 @@ class OpenPDFStudioApp {
 
     document.getElementById("menu-opt-download")?.addEventListener("click", () => {
       if (dropdownMenu) dropdownMenu.style.display = "none";
-      this.exportClient.exportCurrentDocument();
+      this.exportClient.exportCurrentDocument({ autoDownload: true });
     });
 
     document.getElementById("menu-opt-save")?.addEventListener("click", () => {
       if (dropdownMenu) dropdownMenu.style.display = "none";
-      document.getElementById("header-save-btn")?.click();
+      this.exportClient.exportCurrentDocument({ saveAs: true });
     });
 
     document.getElementById("menu-opt-print")?.addEventListener("click", () => {
@@ -915,7 +899,7 @@ class OpenPDFStudioApp {
         HistoryManager.redo();
       } else if (cmd && e.key.toLowerCase() === "s") {
         e.preventDefault();
-        this.exportClient.exportCurrentDocument();
+        this.exportClient.exportCurrentDocument({ saveAs: e.shiftKey, autoDownload: !e.shiftKey });
       } else if (cmd && e.key.toLowerCase() === "f") {
         e.preventDefault();
         this._toggleFindDrawer();
