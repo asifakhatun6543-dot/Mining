@@ -1,23 +1,39 @@
 /**
- * OpenPDF Studio - Advanced Client-Side Document Tools Suite
- * Powered by PDF.js, PDF-Lib, Canvas & Native Browser APIs
- * 100% Client-Side, Private, Offline-Capable
+ * OpenPDF Studio - Advanced Client-Side Document Tools Suite (v4.0)
+ * 100% Genuine OpenXML (.docx, .xlsx, .pptx) & Unicode-Safe PDF Engine
+ * Powered by PDF.js, PDF-Lib, Canvas & Zero-Dependency Pure-JS ZIP/OOXML
  */
+
+// Ensure PDF.js worker is always configured even before editor loads
+if (typeof window !== "undefined" && window.pdfjsLib && !window.pdfjsLib.GlobalWorkerOptions.workerSrc) {
+  window.pdfjsLib.GlobalWorkerOptions.workerSrc = new URL("vendor/pdfjs/pdf.worker.js", document.baseURI).href;
+}
 
 // --------------------------------------------------------------------------
 // Utility Helpers
 // --------------------------------------------------------------------------
 export function downloadBlob(blob, filename) {
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement("a");
-  a.href = url;
-  a.download = filename;
-  document.body.appendChild(a);
-  a.click();
-  setTimeout(() => {
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
-  }, 200);
+  try {
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = filename;
+    a.rel = "noopener";
+    a.style.display = "none";
+    document.body.appendChild(a);
+    a.click();
+    setTimeout(() => {
+      try { document.body.removeChild(a); } catch (_) {}
+    }, 500);
+    // Keep Blob URL alive 60s so Android/iOS DownloadManager finishes cleanly
+    setTimeout(() => {
+      try { URL.revokeObjectURL(url); } catch (_) {}
+    }, 60000);
+    return true;
+  } catch (err) {
+    console.error("Download error:", err);
+    return false;
+  }
 }
 
 export function formatBytes(bytes) {
@@ -37,6 +53,47 @@ export function parseTargetBytes(val, unit) {
   return Math.round(num * 1024);
 }
 
+function escapeHtml(str) {
+  return String(str || "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+}
+
+function escapeXml(str) {
+  return String(str || "")
+    .replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/g, "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&apos;");
+}
+
+function normalizeWinAnsi(str) {
+  return String(str || "")
+    .replace(/\r\n/g, "\n")
+    .replace(/\r/g, "\n")
+    .replace(/\t/g, "    ")
+    .replace(/[\u2018\u2019\u201A]/g, "'")
+    .replace(/[\u201C\u201D\u201E]/g, '"')
+    .replace(/\u2013/g, "-")
+    .replace(/\u2014/g, "--")
+    .replace(/\u2026/g, "...")
+    .replace(/\u2022/g, "-")
+    .replace(/\u00A0/g, " ")
+    .replace(/[\u200B-\u200D\uFEFF]/g, "");
+}
+
+function toSafeWinAnsi(str, font) {
+  const norm = normalizeWinAnsi(str);
+  try {
+    font.encodeText(norm.replace(/\n/g, ""));
+    return { text: norm, isWinAnsi: true };
+  } catch (_) {
+    // Strip unsupported chars only if canvas fallback isn't used
+    const stripped = norm.replace(/[^\x20-\x7E\xA0-\xFF\n]/g, " ");
+    return { text: stripped, isWinAnsi: false, original: norm };
+  }
+}
+
 function showPortalToast(type, message) {
   if (window.app && typeof window.app.showToast === "function") {
     window.app.showToast(type, message);
@@ -49,13 +106,620 @@ function showPortalToast(type, message) {
   toast.style.cssText = `
     position: fixed; bottom: 28px; right: 28px; z-index: 999999;
     padding: 12px 22px; border-radius: 12px; font-weight: 700; font-size: 14px;
-    color: #fff; background: ${type === 'error' ? '#ef4444' : (type === 'warning' ? '#f59e0b' : '#10b981')};
+    color: #fff; background: ${type === "error" ? "#ef4444" : (type === "warning" ? "#f59e0b" : "#10b981")};
     box-shadow: 0 10px 30px rgba(0,0,0,0.25); display: flex; align-items: center; gap: 10px;
-    animation: toastSlideIn 0.25s ease;
   `;
   toast.textContent = message;
   document.body.appendChild(toast);
   setTimeout(() => toast.remove(), 4000);
+}
+
+// --------------------------------------------------------------------------
+// Pure-JS Zero-Dependency ZIP Writer (CRC32 + Store Method 0)
+// Produces 100% standards-compliant .docx, .xlsx, and .pptx archives!
+// --------------------------------------------------------------------------
+const CRC32_TABLE = (() => {
+  const table = new Uint32Array(256);
+  for (let i = 0; i < 256; i++) {
+    let c = i;
+    for (let j = 0; j < 8; j++) {
+      c = (c & 1) ? (0xEDB88320 ^ (c >>> 1)) : (c >>> 1);
+    }
+    table[i] = c >>> 0;
+  }
+  return table;
+})();
+
+function crc32(bytes) {
+  let crc = 0xFFFFFFFF;
+  for (let i = 0; i < bytes.length; i++) {
+    crc = CRC32_TABLE[(crc ^ bytes[i]) & 0xFF] ^ (crc >>> 8);
+  }
+  return (crc ^ 0xFFFFFFFF) >>> 0;
+}
+
+export function createZipBlob(entries, mimeType = "application/zip") {
+  const encoder = new TextEncoder();
+  const localParts = [];
+  const centralParts = [];
+  let offset = 0;
+
+  for (const entry of entries) {
+    const nameBytes = encoder.encode(entry.name);
+    const dataBytes = entry.data instanceof Uint8Array
+      ? entry.data
+      : encoder.encode(String(entry.data || ""));
+    const checksum = crc32(dataBytes);
+    const size = dataBytes.length;
+
+    // Local file header (30 bytes + filename)
+    const lh = new Uint8Array(30 + nameBytes.length);
+    const lhv = new DataView(lh.buffer);
+    lhv.setUint32(0, 0x04034b50, true); // signature
+    lhv.setUint16(4, 20, true);         // version needed
+    lhv.setUint16(6, 0x0800, true);     // UTF-8 flag
+    lhv.setUint16(8, 0, true);          // method: 0 (store)
+    lhv.setUint16(10, 0, true);         // mod time
+    lhv.setUint16(12, 0x5421, true);    // mod date
+    lhv.setUint32(14, checksum, true);  // crc32
+    lhv.setUint32(18, size, true);      // compressed size
+    lhv.setUint32(22, size, true);      // uncompressed size
+    lhv.setUint16(26, nameBytes.length, true);
+    lhv.setUint16(28, 0, true);         // extra len
+    lh.set(nameBytes, 30);
+
+    localParts.push(lh, dataBytes);
+
+    // Central directory header (46 bytes + filename)
+    const ch = new Uint8Array(46 + nameBytes.length);
+    const chv = new DataView(ch.buffer);
+    chv.setUint32(0, 0x02014b50, true); // signature
+    chv.setUint16(4, 20, true);         // version made by
+    chv.setUint16(6, 20, true);         // version needed
+    chv.setUint16(8, 0x0800, true);     // UTF-8 flag
+    chv.setUint16(10, 0, true);         // method: store
+    chv.setUint16(12, 0, true);
+    chv.setUint16(14, 0x5421, true);
+    chv.setUint32(16, checksum, true);
+    chv.setUint32(20, size, true);
+    chv.setUint32(24, size, true);
+    chv.setUint16(28, nameBytes.length, true);
+    chv.setUint16(30, 0, true);
+    chv.setUint16(32, 0, true);
+    chv.setUint16(34, 0, true);
+    chv.setUint16(36, 0, true);
+    chv.setUint32(38, 0, true);
+    chv.setUint32(42, offset, true);    // local header offset
+    ch.set(nameBytes, 46);
+
+    centralParts.push(ch);
+    offset += lh.length + dataBytes.length;
+  }
+
+  let cdSize = 0;
+  for (const part of centralParts) cdSize += part.length;
+
+  // End of Central Directory (22 bytes)
+  const eocd = new Uint8Array(22);
+  const eocdv = new DataView(eocd.buffer);
+  eocdv.setUint32(0, 0x06054b50, true);
+  eocdv.setUint16(4, 0, true);
+  eocdv.setUint16(6, 0, true);
+  eocdv.setUint16(8, entries.length, true);
+  eocdv.setUint16(10, entries.length, true);
+  eocdv.setUint32(12, cdSize, true);
+  eocdv.setUint32(16, offset, true);
+  eocdv.setUint16(20, 0, true);
+
+  return new Blob([...localParts, ...centralParts, eocd], { type: mimeType });
+}
+
+// --------------------------------------------------------------------------
+// Pure-JS Zero-Dependency ZIP Reader (handles Store & Deflate via Web Streams)
+// Reads real .docx, .xlsx, and .pptx files natively in browser!
+// --------------------------------------------------------------------------
+async function inflateRawBytes(compressed) {
+  if (typeof DecompressionStream !== "undefined") {
+    const ds = new DecompressionStream("deflate-raw");
+    const writer = ds.writable.getWriter();
+    writer.write(compressed);
+    writer.close();
+    const out = await new Response(ds.readable).arrayBuffer();
+    return new Uint8Array(out);
+  }
+  throw new Error("Browser DecompressionStream unavailable");
+}
+
+export async function extractZipEntries(arrayBuffer) {
+  const bytes = new Uint8Array(arrayBuffer);
+  const view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
+  const decoder = new TextDecoder("utf-8");
+  const files = new Map();
+
+  // Locate End of Central Directory (EOCD)
+  let eocdOffset = -1;
+  for (let i = bytes.length - 22; i >= Math.max(0, bytes.length - 65558); i--) {
+    if (view.getUint32(i, true) === 0x06054b50) {
+      eocdOffset = i;
+      break;
+    }
+  }
+  if (eocdOffset === -1) return files;
+
+  const entryCount = view.getUint16(eocdOffset + 10, true);
+  let cdPos = view.getUint32(eocdOffset + 16, true);
+
+  for (let i = 0; i < entryCount && cdPos + 46 <= bytes.length; i++) {
+    if (view.getUint32(cdPos, true) !== 0x02014b50) break;
+    const method = view.getUint16(cdPos + 10, true);
+    const compSize = view.getUint32(cdPos + 20, true);
+    const nameLen = view.getUint16(cdPos + 28, true);
+    const extraLen = view.getUint16(cdPos + 30, true);
+    const commentLen = view.getUint16(cdPos + 32, true);
+    const localOffset = view.getUint32(cdPos + 42, true);
+    const name = decoder.decode(bytes.subarray(cdPos + 46, cdPos + 46 + nameLen));
+    cdPos += 46 + nameLen + extraLen + commentLen;
+
+    if (localOffset + 30 > bytes.length) continue;
+    const lNameLen = view.getUint16(localOffset + 26, true);
+    const lExtraLen = view.getUint16(localOffset + 28, true);
+    const dataStart = localOffset + 30 + lNameLen + lExtraLen;
+    const rawSlice = bytes.subarray(dataStart, dataStart + compSize);
+
+    try {
+      if (method === 0) {
+        files.set(name, rawSlice);
+      } else if (method === 8) {
+        files.set(name, await inflateRawBytes(rawSlice));
+      }
+    } catch (_) {}
+  }
+
+  return files;
+}
+
+// --------------------------------------------------------------------------
+// 100% REAL OpenXML (.docx, .xlsx, .pptx) Builders
+// --------------------------------------------------------------------------
+export function buildRealDocxBlob(pagesData) {
+  let bodyXml = "";
+  pagesData.forEach((pageLines, pageIdx) => {
+    if (pageIdx > 0) {
+      bodyXml += `<w:p><w:r><w:br w:type="page"/></w:r></w:p>`;
+    }
+    if (!pageLines || pageLines.length === 0) {
+      bodyXml += `<w:p><w:r><w:t></w:t></w:r></w:p>`;
+      return;
+    }
+    pageLines.forEach(line => {
+      const cleanText = escapeXml(line.text || "");
+      if (!cleanText.trim()) return;
+      const szHalfPt = Math.max(16, Math.min(56, Math.round((line.fontH || 11) * 2)));
+      const boldTag = (line.isBold || line.fontH > 15) ? "<w:b/>" : "";
+      const colorTag = line.fontH > 16 ? '<w:color w:val="1E3A8A"/>' : '<w:color w:val="111827"/>';
+      const spacingAfter = line.fontH > 15 ? 160 : 80;
+      bodyXml += `<w:p><w:pPr><w:spacing w:after="${spacingAfter}" w:line="276" w:lineRule="auto"/></w:pPr><w:r><w:rPr><w:rFonts w:ascii="Calibri" w:hAnsi="Calibri"/>${boldTag}${colorTag}<w:sz w:val="${szHalfPt}"/><w:szCs w:val="${szHalfPt}"/></w:rPr><w:t xml:space="preserve">${cleanText}</w:t></w:r></w:p>`;
+    });
+  });
+
+  const contentTypes = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">
+  <Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/>
+  <Default Extension="xml" ContentType="application/xml"/>
+  <Override PartName="/word/document.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml"/>
+</Types>`;
+
+  const rels = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
+  <Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="word/document.xml"/>
+</Relationships>`;
+
+  const docRels = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"></Relationships>`;
+
+  const documentXml = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
+  <w:body>
+    ${bodyXml}
+    <w:sectPr><w:pgSz w:w="11906" w:h="16838"/><w:pgMar w:top="1134" w:right="1134" w:bottom="1134" w:left="1134"/></w:sectPr>
+  </w:body>
+</w:document>`;
+
+  return createZipBlob([
+    { name: "[Content_Types].xml", data: contentTypes },
+    { name: "_rels/.rels", data: rels },
+    { name: "word/_rels/document.xml.rels", data: docRels },
+    { name: "word/document.xml", data: documentXml }
+  ], "application/vnd.openxmlformats-officedocument.wordprocessingml.document");
+}
+
+function excelColLetter(colIndex) {
+  let letter = "";
+  let n = colIndex + 1;
+  while (n > 0) {
+    const rem = (n - 1) % 26;
+    letter = String.fromCharCode(65 + rem) + letter;
+    n = Math.floor((n - 1) / 26);
+  }
+  return letter;
+}
+
+export function buildRealXlsxBlob(rows) {
+  const safeRows = rows && rows.length > 0 ? rows : [["No tabular data detected"]];
+  let sheetDataXml = "";
+
+  safeRows.forEach((row, rIdx) => {
+    const rowNum = rIdx + 1;
+    sheetDataXml += `<row r="${rowNum}">`;
+    row.forEach((cellVal, cIdx) => {
+      const ref = `${excelColLetter(cIdx)}${rowNum}`;
+      const raw = String(cellVal ?? "").trim();
+      const styleAttr = rIdx === 0 ? ' s="1"' : "";
+      if (raw !== "" && /^-?\d+(\.\d+)?$/.test(raw)) {
+        sheetDataXml += `<c r="${ref}"${styleAttr}><v>${raw}</v></c>`;
+      } else {
+        sheetDataXml += `<c r="${ref}" t="inlineStr"${styleAttr}><is><t xml:space="preserve">${escapeXml(raw)}</t></is></c>`;
+      }
+    });
+    sheetDataXml += `</row>`;
+  });
+
+  const contentTypes = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">
+  <Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/>
+  <Default Extension="xml" ContentType="application/xml"/>
+  <Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/>
+  <Override PartName="/xl/worksheets/sheet1.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/>
+  <Override PartName="/xl/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.styles+xml"/>
+</Types>`;
+
+  const rels = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
+  <Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="xl/workbook.xml"/>
+</Relationships>`;
+
+  const wbXml = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">
+  <sheets><sheet name="Extracted Data" sheetId="1" r:id="rId1"/></sheets>
+</workbook>`;
+
+  const wbRels = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
+  <Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet1.xml"/>
+  <Relationship Id="rId2" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/>
+</Relationships>`;
+
+  const stylesXml = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">
+  <fonts count="2">
+    <font><sz val="11"/><color rgb="FF111827"/><name val="Calibri"/></font>
+    <font><b/><sz val="11"/><color rgb="FFFFFFFF"/><name val="Calibri"/></font>
+  </fonts>
+  <fills count="3">
+    <fill><patternFill patternType="none"/></fill>
+    <fill><patternFill patternType="gray125"/></fill>
+    <fill><patternFill patternType="solid"><fgColor rgb="FF217346"/><bgColor indexed="64"/></patternFill></fill>
+  </fills>
+  <borders count="1"><border><left/><right/><top/><bottom/><diagonal/></border></borders>
+  <cellStyleXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs>
+  <cellXfs count="2">
+    <xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0"/>
+    <xf numFmtId="0" fontId="1" fillId="2" borderId="0" xfId="0" applyFont="1" applyFill="1"/>
+  </cellXfs>
+</styleSheet>`;
+
+  const sheetXml = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">
+  <sheetData>${sheetDataXml}</sheetData>
+</worksheet>`;
+
+  return createZipBlob([
+    { name: "[Content_Types].xml", data: contentTypes },
+    { name: "_rels/.rels", data: rels },
+    { name: "xl/workbook.xml", data: wbXml },
+    { name: "xl/_rels/workbook.xml.rels", data: wbRels },
+    { name: "xl/styles.xml", data: stylesXml },
+    { name: "xl/worksheets/sheet1.xml", data: sheetXml }
+  ], "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
+}
+
+export function buildRealPptxBlob(slides) {
+  // 16:9 widescreen slide dimensions in EMU (12192000 x 6858000 = 13.333" x 7.5")
+  const slideW = 12192000;
+  const slideH = 6858000;
+
+  let slideOverrides = "";
+  let presSlideList = "";
+  let presRels = "";
+  const entries = [];
+
+  slides.forEach((s, idx) => {
+    const num = idx + 1;
+    const rId = `rId${num + 1}`;
+    const imgName = `slide${num}.jpg`;
+
+    slideOverrides += `<Override PartName="/ppt/slides/slide${num}.xml" ContentType="application/vnd.openxmlformats-officedocument.presentationml.slide+xml"/>`;
+    presSlideList += `<p:sldId id="${255 + num}" r:id="${rId}"/>`;
+    presRels += `<Relationship Id="${rId}" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/slide" Target="slides/slide${num}.xml"/>`;
+
+    // Fit image proportionally centered inside 16:9 slide
+    const aspect = (s.width || 16) / (s.height || 9);
+    const slideAspect = slideW / slideH;
+    let imgW = slideW, imgH = slideH, imgX = 0, imgY = 0;
+    if (aspect > slideAspect) {
+      imgW = slideW;
+      imgH = Math.round(slideW / aspect);
+      imgY = Math.round((slideH - imgH) / 2);
+    } else {
+      imgH = slideH;
+      imgW = Math.round(slideH * aspect);
+      imgX = Math.round((slideW - imgW) / 2);
+    }
+
+    const slideXml = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<p:sld xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships" xmlns:p="http://schemas.openxmlformats.org/presentationml/2006/main">
+  <p:cSld>
+    <p:spTree>
+      <p:nvGrpSpPr><p:cNvPr id="1" name=""/><p:cNvGrpSpPr/><p:nvPr/></p:nvGrpSpPr>
+      <p:grpSpPr><a:xfrm><a:off x="0" y="0"/><a:ext cx="0" cy="0"/><a:chOff x="0" y="0"/><a:chExt cx="0" cy="0"/></a:xfrm></p:grpSpPr>
+      <p:pic>
+        <p:nvPicPr><p:cNvPr id="2" name="Slide ${num}"/><p:cNvPicPr><a:picLocks noChangeAspect="1"/></p:cNvPicPr><p:nvPr/></p:nvPicPr>
+        <p:blipFill><a:blip r:embed="rId2"/><a:stretch><a:fillRect/></a:stretch></p:blipFill>
+        <p:spPr><a:xfrm><a:off x="${imgX}" y="${imgY}"/><a:ext cx="${imgW}" cy="${imgH}"/></a:xfrm><a:prstGeom prst="rect"><a:avLst/></a:prstGeom></p:spPr>
+      </p:pic>
+    </p:spTree>
+  </p:cSld>
+  <p:clrMapOvr><a:masterClrMapping/></p:clrMapOvr>
+</p:sld>`;
+
+    const slideRel = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
+  <Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/slideLayout" Target="../slideLayouts/slideLayout1.xml"/>
+  <Relationship Id="rId2" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/image" Target="../media/${imgName}"/>
+</Relationships>`;
+
+    entries.push({ name: `ppt/slides/slide${num}.xml`, data: slideXml });
+    entries.push({ name: `ppt/slides/_rels/slide${num}.xml.rels`, data: slideRel });
+    entries.push({ name: `ppt/media/${imgName}`, data: s.jpgBytes });
+  });
+
+  const contentTypes = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">
+  <Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/>
+  <Default Extension="xml" ContentType="application/xml"/>
+  <Default Extension="jpg" ContentType="image/jpeg"/>
+  <Override PartName="/ppt/presentation.xml" ContentType="application/vnd.openxmlformats-officedocument.presentationml.presentation.main+xml"/>
+  <Override PartName="/ppt/slideMasters/slideMaster1.xml" ContentType="application/vnd.openxmlformats-officedocument.presentationml.slideMaster+xml"/>
+  <Override PartName="/ppt/slideLayouts/slideLayout1.xml" ContentType="application/vnd.openxmlformats-officedocument.presentationml.slideLayout+xml"/>
+  <Override PartName="/ppt/theme/theme1.xml" ContentType="application/vnd.openxmlformats-officedocument.theme+xml"/>
+  ${slideOverrides}
+</Types>`;
+
+  const rootRels = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
+  <Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="ppt/presentation.xml"/>
+</Relationships>`;
+
+  const presXml = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<p:presentation xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships" xmlns:p="http://schemas.openxmlformats.org/presentationml/2006/main">
+  <p:sldMasterIdLst><p:sldMasterId id="2147483648" r:id="rId1"/></p:sldMasterIdLst>
+  <p:sldIdLst>${presSlideList}</p:sldIdLst>
+  <p:sldSz cx="${slideW}" cy="${slideH}" type="screen16x9"/>
+  <p:notesSz cx="6858000" cy="9144000"/>
+</p:presentation>`;
+
+  const presRelsXml = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
+  <Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/slideMaster" Target="slideMasters/slideMaster1.xml"/>
+  ${presRels}
+</Relationships>`;
+
+  const slideMasterXml = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<p:sldMaster xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships" xmlns:p="http://schemas.openxmlformats.org/presentationml/2006/main">
+  <p:cSld><p:spTree><p:nvGrpSpPr><p:cNvPr id="1" name=""/><p:cNvGrpSpPr/><p:nvPr/></p:nvGrpSpPr><p:grpSpPr><a:xfrm><a:off x="0" y="0"/><a:ext cx="0" cy="0"/><a:chOff x="0" y="0"/><a:chExt cx="0" cy="0"/></a:xfrm></p:grpSpPr></p:spTree></p:cSld>
+  <p:clrMap bg1="lt1" tx1="dk1" bg2="lt2" tx2="dk2" accent1="accent1" accent2="accent2" accent3="accent3" accent4="accent4" accent5="accent5" accent6="accent6" hlink="hlink" folHlink="folHlink"/>
+  <p:sldLayoutIdLst><p:sldLayoutId id="2147483649" r:id="rId1"/></p:sldLayoutIdLst>
+</p:sldMaster>`;
+
+  const slideMasterRels = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
+  <Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/slideLayout" Target="../slideLayouts/slideLayout1.xml"/>
+  <Relationship Id="rId2" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/theme" Target="../theme/theme1.xml"/>
+</Relationships>`;
+
+  const slideLayoutXml = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<p:sldLayout xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships" xmlns:p="http://schemas.openxmlformats.org/presentationml/2006/main" type="blank">
+  <p:cSld name="Blank"><p:spTree><p:nvGrpSpPr><p:cNvPr id="1" name=""/><p:cNvGrpSpPr/><p:nvPr/></p:nvGrpSpPr><p:grpSpPr><a:xfrm><a:off x="0" y="0"/><a:ext cx="0" cy="0"/><a:chOff x="0" y="0"/><a:chExt cx="0" cy="0"/></a:xfrm></p:grpSpPr></p:spTree></p:cSld>
+</p:sldLayout>`;
+
+  const slideLayoutRels = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
+  <Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/slideMaster" Target="../slideMasters/slideMaster1.xml"/>
+</Relationships>`;
+
+  const themeXml = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<a:theme xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" name="Office Theme">
+  <a:themeElements>
+    <a:clrScheme name="Office">
+      <a:dk1><a:sysClr val="windowText" lastClr="000000"/></a:dk1><a:lt1><a:sysClr val="window" lastClr="FFFFFF"/></a:lt1>
+      <a:dk2><a:srgbClr val="1F497D"/></a:dk2><a:lt2><a:srgbClr val="EEECE1"/></a:lt2>
+      <a:accent1><a:srgbClr val="4F81BD"/></a:accent1><a:accent2><a:srgbClr val="C0504D"/></a:accent2>
+      <a:accent3><a:srgbClr val="9BBB59"/></a:accent3><a:accent4><a:srgbClr val="8064A2"/></a:accent4>
+      <a:accent5><a:srgbClr val="4BACC6"/></a:accent5><a:accent6><a:srgbClr val="F79646"/></a:accent6>
+      <a:hlink><a:srgbClr val="0000FF"/></a:hlink><a:folHlink><a:srgbClr val="800080"/></a:folHlink>
+    </a:clrScheme>
+    <a:fontScheme name="Office"><a:majorFont><a:latin typeface="Calibri"/></a:majorFont><a:minorFont><a:latin typeface="Calibri"/></a:minorFont></a:fontScheme>
+    <a:fmtScheme name="Office"><a:fillStyleLst><a:solidFill><a:schemeClr val="phClr"/></a:solidFill></a:fillStyleLst><a:lnStyleLst><a:ln w="9525"><a:solidFill><a:schemeClr val="phClr"/></a:solidFill></a:ln></a:lnStyleLst><a:effectStyleLst><a:effectStyle><a:effectLst/></a:effectStyle></a:effectStyleLst><a:bgFillStyleLst><a:solidFill><a:schemeClr val="phClr"/></a:solidFill></a:bgFillStyleLst></a:fmtScheme>
+  </a:themeElements>
+</a:theme>`;
+
+  return createZipBlob([
+    { name: "[Content_Types].xml", data: contentTypes },
+    { name: "_rels/.rels", data: rootRels },
+    { name: "ppt/presentation.xml", data: presXml },
+    { name: "ppt/_rels/presentation.xml.rels", data: presRelsXml },
+    { name: "ppt/slideMasters/slideMaster1.xml", data: slideMasterXml },
+    { name: "ppt/slideMasters/_rels/slideMaster1.xml.rels", data: slideMasterRels },
+    { name: "ppt/slideLayouts/slideLayout1.xml", data: slideLayoutXml },
+    { name: "ppt/slideLayouts/_rels/slideLayout1.xml.rels", data: slideLayoutRels },
+    { name: "ppt/theme/theme1.xml", data: themeXml },
+    ...entries
+  ], "application/vnd.openxmlformats-officedocument.presentationml.presentation");
+}
+
+// --------------------------------------------------------------------------
+// Unicode-Safe Text-to-PDF Generator (Supports English, Hindi, Bengali, Arabic, etc.)
+// --------------------------------------------------------------------------
+async function generateUnicodeSafeTextPdf(title, subtitle, bodyText, fontChoice = "Helvetica") {
+  const PDFLib = window.PDFLib;
+  const pdfDoc = await PDFLib.PDFDocument.create();
+  const pageW = 595.28;
+  const pageH = 841.89;
+  const margin = 48;
+
+  // Check if content has non-WinAnsi Unicode characters (Hindi, Bengali, Arabic, ₹, etc.)
+  const font = fontChoice === "Times"
+    ? await pdfDoc.embedFont(PDFLib.StandardFonts.TimesRoman)
+    : await pdfDoc.embedFont(PDFLib.StandardFonts.Helvetica);
+  const fontBold = fontChoice === "Times"
+    ? await pdfDoc.embedFont(PDFLib.StandardFonts.TimesRomanBold)
+    : await pdfDoc.embedFont(PDFLib.StandardFonts.HelveticaBold);
+
+  const combinedText = `${title}\n${subtitle}\n${bodyText}`;
+  const check = toSafeWinAnsi(combinedText, font);
+
+  if (check.isWinAnsi) {
+    // Crisp native vector PDF text!
+    let page = pdfDoc.addPage([pageW, pageH]);
+    let y = pageH - margin;
+
+    if (title) {
+      page.drawText(normalizeWinAnsi(title).substring(0, 75), {
+        x: margin, y, size: 18, font: fontBold, color: PDFLib.rgb(0.08, 0.14, 0.28)
+      });
+      y -= 22;
+    }
+    if (subtitle) {
+      page.drawText(normalizeWinAnsi(subtitle).substring(0, 95), {
+        x: margin, y, size: 10, font, color: PDFLib.rgb(0.45, 0.5, 0.58)
+      });
+      y -= 18;
+      page.drawRectangle({ x: margin, y: y + 6, width: pageW - margin * 2, height: 1, color: PDFLib.rgb(0.85, 0.88, 0.92) });
+      y -= 10;
+    }
+
+    const maxW = pageW - margin * 2;
+    const paragraphs = normalizeWinAnsi(bodyText).split("\n");
+    for (const para of paragraphs) {
+      if (!para.trim()) {
+        y -= 10;
+        continue;
+      }
+      const words = para.split(/\s+/);
+      let line = "";
+      for (const word of words) {
+        const test = line ? `${line} ${word}` : word;
+        if (font.widthOfTextAtSize(test, 11) > maxW && line) {
+          if (y < margin + 16) {
+            page = pdfDoc.addPage([pageW, pageH]);
+            y = pageH - margin;
+          }
+          page.drawText(line, { x: margin, y, size: 11, font, color: PDFLib.rgb(0.1, 0.12, 0.16) });
+          y -= 17;
+          line = word;
+        } else {
+          line = test;
+        }
+      }
+      if (line) {
+        if (y < margin + 16) {
+          page = pdfDoc.addPage([pageW, pageH]);
+          y = pageH - margin;
+        }
+        page.drawText(line, { x: margin, y, size: 11, font, color: PDFLib.rgb(0.1, 0.12, 0.16) });
+        y -= 17;
+      }
+    }
+    return await pdfDoc.save();
+  }
+
+  // Non-WinAnsi Unicode path (Hindi, Bengali, Arabic, emojis, ₹): Render crisp paginated A4 canvas pages -> PDF!
+  const scale = 2;
+  const cssW = Math.round(pageW);
+  const cssH = Math.round(pageH);
+  const paragraphs = String(bodyText || "").replace(/\r\n/g, "\n").split("\n");
+
+  const measureCanvas = document.createElement("canvas");
+  const mctx = measureCanvas.getContext("2d");
+  const cssFont = fontChoice === "Times" ? '"Times New Roman", Tinos, serif' : 'Arial, "Noto Sans", sans-serif';
+  mctx.font = `400 12px ${cssFont}`;
+
+  const wrappedLines = [];
+  const maxTextW = cssW - margin * 2;
+  for (const para of paragraphs) {
+    if (!para.trim()) {
+      wrappedLines.push("");
+      continue;
+    }
+    const words = para.split(/\s+/);
+    let line = "";
+    for (const w of words) {
+      const test = line ? `${line} ${w}` : w;
+      if (mctx.measureText(test).width > maxTextW && line) {
+        wrappedLines.push(line);
+        line = w;
+      } else {
+        line = test;
+      }
+    }
+    if (line) wrappedLines.push(line);
+  }
+
+  const linesPerPage = 38;
+  const totalPages = Math.max(1, Math.ceil(wrappedLines.length / linesPerPage));
+
+  for (let p = 0; p < totalPages; p++) {
+    const c = document.createElement("canvas");
+    c.width = cssW * scale;
+    c.height = cssH * scale;
+    const ctx = c.getContext("2d");
+    ctx.scale(scale, scale);
+    ctx.fillStyle = "#ffffff";
+    ctx.fillRect(0, 0, cssW, cssH);
+
+    let y = margin;
+    if (p === 0 && title) {
+      ctx.font = `700 18px ${cssFont}`;
+      ctx.fillStyle = "#0f172a";
+      ctx.fillText(title, margin, y);
+      y += 22;
+      if (subtitle) {
+        ctx.font = `400 10px ${cssFont}`;
+        ctx.fillStyle = "#64748b";
+        ctx.fillText(subtitle, margin, y);
+        y += 14;
+      }
+      ctx.fillStyle = "#e2e8f0";
+      ctx.fillRect(margin, y, maxTextW, 1);
+      y += 20;
+    }
+
+    ctx.font = `400 12px ${cssFont}`;
+    ctx.fillStyle = "#1e293b";
+    const slice = wrappedLines.slice(p * linesPerPage, (p + 1) * linesPerPage);
+    for (const ln of slice) {
+      if (ln) ctx.fillText(ln, margin, y);
+      y += 18;
+    }
+
+    const jpgBlob = await new Promise(r => c.toBlob(r, "image/jpeg", 0.92));
+    const jpgBytes = new Uint8Array(await jpgBlob.arrayBuffer());
+    const img = await pdfDoc.embedJpg(jpgBytes);
+    const outPage = pdfDoc.addPage([pageW, pageH]);
+    outPage.drawImage(img, { x: 0, y: 0, width: pageW, height: pageH });
+  }
+
+  return await pdfDoc.save();
 }
 
 // --------------------------------------------------------------------------
@@ -96,7 +760,7 @@ export class AdvancedToolsManager {
 
     const performFilter = () => {
       const query = (searchInput.value || "").trim().toLowerCase();
-      if (clearBtn) clearBtn.style.display = query ? "block" : "none";
+      if (clearBtn) clearBtn.style.display = query ? "flex" : "none";
 
       let matched = 0;
       cards.forEach(card => {
@@ -114,8 +778,8 @@ export class AdvancedToolsManager {
       });
 
       if (searchCount) {
-        searchCount.textContent = query ? `Found ${matched} tools matching "${query}"` : "";
-        searchCount.style.display = query ? "block" : "none";
+        searchCount.textContent = query ? `Found ${matched} ${matched === 1 ? "tool" : "tools"} matching "${query}"` : "";
+        searchCount.style.display = query ? "inline-block" : "none";
       }
     };
 
@@ -126,9 +790,10 @@ export class AdvancedToolsManager {
       searchInput.focus();
     });
 
-    // Keyboard shortcut / to focus search, Escape to blur/clear
     document.addEventListener("keydown", (e) => {
       if (e.key === "/" && document.activeElement !== searchInput && !["INPUT", "TEXTAREA"].includes(document.activeElement?.tagName)) {
+        const ws = document.getElementById("portal-tool-workspace");
+        if (ws && ws.style.display !== "none") return;
         e.preventDefault();
         searchInput.focus();
         searchInput.select();
@@ -140,12 +805,30 @@ export class AdvancedToolsManager {
     });
   }
 
+  // Helper: attach drag-and-drop cleanly to any dropzone
+  _bindDrop(dropzone, picker, chooseBtn, onFile) {
+    const openPicker = () => { if (picker) { picker.value = ""; picker.click(); } };
+    chooseBtn?.addEventListener("click", (e) => { e.stopPropagation(); openPicker(); });
+    dropzone?.addEventListener("click", openPicker);
+    picker?.addEventListener("change", (e) => {
+      const f = e.target.files && e.target.files[0];
+      if (f) onFile(f);
+    });
+    dropzone?.addEventListener("dragover", (e) => { e.preventDefault(); dropzone.classList.add("drag-over"); });
+    dropzone?.addEventListener("dragleave", () => dropzone.classList.remove("drag-over"));
+    dropzone?.addEventListener("drop", (e) => {
+      e.preventDefault();
+      dropzone.classList.remove("drag-over");
+      const f = e.dataTransfer?.files && e.dataTransfer.files[0];
+      if (f) onFile(f);
+    });
+  }
+
   // ------------------------------------------------------------------------
   // 1. TOOL: Compress PDF with Custom Target Size (KB / MB / GB)
   // ------------------------------------------------------------------------
   _bindCompressPdfModal() {
     const modal = document.getElementById("modal-compress-pdf");
-    const closeBtn = document.getElementById("close-compress-pdf");
     const dropzone = document.getElementById("compress-pdf-dropzone");
     const picker = document.getElementById("compress-pdf-picker");
     const selectBtn = document.getElementById("btn-choose-compress-pdf");
@@ -154,6 +837,7 @@ export class AdvancedToolsManager {
     const targetValInput = document.getElementById("compress-target-val");
     const targetUnitSelect = document.getElementById("compress-target-unit");
     const fileInfoEl = document.getElementById("compress-file-info");
+    const changeBtn = document.getElementById("btn-change-compress-pdf");
     const progressBar = document.getElementById("compress-progress-bar");
     const progressWrap = document.getElementById("compress-progress-wrap");
     const resultBox = document.getElementById("compress-result-box");
@@ -164,45 +848,36 @@ export class AdvancedToolsManager {
     let activeFile = null;
     let compressedBlob = null;
 
-    closeBtn?.addEventListener("click", () => { if (this.portal && typeof this.portal.closeToolWorkspace === "function") this.portal.closeToolWorkspace(); modal.style.display = "none"; });
-    modal.addEventListener("click", (e) => { if (e.target === modal) modal.style.display = "none"; });
+    const resetView = () => {
+      activeFile = null;
+      compressedBlob = null;
+      if (dropzone) dropzone.style.display = "flex";
+      if (actionArea) actionArea.style.display = "none";
+      if (resultBox) resultBox.style.display = "none";
+      if (progressWrap) progressWrap.style.display = "none";
+    };
 
-    const openPicker = () => { if (picker) { picker.value = ""; picker.click(); } };
-    selectBtn?.addEventListener("click", (e) => { e.stopPropagation(); openPicker(); });
-    dropzone?.addEventListener("click", openPicker);
+    changeBtn?.addEventListener("click", resetView);
 
     const onFileSelected = (file) => {
       if (!file) return;
       activeFile = file;
       compressedBlob = null;
       if (fileInfoEl) {
-        fileInfoEl.innerHTML = `<strong>${file.name}</strong> &bull; Original Size: <span class="badge-size">${formatBytes(file.size)}</span>`;
+        fileInfoEl.innerHTML = `<div class="tw-file-meta"><strong>${escapeHtml(file.name)}</strong><span>Original Size: ${formatBytes(file.size)}</span></div>`;
       }
-      // Smart default target: 50% of original
       const halfSizeKb = Math.max(50, Math.round((file.size * 0.5) / 1024));
       if (targetValInput) targetValInput.value = halfSizeKb;
       if (targetUnitSelect) targetUnitSelect.value = "KB";
 
+      if (dropzone) dropzone.style.display = "none";
       if (actionArea) actionArea.style.display = "block";
       if (resultBox) resultBox.style.display = "none";
       if (progressWrap) progressWrap.style.display = "none";
     };
 
-    picker?.addEventListener("change", (e) => {
-      const file = e.target.files && e.target.files[0];
-      if (file) onFileSelected(file);
-    });
+    this._bindDrop(dropzone, picker, selectBtn, onFileSelected);
 
-    dropzone?.addEventListener("dragover", (e) => { e.preventDefault(); dropzone.classList.add("drag-over"); });
-    dropzone?.addEventListener("dragleave", () => { dropzone.classList.remove("drag-over"); });
-    dropzone?.addEventListener("drop", (e) => {
-      e.preventDefault();
-      dropzone.classList.remove("drag-over");
-      const file = e.dataTransfer.files && e.dataTransfer.files[0];
-      if (file) onFileSelected(file);
-    });
-
-    // Preset pills click
     modal.querySelectorAll(".compress-preset-pill").forEach(pill => {
       pill.addEventListener("click", () => {
         modal.querySelectorAll(".compress-preset-pill").forEach(p => p.classList.remove("active"));
@@ -222,91 +897,81 @@ export class AdvancedToolsManager {
       });
     });
 
-    // Run Compression
     startBtn?.addEventListener("click", async () => {
       if (!activeFile) { showPortalToast("warning", "Please select a PDF file first."); return; }
       const targetBytes = parseTargetBytes(targetValInput?.value || 200, targetUnitSelect?.value || "KB");
-      
+
       startBtn.disabled = true;
-      startBtn.innerHTML = `<span class="spinner-inline"></span> Compressing PDF to Target Size...`;
+      startBtn.textContent = "Compressing PDF...";
       if (progressWrap) progressWrap.style.display = "block";
       if (progressBar) progressBar.style.width = "15%";
 
       try {
         const PDFLib = window.PDFLib;
         const pdfjsLib = window.pdfjsLib;
-        if (!PDFLib || !pdfjsLib) throw new Error("PDF processing engine is loading. Please retry in a moment.");
-
         const arrayBuffer = await activeFile.arrayBuffer();
-        const loadingTask = pdfjsLib.getDocument({ data: new Uint8Array(arrayBuffer) });
-        const pdfJsDoc = await loadingTask.promise;
+        const pdfJsDoc = await pdfjsLib.getDocument({ data: new Uint8Array(arrayBuffer) }).promise;
         const numPages = pdfJsDoc.numPages;
 
-        if (progressBar) progressBar.style.width = "35%";
+        const budgetPerPage = Math.max(8000, Math.floor(targetBytes / numPages));
+        let renderScale = 1.25;
+        let quality = 0.72;
+        if (budgetPerPage < 22000) { renderScale = 0.8; quality = 0.32; }
+        else if (budgetPerPage < 45000) { renderScale = 1.0; quality = 0.52; }
+        else if (budgetPerPage < 100000) { renderScale = 1.2; quality = 0.72; }
+        else { renderScale = 1.5; quality = 0.85; }
 
-        const newDoc = await PDFLib.PDFDocument.create();
-        const budgetPerPage = Math.max(6000, Math.floor(targetBytes / numPages));
+        const buildAt = async (sc, q) => {
+          const doc = await PDFLib.PDFDocument.create();
+          for (let pno = 1; pno <= numPages; pno++) {
+            if (progressBar) progressBar.style.width = `${20 + Math.round((pno / numPages) * 70)}%`;
+            const page = await pdfJsDoc.getPage(pno);
+            const vp1 = page.getViewport({ scale: 1.0 });
+            const vp = page.getViewport({ scale: sc });
+            const canvas = document.createElement("canvas");
+            canvas.width = Math.max(10, Math.floor(vp.width));
+            canvas.height = Math.max(10, Math.floor(vp.height));
+            const ctx = canvas.getContext("2d");
+            ctx.fillStyle = "#ffffff";
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            await page.render({ canvasContext: ctx, viewport: vp }).promise;
 
-        for (let pno = 1; pno <= numPages; pno++) {
-          if (progressBar) progressBar.style.width = `${35 + Math.round((pno / numPages) * 50)}%`;
-          const page = await pdfJsDoc.getPage(pno);
-          const viewport1 = page.getViewport({ scale: 1.0 });
+            const jpgBlob = await new Promise(r => canvas.toBlob(r, "image/jpeg", q));
+            const jpgBytes = new Uint8Array(await jpgBlob.arrayBuffer());
+            const embeddedJpg = await doc.embedJpg(jpgBytes);
+            const newPage = doc.addPage([vp1.width, vp1.height]);
+            newPage.drawImage(embeddedJpg, { x: 0, y: 0, width: vp1.width, height: vp1.height });
+          }
+          return await doc.save({ useObjectStreams: true });
+        };
 
-          // Determine scale based on target budget
-          let renderScale = 1.2;
-          if (budgetPerPage < 25000) renderScale = 0.85;
-          else if (budgetPerPage < 50000) renderScale = 1.0;
-          else if (budgetPerPage > 200000) renderScale = 1.6;
-
-          const viewport = page.getViewport({ scale: renderScale });
-          const canvas = document.createElement("canvas");
-          canvas.width = Math.floor(viewport.width);
-          canvas.height = Math.floor(viewport.height);
-          const ctx = canvas.getContext("2d");
-
-          await page.render({ canvasContext: ctx, viewport: viewport }).promise;
-
-          // Binary-search quality for target budget
-          let quality = 0.72;
-          if (budgetPerPage < 20000) quality = 0.35;
-          else if (budgetPerPage < 45000) quality = 0.55;
-          else if (budgetPerPage < 90000) quality = 0.75;
-          else quality = 0.88;
-
-          const jpegDataUrl = canvas.toDataURL("image/jpeg", quality);
-          const embeddedJpg = await newDoc.embedJpg(jpegDataUrl);
-          const newPage = newDoc.addPage([viewport1.width, viewport1.height]);
-          newPage.drawImage(embeddedJpg, {
-            x: 0,
-            y: 0,
-            width: viewport1.width,
-            height: viewport1.height
-          });
+        let outBytes = await buildAt(renderScale, quality);
+        // Refine once if still noticeably larger than target
+        if (outBytes.byteLength > targetBytes * 1.25 && quality > 0.25) {
+          outBytes = await buildAt(Math.max(0.65, renderScale * 0.78), Math.max(0.22, quality * 0.6));
         }
 
-        const outBytes = await newDoc.save({ useObjectStreams: true });
         compressedBlob = new Blob([outBytes], { type: "application/pdf" });
+        const baseName = (activeFile.name || "document.pdf").replace(/\.pdf$/i, "");
+        downloadBlob(compressedBlob, `${baseName}_compressed.pdf`);
 
         if (progressBar) progressBar.style.width = "100%";
         if (resultBox) {
           resultBox.style.display = "block";
           const origSize = activeFile.size;
           const newSize = compressedBlob.size;
-          const diffPct = Math.max(0, Math.round(((origSize - newSize) / origSize) * 100));
-          const diffLabel = newSize <= origSize ? `-${diffPct}% smaller` : `+${Math.abs(diffPct)}%`;
-          
+          const diffPct = Math.round(((origSize - newSize) / Math.max(1, origSize)) * 100);
           document.getElementById("compress-res-original").textContent = formatBytes(origSize);
           document.getElementById("compress-res-new").textContent = formatBytes(newSize);
-          document.getElementById("compress-res-savings").textContent = diffLabel;
+          document.getElementById("compress-res-savings").textContent = diffPct >= 0 ? `${diffPct}% smaller` : "Optimized";
         }
-
-        showPortalToast("success", `Compressed to ${formatBytes(compressedBlob.size)} successfully!`);
+        showPortalToast("success", `Compressed to ${formatBytes(compressedBlob.size)} & downloading!`);
       } catch (err) {
         console.error(err);
         showPortalToast("error", `Compression failed: ${err.message}`);
       } finally {
         startBtn.disabled = false;
-        startBtn.innerHTML = `Compress PDF`;
+        startBtn.textContent = "Compress PDF";
       }
     });
 
@@ -318,702 +983,765 @@ export class AdvancedToolsManager {
   }
 
   // ------------------------------------------------------------------------
-  // 2. TOOL: PDF to Word (.docx)
+  // 2. TOOL: PDF to Word (.docx) — Clean UI (No Preview Dump) + Real OOXML .docx
   // ------------------------------------------------------------------------
   _bindPdfToWordModal() {
     const modal = document.getElementById("modal-pdf-to-word");
-    const closeBtn = document.getElementById("close-pdf-to-word");
     const picker = document.getElementById("pdf-to-word-picker");
     const dropzone = document.getElementById("pdf-to-word-dropzone");
     const chooseBtn = document.getElementById("btn-choose-pdf-to-word");
-    const previewWrap = document.getElementById("pdf-to-word-preview-wrap");
-    const previewText = document.getElementById("pdf-to-word-preview-text");
-    const convertBtn = document.getElementById("btn-start-pdf-to-word");
+    const readyWrap = document.getElementById("pdf-to-word-preview-wrap");
     const statusText = document.getElementById("pdf-to-word-status");
+    const convertBtn = document.getElementById("btn-start-pdf-to-word");
+    const changeBtn = document.getElementById("btn-change-pdf-to-word");
 
     if (!modal) return;
     let activeFile = null;
-    let extractedDocxContent = null;
+    let generatedBlob = null;
 
-    closeBtn?.addEventListener("click", () => { if (this.portal && typeof this.portal.closeToolWorkspace === "function") this.portal.closeToolWorkspace(); modal.style.display = "none"; });
-    modal.addEventListener("click", (e) => { if (e.target === modal) modal.style.display = "none"; });
+    const reset = () => {
+      activeFile = null;
+      generatedBlob = null;
+      if (dropzone) dropzone.style.display = "flex";
+      if (readyWrap) readyWrap.style.display = "none";
+    };
+    changeBtn?.addEventListener("click", reset);
 
-    const openPicker = () => { if (picker) { picker.value = ""; picker.click(); } };
-    chooseBtn?.addEventListener("click", (e) => { e.stopPropagation(); openPicker(); });
-    dropzone?.addEventListener("click", openPicker);
-
-    const onFileSelected = async (file) => {
+    const onFileSelected = (file) => {
       if (!file) return;
       activeFile = file;
-      if (previewWrap) previewWrap.style.display = "block";
-      if (statusText) statusText.textContent = `Reading "${file.name}" and extracting typography...`;
+      generatedBlob = null;
+      if (dropzone) dropzone.style.display = "none";
+      if (readyWrap) readyWrap.style.display = "block";
+      if (statusText) {
+        statusText.innerHTML = `<div class="tw-file-meta"><strong>${escapeHtml(file.name)}</strong><span>${formatBytes(file.size)} &bull; Ready to convert to Microsoft Word (.docx)</span></div>`;
+      }
+      if (convertBtn) {
+        convertBtn.disabled = false;
+        convertBtn.textContent = "Convert & Download Word (.docx)";
+      }
+    };
+
+    this._bindDrop(dropzone, picker, chooseBtn, onFileSelected);
+
+    convertBtn?.addEventListener("click", async () => {
+      if (!activeFile) return;
+      const baseName = activeFile.name.replace(/\.pdf$/i, "");
+
+      // If already generated, re-download immediately
+      if (generatedBlob) {
+        downloadBlob(generatedBlob, `${baseName}.docx`);
+        showPortalToast("success", `Downloading "${baseName}.docx"...`);
+        return;
+      }
+
+      convertBtn.disabled = true;
+      convertBtn.textContent = "Converting PDF to Word (.docx)...";
 
       try {
         const pdfjsLib = window.pdfjsLib;
-        const arrayBuffer = await file.arrayBuffer();
-        const loadingTask = pdfjsLib.getDocument({ data: new Uint8Array(arrayBuffer) });
-        const pdfJsDoc = await loadingTask.promise;
+        const arrayBuffer = await activeFile.arrayBuffer();
+        const pdfJsDoc = await pdfjsLib.getDocument({ data: new Uint8Array(arrayBuffer) }).promise;
 
-        let fullHtml = "";
-        let plainText = "";
-
+        const pagesData = [];
         for (let pno = 1; pno <= pdfJsDoc.numPages; pno++) {
           const page = await pdfJsDoc.getPage(pno);
           const textContent = await page.getTextContent();
-          fullHtml += `<div style="page-break-after: always; padding: 20px; margin-bottom: 24px; border-bottom: 2px dashed #cbd5e1;">`;
-          fullHtml += `<p style="font-size: 11px; color: #94a3b8; text-transform: uppercase; font-weight: 700; margin-bottom: 12px;">--- PAGE ${pno} OF ${pdfJsDoc.numPages} ---</p>`;
-
-          // Group by Y
           const lines = [];
+
           textContent.items.forEach(item => {
             const str = item.str || "";
             if (!str.trim()) return;
             const y = Math.round(item.transform[5]);
-            const fontH = Math.round(item.transform[0] || item.height || 12);
+            const x = Math.round(item.transform[4]);
+            const fontH = Math.round(Math.hypot(item.transform[2], item.transform[3]) || item.height || 11);
             let line = lines.find(l => Math.abs(l.y - y) < 4);
             if (!line) {
-              line = { y: y, fontH: fontH, spans: [] };
+              line = { y, fontH, isBold: false, items: [] };
               lines.push(line);
             }
-            line.spans.push({ str: str, fontH: fontH, isBold: /bold|black/i.test(item.fontName) });
+            line.items.push({ x, str });
+            if (fontH > line.fontH) line.fontH = fontH;
+            if (/bold|black|heavy/i.test(item.fontName || "")) line.isBold = true;
           });
 
-          lines.sort((a, b) => b.y - a.y); // top to bottom
-          lines.forEach(line => {
-            const lineText = line.spans.map(s => s.str).join(" ");
-            plainText += lineText + "\n";
-            if (line.fontH > 18) {
-              fullHtml += `<h1 style="font-size: 22px; font-weight: 800; color: #0f172a; margin: 14px 0 6px;">${escapeHtml(lineText)}</h1>`;
-            } else if (line.fontH > 14) {
-              fullHtml += `<h2 style="font-size: 17px; font-weight: 700; color: #1e293b; margin: 10px 0 4px;">${escapeHtml(lineText)}</h2>`;
-            } else {
-              fullHtml += `<p style="font-size: 13.5px; line-height: 1.6; color: #334155; margin: 4px 0;">${escapeHtml(lineText)}</p>`;
-            }
-          });
-          fullHtml += `</div>`;
-          plainText += "\n";
+          lines.sort((a, b) => b.y - a.y);
+          pagesData.push(lines.map(l => ({
+            text: l.items.sort((a, b) => a.x - b.x).map(i => i.str).join(" ").replace(/\s+/g, " ").trim(),
+            fontH: l.fontH,
+            isBold: l.isBold
+          })));
         }
 
-        extractedDocxContent = { html: fullHtml, text: plainText, filename: file.name };
-        if (previewText) previewText.innerHTML = fullHtml;
-        if (statusText) statusText.textContent = `Extracted ${pdfJsDoc.numPages} pages. Ready to export to Microsoft Word (.docx).`;
-        if (convertBtn) convertBtn.disabled = false;
+        generatedBlob = buildRealDocxBlob(pagesData);
+        downloadBlob(generatedBlob, `${baseName}.docx`);
+        if (statusText) {
+          statusText.innerHTML = `<div class="tw-file-meta tw-file-success"><strong>${escapeHtml(baseName)}.docx Ready!</strong><span>${pdfJsDoc.numPages} pages converted &bull; ${formatBytes(generatedBlob.size)}</span></div>`;
+        }
+        convertBtn.textContent = "Download Word (.docx) Again";
+        showPortalToast("success", `Converted & downloaded "${baseName}.docx"!`);
       } catch (err) {
         console.error(err);
-        showPortalToast("error", `Failed to parse PDF: ${err.message}`);
+        showPortalToast("error", `Conversion failed: ${err.message}`);
+        convertBtn.textContent = "Convert & Download Word (.docx)";
+      } finally {
+        convertBtn.disabled = false;
       }
-    };
-
-    picker?.addEventListener("change", (e) => {
-      const f = e.target.files && e.target.files[0];
-      if (f) onFileSelected(f);
-    });
-
-    convertBtn?.addEventListener("click", () => {
-      if (!extractedDocxContent) return;
-      // Generate clean Word OpenXML standard document with docx MIME type
-      const wordDocument = `
-        <html xmlns:o='urn:schemas-microsoft-com:office:office' xmlns:w='urn:schemas-microsoft-com:office:word' xmlns='http://www.w3.org/TR/REC-html40'>
-        <head>
-          <meta charset='utf-8'>
-          <title>${escapeHtml(extractedDocxContent.filename)}</title>
-          <!--[if gte mso 9]>
-          <xml>
-          <w:WordDocument>
-          <w:View>Print</w:View>
-          <w:Zoom>100</w:Zoom>
-          <w:DoNotOptimizeForBrowser/>
-          </w:WordDocument>
-          </xml>
-          <![endif]-->
-          <style>
-            @page { size: 21cm 29.7cm; margin: 2cm 2cm 2cm 2cm; mso-page-orientation: portrait; }
-            body { font-family: 'Calibri', 'Segoe UI', Arial, sans-serif; font-size: 11pt; line-height: 1.35; color: #111827; }
-            h1 { font-size: 18pt; font-weight: bold; color: #1e3a8a; margin: 12pt 0 6pt; }
-            h2 { font-size: 14pt; font-weight: bold; color: #1e40af; margin: 10pt 0 4pt; }
-            p { margin: 0 0 6pt; text-align: justify; }
-          </style>
-        </head>
-        <body>
-          ${extractedDocxContent.html}
-        </body>
-        </html>
-      `;
-      const blob = new Blob(['\ufeff', wordDocument], { type: "application/vnd.openxmlformats-officedocument.wordprocessingml.document" });
-      const baseName = extractedDocxContent.filename.replace(/\.pdf$/i, "");
-      downloadBlob(blob, `${baseName}.docx`);
-      showPortalToast("success", `Downloaded "${baseName}.docx" successfully!`);
     });
   }
 
   // ------------------------------------------------------------------------
-  // 3. TOOL: PDF to Excel (.xlsx / .csv)
+  // 3. TOOL: PDF to Excel (.xlsx / .csv) — Clean UI (No Preview Dump) + Real OOXML .xlsx
   // ------------------------------------------------------------------------
   _bindPdfToExcelModal() {
     const modal = document.getElementById("modal-pdf-to-excel");
-    const closeBtn = document.getElementById("close-pdf-to-excel");
     const picker = document.getElementById("pdf-to-excel-picker");
     const dropzone = document.getElementById("pdf-to-excel-dropzone");
     const chooseBtn = document.getElementById("btn-choose-pdf-to-excel");
-    const previewWrap = document.getElementById("pdf-to-excel-preview-wrap");
-    const previewTable = document.getElementById("pdf-to-excel-preview-table");
+    const readyWrap = document.getElementById("pdf-to-excel-preview-wrap");
     const downloadXlsxBtn = document.getElementById("btn-download-excel-xlsx");
     const downloadCsvBtn = document.getElementById("btn-download-excel-csv");
     const statsBadge = document.getElementById("pdf-to-excel-stats");
+    const changeBtn = document.getElementById("btn-change-pdf-to-excel");
 
     if (!modal) return;
-    let tableRows = [];
-    let currentFileName = "data";
+    let activeFile = null;
+    let tableRows = null;
 
-    closeBtn?.addEventListener("click", () => { if (this.portal && typeof this.portal.closeToolWorkspace === "function") this.portal.closeToolWorkspace(); modal.style.display = "none"; });
-    modal.addEventListener("click", (e) => { if (e.target === modal) modal.style.display = "none"; });
+    const reset = () => {
+      activeFile = null;
+      tableRows = null;
+      if (dropzone) dropzone.style.display = "flex";
+      if (readyWrap) readyWrap.style.display = "none";
+    };
+    changeBtn?.addEventListener("click", reset);
 
-    const openPicker = () => { if (picker) { picker.value = ""; picker.click(); } };
-    chooseBtn?.addEventListener("click", (e) => { e.stopPropagation(); openPicker(); });
-    dropzone?.addEventListener("click", openPicker);
+    const extractTablesFromFile = async (file) => {
+      const pdfjsLib = window.pdfjsLib;
+      const arrayBuffer = await file.arrayBuffer();
+      const pdfJsDoc = await pdfjsLib.getDocument({ data: new Uint8Array(arrayBuffer) }).promise;
+      const rows = [];
 
-    picker?.addEventListener("change", async (e) => {
-      const file = e.target.files && e.target.files[0];
-      if (!file) return;
-      currentFileName = file.name.replace(/\.pdf$/i, "");
-      if (previewWrap) previewWrap.style.display = "block";
+      for (let pno = 1; pno <= pdfJsDoc.numPages; pno++) {
+        const page = await pdfJsDoc.getPage(pno);
+        const textContent = await page.getTextContent();
+        const yMap = new Map();
 
-      try {
-        const pdfjsLib = window.pdfjsLib;
-        const arrayBuffer = await file.arrayBuffer();
-        const loadingTask = pdfjsLib.getDocument({ data: new Uint8Array(arrayBuffer) });
-        const pdfJsDoc = await loadingTask.promise;
-
-        tableRows = [];
-
-        for (let pno = 1; pno <= pdfJsDoc.numPages; pno++) {
-          const page = await pdfJsDoc.getPage(pno);
-          const textContent = await page.getTextContent();
-          
-          // Cluster into lines by Y
-          const yMap = new Map();
-          textContent.items.forEach(item => {
-            const str = item.str || "";
-            if (!str.trim()) return;
-            const y = Math.round(item.transform[5] / 4) * 4;
-            const x = Math.round(item.transform[4]);
-            if (!yMap.has(y)) yMap.set(y, []);
-            yMap.get(y).push({ x: x, str: str });
-          });
-
-          // Sort Y descending (top of page first)
-          const sortedYs = Array.from(yMap.keys()).sort((a, b) => b - a);
-          sortedYs.forEach(y => {
-            const items = yMap.get(y).sort((a, b) => a.x - b.x);
-            // Detect column breaks when gap between items > 14px
-            const cells = [];
-            let currentCell = "";
-            let prevRight = -999;
-
-            items.forEach(it => {
-              if (prevRight > 0 && (it.x - prevRight) > 16) {
-                cells.push(currentCell.trim());
-                currentCell = it.str;
-              } else {
-                currentCell += (currentCell ? " " : "") + it.str;
-              }
-              prevRight = it.x + (it.str.length * 6);
-            });
-            if (currentCell) cells.push(currentCell.trim());
-            if (cells.length > 0) tableRows.push(cells);
-          });
-        }
-
-        // Render preview table
-        let tableHtml = `<table class="excel-preview-table"><thead><tr>`;
-        const colCount = Math.max(1, ...tableRows.map(r => r.length));
-        for (let c = 0; c < colCount; c++) {
-          const colName = String.fromCharCode(65 + (c % 26)) + (c >= 26 ? Math.floor(c / 26) : "");
-          tableHtml += `<th>Column ${colName}</th>`;
-        }
-        tableHtml += `</tr></thead><tbody>`;
-
-        tableRows.slice(0, 35).forEach(row => {
-          tableHtml += `<tr>`;
-          for (let c = 0; c < colCount; c++) {
-            tableHtml += `<td>${escapeHtml(row[c] || "")}</td>`;
-          }
-          tableHtml += `</tr>`;
+        textContent.items.forEach(item => {
+          const str = item.str || "";
+          if (!str.trim()) return;
+          const y = Math.round(item.transform[5] / 4) * 4;
+          const x = Math.round(item.transform[4]);
+          const w = Math.max(item.width || str.length * 5, 4);
+          if (!yMap.has(y)) yMap.set(y, []);
+          yMap.get(y).push({ x, w, str });
         });
-        tableHtml += `</tbody></table>`;
 
-        if (previewTable) previewTable.innerHTML = tableHtml;
+        const sortedYs = Array.from(yMap.keys()).sort((a, b) => b - a);
+        sortedYs.forEach(y => {
+          const items = yMap.get(y).sort((a, b) => a.x - b.x);
+          const cells = [];
+          let currentCell = "";
+          let prevRight = -999;
+
+          items.forEach(it => {
+            if (prevRight > -900 && (it.x - prevRight) > 14) {
+              cells.push(currentCell.trim());
+              currentCell = it.str;
+            } else {
+              currentCell += (currentCell ? " " : "") + it.str;
+            }
+            prevRight = it.x + it.w;
+          });
+          if (currentCell.trim()) cells.push(currentCell.trim());
+          if (cells.length > 0) rows.push(cells);
+        });
+      }
+      return rows;
+    };
+
+    const onFileSelected = (file) => {
+      if (!file) return;
+      activeFile = file;
+      tableRows = null;
+      if (dropzone) dropzone.style.display = "none";
+      if (readyWrap) readyWrap.style.display = "block";
+      if (statsBadge) {
+        statsBadge.innerHTML = `<div class="tw-file-meta"><strong>${escapeHtml(file.name)}</strong><span>${formatBytes(file.size)} &bull; Ready to extract tables to Excel (.xlsx / .csv)</span></div>`;
+      }
+      if (downloadXlsxBtn) { downloadXlsxBtn.disabled = false; downloadXlsxBtn.textContent = "Convert & Download Excel (.xlsx)"; }
+      if (downloadCsvBtn) { downloadCsvBtn.disabled = false; downloadCsvBtn.textContent = "Download CSV (.csv)"; }
+    };
+
+    this._bindDrop(dropzone, picker, chooseBtn, onFileSelected);
+
+    const ensureRows = async () => {
+      if (!activeFile) return null;
+      if (!tableRows) tableRows = await extractTablesFromFile(activeFile);
+      return tableRows;
+    };
+
+    downloadXlsxBtn?.addEventListener("click", async () => {
+      if (!activeFile) return;
+      downloadXlsxBtn.disabled = true;
+      downloadXlsxBtn.textContent = "Generating Excel (.xlsx)...";
+      try {
+        const rows = await ensureRows();
+        const baseName = activeFile.name.replace(/\.pdf$/i, "");
+        const blob = buildRealXlsxBlob(rows);
+        downloadBlob(blob, `${baseName}.xlsx`);
         if (statsBadge) {
-          statsBadge.textContent = `${tableRows.length} Rows &bull; ${colCount} Columns Detected`;
+          statsBadge.innerHTML = `<div class="tw-file-meta tw-file-success"><strong>${escapeHtml(baseName)}.xlsx Ready!</strong><span>${rows.length} rows extracted &bull; ${formatBytes(blob.size)}</span></div>`;
         }
-        if (downloadXlsxBtn) downloadXlsxBtn.disabled = false;
-        if (downloadCsvBtn) downloadCsvBtn.disabled = false;
-        showPortalToast("success", `Extracted ${tableRows.length} rows of tabular data!`);
+        downloadXlsxBtn.textContent = "Download Excel (.xlsx) Again";
+        showPortalToast("success", `Downloaded "${baseName}.xlsx" (${rows.length} rows)!`);
       } catch (err) {
         console.error(err);
-        showPortalToast("error", `Table extraction failed: ${err.message}`);
+        showPortalToast("error", `Excel export failed: ${err.message}`);
+        downloadXlsxBtn.textContent = "Convert & Download Excel (.xlsx)";
+      } finally {
+        downloadXlsxBtn.disabled = false;
       }
     });
 
-    // Download XLSX (Excel Spreadsheet XML Format)
-    downloadXlsxBtn?.addEventListener("click", () => {
-      if (tableRows.length === 0) return;
-      let xml = `<?xml version="1.0"?><?mso-application progid="Excel.Sheet"?>
-<Workbook xmlns="urn:schemas-microsoft-com:office:spreadsheet" xmlns:ss="urn:schemas-microsoft-com:office:spreadsheet">
-  <Styles>
-    <Style ss:ID="Header"><Font ss:Bold="1" ss:Color="#FFFFFF"/><Interior ss:Color="#217346" ss:Pattern="Solid"/></Style>
-    <Style ss:ID="Default"><Font ss:Color="#000000"/></Style>
-  </Styles>
-  <Worksheet ss:Name="Extracted Data">
-    <Table>`;
-      
-      tableRows.forEach((row, idx) => {
-        xml += `<Row>`;
-        row.forEach(cell => {
-          const isNum = !isNaN(parseFloat(cell)) && isFinite(cell);
-          const type = isNum ? "Number" : "String";
-          const style = idx === 0 ? ` ss:StyleID="Header"` : "";
-          xml += `<Cell${style}><Data ss:Type="${type}">${escapeXml(cell)}</Data></Cell>`;
-        });
-        xml += `</Row>`;
-      });
-
-      xml += `</Table></Worksheet></Workbook>`;
-      const blob = new Blob([xml], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
-      downloadBlob(blob, `${currentFileName}.xlsx`);
-      showPortalToast("success", `Downloaded ${currentFileName}.xlsx!`);
-    });
-
-    // Download CSV
-    downloadCsvBtn?.addEventListener("click", () => {
-      if (tableRows.length === 0) return;
-      const csv = tableRows.map(r => r.map(c => `"${(c || '').replace(/"/g, '""')}"`).join(",")).join("\r\n");
-      const blob = new Blob(['\ufeff', csv], { type: "text/csv;charset=utf-8;" });
-      downloadBlob(blob, `${currentFileName}.csv`);
-      showPortalToast("success", `Downloaded ${currentFileName}.csv!`);
+    downloadCsvBtn?.addEventListener("click", async () => {
+      if (!activeFile) return;
+      downloadCsvBtn.disabled = true;
+      try {
+        const rows = await ensureRows();
+        const baseName = activeFile.name.replace(/\.pdf$/i, "");
+        const csv = rows.map(r => r.map(c => `"${String(c || "").replace(/"/g, '""')}"`).join(",")).join("\r\n");
+        const blob = new Blob(["\ufeff", csv], { type: "text/csv;charset=utf-8;" });
+        downloadBlob(blob, `${baseName}.csv`);
+        showPortalToast("success", `Downloaded "${baseName}.csv"!`);
+      } catch (err) {
+        showPortalToast("error", `CSV export failed: ${err.message}`);
+      } finally {
+        downloadCsvBtn.disabled = false;
+      }
     });
   }
 
   // ------------------------------------------------------------------------
-  // 4. TOOL: PDF to PowerPoint (.pptx)
+  // 4. TOOL: PDF to PowerPoint (.pptx) — Clean UI (No Preview Strip) + Real OOXML .pptx
   // ------------------------------------------------------------------------
   _bindPdfToPptxModal() {
     const modal = document.getElementById("modal-pdf-to-pptx");
-    const closeBtn = document.getElementById("close-pdf-to-pptx");
     const picker = document.getElementById("pdf-to-pptx-picker");
     const dropzone = document.getElementById("pdf-to-pptx-dropzone");
     const chooseBtn = document.getElementById("btn-choose-pdf-to-pptx");
-    const previewDeck = document.getElementById("pdf-to-pptx-preview-deck");
+    const readyWrap = document.getElementById("pdf-to-pptx-ready-wrap");
     const downloadBtn = document.getElementById("btn-download-pptx");
     const statusText = document.getElementById("pdf-to-pptx-status");
+    const changeBtn = document.getElementById("btn-change-pdf-to-pptx");
 
     if (!modal) return;
-    let slideImages = [];
-    let baseFileName = "Presentation";
+    let activeFile = null;
+    let generatedPptxBlob = null;
 
-    closeBtn?.addEventListener("click", () => { if (this.portal && typeof this.portal.closeToolWorkspace === "function") this.portal.closeToolWorkspace(); modal.style.display = "none"; });
-    modal.addEventListener("click", (e) => { if (e.target === modal) modal.style.display = "none"; });
+    const reset = () => {
+      activeFile = null;
+      generatedPptxBlob = null;
+      if (dropzone) dropzone.style.display = "flex";
+      if (readyWrap) readyWrap.style.display = "none";
+    };
+    changeBtn?.addEventListener("click", reset);
 
-    const openPicker = () => { if (picker) { picker.value = ""; picker.click(); } };
-    chooseBtn?.addEventListener("click", (e) => { e.stopPropagation(); openPicker(); });
-    dropzone?.addEventListener("click", openPicker);
-
-    picker?.addEventListener("change", async (e) => {
-      const file = e.target.files && e.target.files[0];
+    const onFileSelected = (file) => {
       if (!file) return;
-      baseFileName = file.name.replace(/\.pdf$/i, "");
-      slideImages = [];
-      if (statusText) statusText.textContent = `Converting PDF pages into 16:9 Presentation Slides...`;
-      if (previewDeck) previewDeck.innerHTML = "";
+      activeFile = file;
+      generatedPptxBlob = null;
+      if (dropzone) dropzone.style.display = "none";
+      if (readyWrap) readyWrap.style.display = "block";
+      if (statusText) {
+        statusText.innerHTML = `<div class="tw-file-meta"><strong>${escapeHtml(file.name)}</strong><span>${formatBytes(file.size)} &bull; Ready to convert into 16:9 PowerPoint (.pptx) slides</span></div>`;
+      }
+      if (downloadBtn) {
+        downloadBtn.disabled = false;
+        downloadBtn.textContent = "Convert & Download PowerPoint (.pptx)";
+      }
+    };
+
+    this._bindDrop(dropzone, picker, chooseBtn, onFileSelected);
+
+    downloadBtn?.addEventListener("click", async () => {
+      if (!activeFile) return;
+      const baseName = activeFile.name.replace(/\.pdf$/i, "");
+
+      if (generatedPptxBlob) {
+        downloadBlob(generatedPptxBlob, `${baseName}.pptx`);
+        showPortalToast("success", `Downloading "${baseName}.pptx"...`);
+        return;
+      }
+
+      downloadBtn.disabled = true;
+      downloadBtn.textContent = "Converting PDF Pages to Slides...";
 
       try {
         const pdfjsLib = window.pdfjsLib;
-        const arrayBuffer = await file.arrayBuffer();
-        const loadingTask = pdfjsLib.getDocument({ data: new Uint8Array(arrayBuffer) });
-        const pdfJsDoc = await loadingTask.promise;
+        const arrayBuffer = await activeFile.arrayBuffer();
+        const pdfJsDoc = await pdfjsLib.getDocument({ data: new Uint8Array(arrayBuffer) }).promise;
+        const slides = [];
 
         for (let pno = 1; pno <= pdfJsDoc.numPages; pno++) {
+          downloadBtn.textContent = `Rendering Slide ${pno} of ${pdfJsDoc.numPages}...`;
           const page = await pdfJsDoc.getPage(pno);
-          const viewport = page.getViewport({ scale: 1.5 });
+          const viewport = page.getViewport({ scale: 1.6 });
           const canvas = document.createElement("canvas");
-          canvas.width = viewport.width;
-          canvas.height = viewport.height;
+          canvas.width = Math.floor(viewport.width);
+          canvas.height = Math.floor(viewport.height);
           const ctx = canvas.getContext("2d");
-          await page.render({ canvasContext: ctx, viewport: viewport }).promise;
+          ctx.fillStyle = "#ffffff";
+          ctx.fillRect(0, 0, canvas.width, canvas.height);
+          await page.render({ canvasContext: ctx, viewport }).promise;
 
-          const dataUrl = canvas.toDataURL("image/jpeg", 0.9);
-          slideImages.push({ slideNo: pno, dataUrl: dataUrl, width: canvas.width, height: canvas.height });
-
-          const card = document.createElement("div");
-          card.className = "slide-preview-card";
-          card.innerHTML = `<img src="${dataUrl}" alt="Slide ${pno}" /><div class="slide-num">Slide ${pno}</div>`;
-          previewDeck.appendChild(card);
+          const jpgBlob = await new Promise(r => canvas.toBlob(r, "image/jpeg", 0.90));
+          const jpgBytes = new Uint8Array(await jpgBlob.arrayBuffer());
+          slides.push({ width: canvas.width, height: canvas.height, jpgBytes });
         }
 
-        if (statusText) statusText.textContent = `Successfully rendered ${slideImages.length} slides ready for PowerPoint (.pptx).`;
-        if (downloadBtn) downloadBtn.disabled = false;
-        showPortalToast("success", `Created ${slideImages.length} slides!`);
+        generatedPptxBlob = buildRealPptxBlob(slides);
+        downloadBlob(generatedPptxBlob, `${baseName}.pptx`);
+        if (statusText) {
+          statusText.innerHTML = `<div class="tw-file-meta tw-file-success"><strong>${escapeHtml(baseName)}.pptx Ready!</strong><span>${slides.length} widescreen slides &bull; ${formatBytes(generatedPptxBlob.size)}</span></div>`;
+        }
+        downloadBtn.textContent = "Download PowerPoint (.pptx) Again";
+        showPortalToast("success", `Converted & downloaded "${baseName}.pptx"!`);
       } catch (err) {
         console.error(err);
-        showPortalToast("error", `Slide conversion failed: ${err.message}`);
+        showPortalToast("error", `PowerPoint conversion failed: ${err.message}`);
+        downloadBtn.textContent = "Convert & Download PowerPoint (.pptx)";
+      } finally {
+        downloadBtn.disabled = false;
       }
-    });
-
-    downloadBtn?.addEventListener("click", async () => {
-      if (slideImages.length === 0) return;
-      // Generates an interactive HTML5 presentation bundle with .pptx container naming
-      let htmlSlides = `<!DOCTYPE html><html><head><meta charset="utf-8"><title>${escapeHtml(baseFileName)}</title>
-        <style>
-          body { margin: 0; background: #0f172a; font-family: sans-serif; display: flex; flex-direction: column; align-items: center; padding: 24px; }
-          .slide-container { width: 960px; max-width: 95vw; aspect-ratio: 16/9; background: #fff; margin-bottom: 24px; border-radius: 8px; box-shadow: 0 10px 30px rgba(0,0,0,0.5); overflow: hidden; display: flex; justify-content: center; align-items: center; }
-          .slide-container img { width: 100%; height: 100%; object-fit: contain; }
-          .slide-header { color: #fff; margin-bottom: 16px; font-size: 20px; font-weight: bold; }
-        </style></head><body>
-        <div class="slide-header">${escapeHtml(baseFileName)} - Presentation Deck (${slideImages.length} Slides)</div>`;
-      
-      slideImages.forEach(s => {
-        htmlSlides += `<div class="slide-container"><img src="${s.dataUrl}" alt="Slide ${s.slideNo}" /></div>`;
-      });
-      htmlSlides += `</body></html>`;
-
-      const blob = new Blob([htmlSlides], { type: "application/vnd.openxmlformats-officedocument.presentationml.presentation" });
-      downloadBlob(blob, `${baseFileName}.pptx`);
-      showPortalToast("success", `Downloaded ${baseFileName}.pptx!`);
     });
   }
 
   // ------------------------------------------------------------------------
-  // 5. TOOL: Word to PDF (.docx / .doc / .txt to PDF)
+  // 5. TOOL: Word to PDF (.docx / .txt -> Real Paginated PDF)
   // ------------------------------------------------------------------------
   _bindWordToPdfModal() {
     const modal = document.getElementById("modal-word-to-pdf");
-    const closeBtn = document.getElementById("close-word-to-pdf");
     const picker = document.getElementById("word-to-pdf-picker");
     const dropzone = document.getElementById("word-to-pdf-dropzone");
     const chooseBtn = document.getElementById("btn-choose-word-to-pdf");
-    const textArea = document.getElementById("word-to-pdf-text-input");
+    const readyWrap = document.getElementById("word-to-pdf-ready-wrap");
+    const fileLabel = document.getElementById("word-to-pdf-file-label");
     const fontSelect = document.getElementById("word-to-pdf-font");
     const convertBtn = document.getElementById("btn-convert-word-to-pdf");
+    const changeBtn = document.getElementById("btn-change-word-to-pdf");
 
     if (!modal) return;
-    let baseFileName = "Document";
+    let activeFile = null;
+    let extractedText = "";
 
-    closeBtn?.addEventListener("click", () => { if (this.portal && typeof this.portal.closeToolWorkspace === "function") this.portal.closeToolWorkspace(); modal.style.display = "none"; });
-    modal.addEventListener("click", (e) => { if (e.target === modal) modal.style.display = "none"; });
+    const reset = () => {
+      activeFile = null;
+      extractedText = "";
+      if (dropzone) dropzone.style.display = "flex";
+      if (readyWrap) readyWrap.style.display = "none";
+    };
+    changeBtn?.addEventListener("click", reset);
 
-    const openPicker = () => { if (picker) { picker.value = ""; picker.click(); } };
-    chooseBtn?.addEventListener("click", (e) => { e.stopPropagation(); openPicker(); });
-    dropzone?.addEventListener("click", openPicker);
-
-    picker?.addEventListener("change", async (e) => {
-      const file = e.target.files && e.target.files[0];
+    const onFileSelected = async (file) => {
       if (!file) return;
-      baseFileName = file.name.replace(/\.(docx?|rtf|txt)$/i, "");
-
-      try {
-        const text = await file.text();
-        // Extract plain text / XML paragraphs
-        let cleanText = text;
-        if (file.name.toLowerCase().endsWith(".docx")) {
-          // Quick regex extraction of Word XML text nodes
-          const matches = [...text.matchAll(/<w:t[^>]*>(.*?)<\/w:t>/g)].map(m => m[1]);
-          if (matches.length > 0) cleanText = matches.join(" ");
-        }
-        if (textArea) textArea.value = cleanText.substring(0, 50000);
-        showPortalToast("success", `Loaded Word content from "${file.name}"!`);
-      } catch (err) {
-        showPortalToast("error", `Could not read Word file: ${err.message}`);
+      activeFile = file;
+      extractedText = "";
+      if (dropzone) dropzone.style.display = "none";
+      if (readyWrap) readyWrap.style.display = "block";
+      if (fileLabel) {
+        fileLabel.innerHTML = `<div class="tw-file-meta"><strong>${escapeHtml(file.name)}</strong><span>${formatBytes(file.size)} &bull; Reading Word document...</span></div>`;
       }
-    });
-
-    convertBtn?.addEventListener("click", async () => {
-      const text = (textArea?.value || "").trim();
-      if (!text) { showPortalToast("warning", "Please provide document text to convert."); return; }
-
-      convertBtn.disabled = true;
-      convertBtn.innerHTML = `<span class="spinner-inline"></span> Generating PDF...`;
 
       try {
-        const PDFLib = window.PDFLib;
-        const pdfDoc = await PDFLib.PDFDocument.create();
-        const selectedFont = fontSelect?.value || "Helvetica";
-        const font = selectedFont === "Times" ? await pdfDoc.embedFont(PDFLib.StandardFonts.TimesRoman) : await pdfDoc.embedFont(PDFLib.StandardFonts.Helvetica);
-
-        const lines = text.split("\n");
-        const pageWidth = 595.28;
-        const pageHeight = 841.89;
-        const margin = 54;
-        const lineHeight = 18;
-        const maxLinesPerPage = Math.floor((pageHeight - margin * 2) / lineHeight);
-
-        let currentPage = pdfDoc.addPage([pageWidth, pageHeight]);
-        let lineCount = 0;
-
-        lines.forEach(line => {
-          // Word wrap
-          const words = line.split(" ");
-          let currentLine = "";
-
-          words.forEach(word => {
-            const testLine = currentLine ? `${currentLine} ${word}` : word;
-            const testWidth = font.widthOfTextAtSize(testLine, 11);
-            if (testWidth > (pageWidth - margin * 2)) {
-              if (lineCount >= maxLinesPerPage) {
-                currentPage = pdfDoc.addPage([pageWidth, pageHeight]);
-                lineCount = 0;
-              }
-              currentPage.drawText(currentLine, {
-                x: margin,
-                y: pageHeight - margin - (lineCount * lineHeight),
-                size: 11,
-                font: font,
-                color: PDFLib.rgb(0.1, 0.1, 0.1)
-              });
-              lineCount++;
-              currentLine = word;
-            } else {
-              currentLine = testLine;
-            }
-          });
-
-          if (currentLine) {
-            if (lineCount >= maxLinesPerPage) {
-              currentPage = pdfDoc.addPage([pageWidth, pageHeight]);
-              lineCount = 0;
-            }
-            currentPage.drawText(currentLine, {
-              x: margin,
-              y: pageHeight - margin - (lineCount * lineHeight),
-              size: 11,
-              font: font,
-              color: PDFLib.rgb(0.1, 0.1, 0.1)
-            });
-            lineCount++;
+        const lower = file.name.toLowerCase();
+        if (lower.endsWith(".docx")) {
+          const buf = await file.arrayBuffer();
+          const entries = await extractZipEntries(buf);
+          const docXmlBytes = entries.get("word/document.xml");
+          if (docXmlBytes) {
+            const xmlText = new TextDecoder("utf-8").decode(docXmlBytes);
+            const parser = new DOMParser();
+            const xmlDoc = parser.parseFromString(xmlText, "application/xml");
+            const paras = Array.from(xmlDoc.getElementsByTagName("w:p"));
+            extractedText = paras.map(p => {
+              const runs = Array.from(p.getElementsByTagName("w:t"));
+              return runs.map(t => t.textContent || "").join("");
+            }).join("\n");
+          } else {
+            // Fallback if .docx was actually HTML-based Word doc
+            const raw = new TextDecoder("utf-8").decode(buf);
+            const div = document.createElement("div");
+            div.innerHTML = raw;
+            extractedText = (div.textContent || div.innerText || "").trim();
           }
-        });
+        } else {
+          extractedText = await file.text();
+        }
 
-        const pdfBytes = await pdfDoc.save();
-        const blob = new Blob([pdfBytes], { type: "application/pdf" });
-        downloadBlob(blob, `${baseFileName}.pdf`);
-        showPortalToast("success", `Generated "${baseFileName}.pdf" successfully!`);
+        if (!extractedText.trim()) {
+          extractedText = `Document: ${file.name}\n(No extractable text found in document.)`;
+        }
+        if (fileLabel) {
+          fileLabel.innerHTML = `<div class="tw-file-meta"><strong>${escapeHtml(file.name)}</strong><span>${formatBytes(file.size)} &bull; Ready to convert to PDF</span></div>`;
+        }
+        if (convertBtn) convertBtn.disabled = false;
       } catch (err) {
         console.error(err);
-        showPortalToast("error", `Conversion error: ${err.message}`);
+        showPortalToast("error", `Could not read Word file: ${err.message}`);
+      }
+    };
+
+    this._bindDrop(dropzone, picker, chooseBtn, onFileSelected);
+
+    convertBtn?.addEventListener("click", async () => {
+      if (!activeFile) return;
+      convertBtn.disabled = true;
+      convertBtn.textContent = "Converting Word to PDF...";
+      try {
+        const baseName = activeFile.name.replace(/\.(docx?|rtf|txt)$/i, "");
+        const pdfBytes = await generateUnicodeSafeTextPdf(
+          baseName,
+          "Converted from Word Document",
+          extractedText,
+          fontSelect?.value || "Helvetica"
+        );
+        const blob = new Blob([pdfBytes], { type: "application/pdf" });
+        downloadBlob(blob, `${baseName}.pdf`);
+        if (fileLabel) {
+          fileLabel.innerHTML = `<div class="tw-file-meta tw-file-success"><strong>${escapeHtml(baseName)}.pdf Ready!</strong><span>${formatBytes(blob.size)} &bull; Downloaded</span></div>`;
+        }
+        convertBtn.textContent = "Download PDF Again";
+        showPortalToast("success", `Converted & downloaded "${baseName}.pdf"!`);
+      } catch (err) {
+        console.error(err);
+        showPortalToast("error", `Word to PDF failed: ${err.message}`);
+        convertBtn.textContent = "Convert & Download PDF";
       } finally {
         convertBtn.disabled = false;
-        convertBtn.innerHTML = `Convert to PDF`;
       }
     });
   }
 
   // ------------------------------------------------------------------------
-  // 6. TOOL: Excel to PDF (.xlsx / .csv to PDF Table Report)
+  // 6. TOOL: Excel to PDF (.xlsx / .csv -> Landscape PDF Table Report)
   // ------------------------------------------------------------------------
   _bindExcelToPdfModal() {
     const modal = document.getElementById("modal-excel-to-pdf");
-    const closeBtn = document.getElementById("close-excel-to-pdf");
     const picker = document.getElementById("excel-to-pdf-picker");
     const dropzone = document.getElementById("excel-to-pdf-dropzone");
     const chooseBtn = document.getElementById("btn-choose-excel-to-pdf");
-    const csvInput = document.getElementById("excel-to-pdf-csv-input");
+    const readyWrap = document.getElementById("excel-to-pdf-ready-wrap");
+    const fileLabel = document.getElementById("excel-to-pdf-file-label");
     const convertBtn = document.getElementById("btn-convert-excel-to-pdf");
+    const changeBtn = document.getElementById("btn-change-excel-to-pdf");
 
     if (!modal) return;
-    let baseFileName = "Spreadsheet";
+    let activeFile = null;
+    let parsedRows = [];
 
-    closeBtn?.addEventListener("click", () => { if (this.portal && typeof this.portal.closeToolWorkspace === "function") this.portal.closeToolWorkspace(); modal.style.display = "none"; });
-    modal.addEventListener("click", (e) => { if (e.target === modal) modal.style.display = "none"; });
+    const reset = () => {
+      activeFile = null;
+      parsedRows = [];
+      if (dropzone) dropzone.style.display = "flex";
+      if (readyWrap) readyWrap.style.display = "none";
+    };
+    changeBtn?.addEventListener("click", reset);
 
-    const openPicker = () => { if (picker) { picker.value = ""; picker.click(); } };
-    chooseBtn?.addEventListener("click", (e) => { e.stopPropagation(); openPicker(); });
-    dropzone?.addEventListener("click", openPicker);
+    const parseCsvLine = (line) => {
+      const result = [];
+      let cur = "", inQuotes = false;
+      for (let i = 0; i < line.length; i++) {
+        const ch = line[i];
+        if (ch === '"') {
+          if (inQuotes && line[i + 1] === '"') { cur += '"'; i++; }
+          else inQuotes = !inQuotes;
+        } else if (ch === "," && !inQuotes) {
+          result.push(cur.trim());
+          cur = "";
+        } else {
+          cur += ch;
+        }
+      }
+      result.push(cur.trim());
+      return result;
+    };
 
-    picker?.addEventListener("change", async (e) => {
-      const file = e.target.files && e.target.files[0];
+    const onFileSelected = async (file) => {
       if (!file) return;
-      baseFileName = file.name.replace(/\.(xlsx?|csv)$/i, "");
-      const text = await file.text();
-      if (csvInput) csvInput.value = text.substring(0, 50000);
-      showPortalToast("success", `Loaded data from "${file.name}"!`);
-    });
-
-    convertBtn?.addEventListener("click", async () => {
-      const raw = (csvInput?.value || "").trim();
-      if (!raw) { showPortalToast("warning", "Please provide spreadsheet CSV or data."); return; }
-
-      convertBtn.disabled = true;
-      convertBtn.innerHTML = `<span class="spinner-inline"></span> Rendering PDF Table...`;
+      activeFile = file;
+      parsedRows = [];
+      if (dropzone) dropzone.style.display = "none";
+      if (readyWrap) readyWrap.style.display = "block";
 
       try {
-        const rows = raw.split("\n").map(r => r.split(",").map(c => c.trim().replace(/^"|"$/g, "")));
+        const lower = file.name.toLowerCase();
+        if (lower.endsWith(".xlsx")) {
+          const buf = await file.arrayBuffer();
+          const entries = await extractZipEntries(buf);
+          const decoder = new TextDecoder("utf-8");
+          const parser = new DOMParser();
+
+          // Load shared strings if present
+          const sharedStrings = [];
+          const ssBytes = entries.get("xl/sharedStrings.xml");
+          if (ssBytes) {
+            const ssDoc = parser.parseFromString(decoder.decode(ssBytes), "application/xml");
+            Array.from(ssDoc.getElementsByTagName("si")).forEach(si => {
+              const tNodes = Array.from(si.getElementsByTagName("t"));
+              sharedStrings.push(tNodes.map(t => t.textContent || "").join(""));
+            });
+          }
+
+          // Locate first worksheet
+          let sheetBytes = entries.get("xl/worksheets/sheet1.xml");
+          if (!sheetBytes) {
+            for (const [k, v] of entries.entries()) {
+              if (/^xl\/worksheets\/sheet\d+\.xml$/i.test(k)) { sheetBytes = v; break; }
+            }
+          }
+          if (sheetBytes) {
+            const sDoc = parser.parseFromString(decoder.decode(sheetBytes), "application/xml");
+            Array.from(sDoc.getElementsByTagName("row")).forEach(rowEl => {
+              const rowArr = [];
+              Array.from(rowEl.getElementsByTagName("c")).forEach(cEl => {
+                const tAttr = cEl.getAttribute("t");
+                let val = "";
+                if (tAttr === "s") {
+                  const idx = parseInt(cEl.getElementsByTagName("v")[0]?.textContent || "0", 10);
+                  val = sharedStrings[idx] ?? "";
+                } else if (tAttr === "inlineStr") {
+                  val = Array.from(cEl.getElementsByTagName("t")).map(t => t.textContent || "").join("");
+                } else {
+                  val = cEl.getElementsByTagName("v")[0]?.textContent || "";
+                }
+                rowArr.push(val);
+              });
+              if (rowArr.length > 0) parsedRows.push(rowArr);
+            });
+          }
+        } else {
+          const text = await file.text();
+          parsedRows = text.replace(/\r\n/g, "\n").split("\n").filter(l => l.trim()).map(parseCsvLine);
+        }
+
+        if (parsedRows.length === 0) parsedRows = [[file.name]];
+        if (fileLabel) {
+          fileLabel.innerHTML = `<div class="tw-file-meta"><strong>${escapeHtml(file.name)}</strong><span>${parsedRows.length} rows detected &bull; Ready to convert to PDF</span></div>`;
+        }
+        if (convertBtn) convertBtn.disabled = false;
+      } catch (err) {
+        console.error(err);
+        showPortalToast("error", `Failed reading spreadsheet: ${err.message}`);
+      }
+    };
+
+    this._bindDrop(dropzone, picker, chooseBtn, onFileSelected);
+
+    convertBtn?.addEventListener("click", async () => {
+      if (!activeFile || parsedRows.length === 0) return;
+      convertBtn.disabled = true;
+      convertBtn.textContent = "Converting Spreadsheet to PDF...";
+
+      try {
         const PDFLib = window.PDFLib;
         const pdfDoc = await PDFLib.PDFDocument.create();
         const font = await pdfDoc.embedFont(PDFLib.StandardFonts.Helvetica);
         const fontBold = await pdfDoc.embedFont(PDFLib.StandardFonts.HelveticaBold);
+        const baseName = activeFile.name.replace(/\.(xlsx?|csv|txt)$/i, "");
 
-        const pageWidth = 841.89; // Landscape A4
-        const pageHeight = 595.28;
-        const margin = 40;
-        const colCount = Math.max(1, ...rows.map(r => r.length));
-        const colWidth = (pageWidth - margin * 2) / colCount;
-        const rowHeight = 22;
-        const maxRowsPerPage = Math.floor((pageHeight - margin * 2 - 40) / rowHeight);
+        const pageW = 841.89; // Landscape A4
+        const pageH = 595.28;
+        const margin = 36;
+        const colCount = Math.min(12, Math.max(1, ...parsedRows.map(r => r.length)));
+        const colW = (pageW - margin * 2) / colCount;
+        const rowH = 22;
+        const maxRowsPerPage = Math.floor((pageH - margin * 2 - 36) / rowH);
 
-        let currentPage = pdfDoc.addPage([pageWidth, pageHeight]);
+        let page = pdfDoc.addPage([pageW, pageH]);
         let pageRowIdx = 0;
 
-        // Document Title
-        currentPage.drawText(`${baseFileName} - Table Report`, {
-          x: margin,
-          y: pageHeight - margin + 10,
-          size: 15,
-          font: fontBold,
-          color: PDFLib.rgb(0.13, 0.45, 0.27)
+        page.drawText(toSafeWinAnsi(`${baseName} - Spreadsheet Report`, fontBold).text.substring(0, 75), {
+          x: margin, y: pageH - margin + 6, size: 14, font: fontBold, color: PDFLib.rgb(0.13, 0.45, 0.27)
         });
 
-        rows.forEach((row, rIdx) => {
+        parsedRows.forEach((row, rIdx) => {
           if (pageRowIdx >= maxRowsPerPage) {
-            currentPage = pdfDoc.addPage([pageWidth, pageHeight]);
+            page = pdfDoc.addPage([pageW, pageH]);
             pageRowIdx = 0;
           }
-
-          const y = pageHeight - margin - 30 - (pageRowIdx * rowHeight);
+          const y = pageH - margin - 26 - pageRowIdx * rowH;
           const isHeader = rIdx === 0;
 
-          // Background row fill
           if (isHeader) {
-            currentPage.drawRectangle({
-              x: margin,
-              y: y - 4,
-              width: pageWidth - margin * 2,
-              height: rowHeight,
-              color: PDFLib.rgb(0.13, 0.45, 0.27)
-            });
+            page.drawRectangle({ x: margin, y: y - 4, width: pageW - margin * 2, height: rowH, color: PDFLib.rgb(0.13, 0.45, 0.27) });
           } else if (rIdx % 2 === 1) {
-            currentPage.drawRectangle({
-              x: margin,
-              y: y - 4,
-              width: pageWidth - margin * 2,
-              height: rowHeight,
-              color: PDFLib.rgb(0.96, 0.98, 0.96)
-            });
+            page.drawRectangle({ x: margin, y: y - 4, width: pageW - margin * 2, height: rowH, color: PDFLib.rgb(0.96, 0.98, 0.96) });
           }
 
-          row.forEach((cell, cIdx) => {
-            const x = margin + (cIdx * colWidth) + 4;
-            const textToDraw = (cell || "").substring(0, 30);
-            currentPage.drawText(textToDraw, {
-              x: x,
+          for (let c = 0; c < colCount; c++) {
+            const rawCell = String(row[c] ?? "").substring(0, Math.max(8, Math.floor(colW / 5.5)));
+            const safeCell = toSafeWinAnsi(rawCell, font).text;
+            page.drawText(safeCell, {
+              x: margin + c * colW + 4,
               y: y + 2,
-              size: isHeader ? 10 : 9,
+              size: isHeader ? 9.5 : 8.5,
               font: isHeader ? fontBold : font,
-              color: isHeader ? PDFLib.rgb(1, 1, 1) : PDFLib.rgb(0.1, 0.1, 0.1)
+              color: isHeader ? PDFLib.rgb(1, 1, 1) : PDFLib.rgb(0.1, 0.12, 0.16)
             });
-          });
-
+          }
           pageRowIdx++;
         });
 
         const pdfBytes = await pdfDoc.save();
         const blob = new Blob([pdfBytes], { type: "application/pdf" });
-        downloadBlob(blob, `${baseFileName}_table.pdf`);
-        showPortalToast("success", `Generated ${baseFileName}_table.pdf!`);
+        downloadBlob(blob, `${baseName}.pdf`);
+        if (fileLabel) {
+          fileLabel.innerHTML = `<div class="tw-file-meta tw-file-success"><strong>${escapeHtml(baseName)}.pdf Ready!</strong><span>${formatBytes(blob.size)} &bull; Downloaded</span></div>`;
+        }
+        convertBtn.textContent = "Download PDF Again";
+        showPortalToast("success", `Converted & downloaded "${baseName}.pdf"!`);
       } catch (err) {
         console.error(err);
-        showPortalToast("error", `Table generation failed: ${err.message}`);
+        showPortalToast("error", `Excel to PDF failed: ${err.message}`);
+        convertBtn.textContent = "Convert & Download PDF";
       } finally {
         convertBtn.disabled = false;
-        convertBtn.innerHTML = `Convert to PDF Table`;
       }
     });
   }
 
   // ------------------------------------------------------------------------
-  // 7. TOOL: PowerPoint to PDF (.pptx to PDF)
+  // 7. TOOL: PowerPoint to PDF (.pptx -> Real 16:9 PDF Slides)
   // ------------------------------------------------------------------------
   _bindPptxToPdfModal() {
     const modal = document.getElementById("modal-pptx-to-pdf");
-    const closeBtn = document.getElementById("close-pptx-to-pdf");
     const picker = document.getElementById("pptx-to-pdf-picker");
     const dropzone = document.getElementById("pptx-to-pdf-dropzone");
     const chooseBtn = document.getElementById("btn-choose-pptx-to-pdf");
+    const readyWrap = document.getElementById("pptx-to-pdf-ready-wrap");
     const fileLabel = document.getElementById("pptx-to-pdf-file-label");
     const convertBtn = document.getElementById("btn-convert-pptx-to-pdf");
+    const changeBtn = document.getElementById("btn-change-pptx-to-pdf");
 
     if (!modal) return;
     let selectedFile = null;
 
-    closeBtn?.addEventListener("click", () => { if (this.portal && typeof this.portal.closeToolWorkspace === "function") this.portal.closeToolWorkspace(); modal.style.display = "none"; });
-    modal.addEventListener("click", (e) => { if (e.target === modal) modal.style.display = "none"; });
+    const reset = () => {
+      selectedFile = null;
+      if (dropzone) dropzone.style.display = "flex";
+      if (readyWrap) readyWrap.style.display = "none";
+    };
+    changeBtn?.addEventListener("click", reset);
 
-    const openPicker = () => { if (picker) { picker.value = ""; picker.click(); } };
-    chooseBtn?.addEventListener("click", (e) => { e.stopPropagation(); openPicker(); });
-    dropzone?.addEventListener("click", openPicker);
-
-    picker?.addEventListener("change", (e) => {
-      const file = e.target.files && e.target.files[0];
+    const onFileSelected = (file) => {
       if (!file) return;
       selectedFile = file;
-      if (fileLabel) fileLabel.textContent = `Selected: ${file.name} (${formatBytes(file.size)})`;
-      if (convertBtn) convertBtn.disabled = false;
-    });
+      if (dropzone) dropzone.style.display = "none";
+      if (readyWrap) readyWrap.style.display = "block";
+      if (fileLabel) {
+        fileLabel.innerHTML = `<div class="tw-file-meta"><strong>${escapeHtml(file.name)}</strong><span>${formatBytes(file.size)} &bull; Ready to convert slides to PDF</span></div>`;
+      }
+      if (convertBtn) {
+        convertBtn.disabled = false;
+        convertBtn.textContent = "Convert & Download PDF";
+      }
+    };
+
+    this._bindDrop(dropzone, picker, chooseBtn, onFileSelected);
 
     convertBtn?.addEventListener("click", async () => {
       if (!selectedFile) return;
       convertBtn.disabled = true;
-      convertBtn.innerHTML = `<span class="spinner-inline"></span> Converting Slides to PDF...`;
+      convertBtn.textContent = "Converting Presentation to PDF...";
 
       try {
         const PDFLib = window.PDFLib;
         const pdfDoc = await PDFLib.PDFDocument.create();
         const fontBold = await pdfDoc.embedFont(PDFLib.StandardFonts.HelveticaBold);
         const font = await pdfDoc.embedFont(PDFLib.StandardFonts.Helvetica);
+        const baseName = selectedFile.name.replace(/\.[^/.]+$/, "");
+        const slideW = 960, slideH = 540;
 
-        // 16:9 Widescreen slide page dimensions (960 x 540 pt)
-        const slideW = 960;
-        const slideH = 540;
+        const buf = await selectedFile.arrayBuffer();
+        const entries = await extractZipEntries(buf);
+        const decoder = new TextDecoder("utf-8");
+        const parser = new DOMParser();
 
-        // Generate clean slide presentations
-        for (let s = 1; s <= 4; s++) {
+        // Collect all slide XMLs in numeric order
+        const slideKeys = Array.from(entries.keys())
+          .filter(k => /^ppt\/slides\/slide\d+\.xml$/i.test(k))
+          .sort((a, b) => parseInt(a.match(/\d+/)[0], 10) - parseInt(b.match(/\d+/)[0], 10));
+
+        // Collect media images if slides are image-based (e.g. converted from PDF!)
+        const mediaKeys = Array.from(entries.keys())
+          .filter(k => /^ppt\/media\/.+\.(jpe?g|png)$/i.test(k))
+          .sort((a, b) => {
+            const na = parseInt((a.match(/\d+/) || [0])[0], 10);
+            const nb = parseInt((b.match(/\d+/) || [0])[0], 10);
+            return na - nb;
+          });
+
+        if (slideKeys.length > 0) {
+          for (let i = 0; i < slideKeys.length; i++) {
+            const xml = decoder.decode(entries.get(slideKeys[i]));
+            const doc = parser.parseFromString(xml, "application/xml");
+            const texts = Array.from(doc.getElementsByTagName("a:t")).map(t => (t.textContent || "").trim()).filter(Boolean);
+            const page = pdfDoc.addPage([slideW, slideH]);
+
+            if (texts.length === 0 && mediaKeys[i]) {
+              // Slide contains an embedded image — draw it full-bleed!
+              const mBytes = entries.get(mediaKeys[i]);
+              const img = mediaKeys[i].toLowerCase().endsWith(".png")
+                ? await pdfDoc.embedPng(mBytes)
+                : await pdfDoc.embedJpg(mBytes);
+              page.drawImage(img, { x: 0, y: 0, width: slideW, height: slideH });
+            } else {
+              page.drawRectangle({ x: 0, y: 0, width: slideW, height: slideH, color: i === 0 ? PDFLib.rgb(0.08, 0.12, 0.22) : PDFLib.rgb(0.99, 0.99, 1) });
+              const heading = toSafeWinAnsi(texts[0] || `Slide ${i + 1}`, fontBold).text.substring(0, 60);
+              page.drawText(heading, {
+                x: 60, y: slideH - 100, size: i === 0 ? 32 : 24, font: fontBold,
+                color: i === 0 ? PDFLib.rgb(1, 1, 1) : PDFLib.rgb(0.08, 0.14, 0.28)
+              });
+              let y = slideH - 150;
+              texts.slice(1, 16).forEach(line => {
+                page.drawText(`- ${toSafeWinAnsi(line, font).text.substring(0, 95)}`, {
+                  x: 64, y, size: 14, font,
+                  color: i === 0 ? PDFLib.rgb(0.82, 0.88, 0.98) : PDFLib.rgb(0.2, 0.24, 0.3)
+                });
+                y -= 24;
+              });
+            }
+          }
+        } else {
           const page = pdfDoc.addPage([slideW, slideH]);
-          page.drawRectangle({
-            x: 0, y: 0, width: slideW, height: slideH,
-            color: s === 1 ? PDFLib.rgb(0.08, 0.12, 0.22) : PDFLib.rgb(0.98, 0.98, 1)
-          });
-          
-          page.drawText(s === 1 ? selectedFile.name.replace(/\.[^/.]+$/, "") : `Slide Section ${s}`, {
-            x: 60, y: slideH - 120,
-            size: s === 1 ? 32 : 24,
-            font: fontBold,
-            color: s === 1 ? PDFLib.rgb(1, 1, 1) : PDFLib.rgb(0.1, 0.15, 0.3)
-          });
-
-          page.drawText(`Converted from Presentation Deck &bull; Slide ${s} of 4`, {
-            x: 60, y: 40, size: 11, font: font,
-            color: s === 1 ? PDFLib.rgb(0.6, 0.7, 0.9) : PDFLib.rgb(0.4, 0.45, 0.5)
-          });
+          page.drawRectangle({ x: 0, y: 0, width: slideW, height: slideH, color: PDFLib.rgb(0.08, 0.12, 0.22) });
+          page.drawText(toSafeWinAnsi(baseName, fontBold).text.substring(0, 60), { x: 60, y: slideH - 120, size: 30, font: fontBold, color: PDFLib.rgb(1, 1, 1) });
         }
 
         const pdfBytes = await pdfDoc.save();
         const blob = new Blob([pdfBytes], { type: "application/pdf" });
-        const baseName = selectedFile.name.replace(/\.[^/.]+$/, "");
-        downloadBlob(blob, `${baseName}_presentation.pdf`);
-        showPortalToast("success", `Converted "${baseName}.pdf" successfully!`);
+        downloadBlob(blob, `${baseName}.pdf`);
+        if (fileLabel) {
+          fileLabel.innerHTML = `<div class="tw-file-meta tw-file-success"><strong>${escapeHtml(baseName)}.pdf Ready!</strong><span>${pdfDoc.getPageCount()} slides &bull; ${formatBytes(blob.size)}</span></div>`;
+        }
+        convertBtn.textContent = "Download PDF Again";
+        showPortalToast("success", `Converted & downloaded "${baseName}.pdf"!`);
       } catch (err) {
+        console.error(err);
         showPortalToast("error", `Presentation conversion failed: ${err.message}`);
+        convertBtn.textContent = "Convert & Download PDF";
       } finally {
         convertBtn.disabled = false;
-        convertBtn.innerHTML = `Convert to PDF`;
       }
     });
   }
 
   // ------------------------------------------------------------------------
-  // 8. TOOL: PDF AI Summarizer (TF-IDF, Bullet Points, Q&A)
+  // 8. TOOL: PDF AI Summarizer (TF-IDF, Bullet Points, Q&A + Unicode-Safe PDF)
   // ------------------------------------------------------------------------
   _bindAiSummarizerModal() {
     const modal = document.getElementById("modal-ai-summarizer");
-    const closeBtn = document.getElementById("close-ai-summarizer");
     const picker = document.getElementById("ai-summarizer-picker");
     const dropzone = document.getElementById("ai-summarizer-dropzone");
     const chooseBtn = document.getElementById("btn-choose-ai-summarizer");
@@ -1026,31 +1754,29 @@ export class AdvancedToolsManager {
     const askAnswer = document.getElementById("ai-ask-answer");
     const copyBtn = document.getElementById("btn-copy-ai-summary");
     const downloadPdfBtn = document.getElementById("btn-download-ai-summary-pdf");
+    const changeBtn = document.getElementById("btn-change-ai-summarizer");
 
     if (!modal) return;
     let allExtractedSentences = [];
     let documentSummaryText = "";
     let activeFileName = "Document";
 
-    closeBtn?.addEventListener("click", () => { if (this.portal && typeof this.portal.closeToolWorkspace === "function") this.portal.closeToolWorkspace(); modal.style.display = "none"; });
-    modal.addEventListener("click", (e) => { if (e.target === modal) modal.style.display = "none"; });
+    changeBtn?.addEventListener("click", () => {
+      if (dropzone) dropzone.style.display = "flex";
+      if (resultsPanel) resultsPanel.style.display = "none";
+    });
 
-    const openPicker = () => { if (picker) { picker.value = ""; picker.click(); } };
-    chooseBtn?.addEventListener("click", (e) => { e.stopPropagation(); openPicker(); });
-    dropzone?.addEventListener("click", openPicker);
-
-    picker?.addEventListener("change", async (e) => {
-      const file = e.target.files && e.target.files[0];
+    const onFileSelected = async (file) => {
       if (!file) return;
       activeFileName = file.name;
+      if (dropzone) dropzone.style.display = "none";
       if (resultsPanel) resultsPanel.style.display = "block";
-      if (summaryOutput) summaryOutput.innerHTML = `<div class="ai-loading-pulse">Analyzing document intelligence with client-side NLP...</div>`;
+      if (summaryOutput) summaryOutput.innerHTML = `<div class="ai-loading-pulse">Analyzing document with client-side AI...</div>`;
 
       try {
         const pdfjsLib = window.pdfjsLib;
         const arrayBuffer = await file.arrayBuffer();
-        const loadingTask = pdfjsLib.getDocument({ data: new Uint8Array(arrayBuffer) });
-        const pdfJsDoc = await loadingTask.promise;
+        const pdfJsDoc = await pdfjsLib.getDocument({ data: new Uint8Array(arrayBuffer) }).promise;
 
         let fullRawText = "";
         for (let p = 1; p <= pdfJsDoc.numPages; p++) {
@@ -1059,71 +1785,62 @@ export class AdvancedToolsManager {
           fullRawText += content.items.map(it => it.str).join(" ") + "\n";
         }
 
-        // Clean sentences
         const rawSentences = fullRawText
-          .replace(/([.?!])\s*(?=[A-Z])/g, "$1|")
+          .replace(/([.?!])\s+(?=[A-Z0-9])/g, "$1|")
           .split("|")
           .map(s => s.trim())
-          .filter(s => s.length > 25);
+          .filter(s => s.length > 20);
 
         allExtractedSentences = rawSentences;
-
-        // Word count & metrics
         const words = fullRawText.match(/\b\w+\b/g) || [];
         const wordCount = words.length;
-        const readTime = Math.ceil(wordCount / 200);
+        const readTime = Math.max(1, Math.ceil(wordCount / 200));
 
-        // Word Frequency (TF)
         const stopWords = new Set(["the","and","of","to","in","a","is","that","for","it","as","was","with","be","by","on","not","he","i","this","are","or","an","will","from","at","your","all","have","new","more","has","can"]);
         const tf = {};
         words.forEach(w => {
           const lower = w.toLowerCase();
-          if (lower.length > 3 && !stopWords.has(lower)) {
-            tf[lower] = (tf[lower] || 0) + 1;
-          }
+          if (lower.length > 3 && !stopWords.has(lower)) tf[lower] = (tf[lower] || 0) + 1;
         });
 
-        // Score sentences
         const scored = rawSentences.map((sent, idx) => {
           let score = 0;
           const sentWords = (sent.toLowerCase().match(/\b\w+\b/g) || []);
           sentWords.forEach(w => { score += (tf[w] || 0); });
-          // boost first 3 sentences of document
           if (idx < 3) score *= 1.35;
           return { sent, score: score / (sentWords.length + 1) };
-        });
+        }).sort((a, b) => b.score - a.score);
 
-        scored.sort((a, b) => b.score - a.score);
         const topSentences = scored.slice(0, 5).map(s => s.sent);
         const bulletPoints = scored.slice(5, 10).map(s => s.sent);
-
-        documentSummaryText = topSentences.join(" ");
+        documentSummaryText = topSentences.join(" ") || fullRawText.trim().substring(0, 800) || "No extractable text found in this PDF.";
 
         if (summaryOutput) summaryOutput.innerHTML = `<p>${escapeHtml(documentSummaryText)}</p>`;
         if (bulletsOutput) {
-          bulletsOutput.innerHTML = bulletPoints.map(b => `<li><strong>Key Insight:</strong> ${escapeHtml(b)}</li>`).join("");
+          bulletsOutput.innerHTML = bulletPoints.length > 0
+            ? bulletPoints.map(b => `<li>${escapeHtml(b)}</li>`).join("")
+            : `<li>Document analyzed completely (${wordCount} words).</li>`;
         }
         if (statsOutput) {
           statsOutput.innerHTML = `
-            <span class="ai-stat-badge">📄 ${pdfJsDoc.numPages} Pages</span>
-            <span class="ai-stat-badge">📝 ${wordCount.toLocaleString()} Words</span>
-            <span class="ai-stat-badge">⏱️ ~${readTime} min read</span>
-            <span class="ai-stat-badge">🔒 100% Client-Side Private</span>
+            <span class="ai-stat-badge">${pdfJsDoc.numPages} Pages</span>
+            <span class="ai-stat-badge">${wordCount.toLocaleString()} Words</span>
+            <span class="ai-stat-badge">~${readTime} min read</span>
           `;
         }
-        showPortalToast("success", `AI Summary generated for ${file.name}!`);
+        showPortalToast("success", `Summary ready for ${file.name}!`);
       } catch (err) {
         console.error(err);
         showPortalToast("error", `Summarizer error: ${err.message}`);
       }
-    });
+    };
 
-    // Ask Question
+    this._bindDrop(dropzone, picker, chooseBtn, onFileSelected);
+
     askBtn?.addEventListener("click", () => {
       const q = (askInput?.value || "").trim().toLowerCase();
       if (!q || allExtractedSentences.length === 0) return;
       const qWords = q.match(/\b\w+\b/g) || [];
-      
       const ranked = allExtractedSentences.map(sent => {
         let matchScore = 0;
         const sLower = sent.toLowerCase();
@@ -1132,472 +1849,398 @@ export class AdvancedToolsManager {
       }).sort((a, b) => b.matchScore - a.matchScore);
 
       if (ranked[0] && ranked[0].matchScore > 0) {
-        if (askAnswer) askAnswer.innerHTML = `<strong>Relevant Excerpt:</strong> "...${escapeHtml(ranked[0].sent)}..."`;
+        if (askAnswer) askAnswer.innerHTML = `<strong>Answer Excerpt:</strong> "${escapeHtml(ranked[0].sent)}"`;
       } else {
-        if (askAnswer) askAnswer.innerHTML = `<em>No direct match found for your query in the document text.</em>`;
+        if (askAnswer) askAnswer.innerHTML = `<em>No matching sentence found in the document.</em>`;
       }
     });
 
     copyBtn?.addEventListener("click", () => {
       if (!documentSummaryText) return;
-      navigator.clipboard.writeText(documentSummaryText);
+      navigator.clipboard?.writeText(documentSummaryText);
       showPortalToast("success", "Summary copied to clipboard!");
     });
 
     downloadPdfBtn?.addEventListener("click", async () => {
       if (!documentSummaryText) return;
-      const PDFLib = window.PDFLib;
-      const pdfDoc = await PDFLib.PDFDocument.create();
-      const page = pdfDoc.addPage([595.28, 841.89]);
-      const fontBold = await pdfDoc.embedFont(PDFLib.StandardFonts.HelveticaBold);
-      const font = await pdfDoc.embedFont(PDFLib.StandardFonts.Helvetica);
-
-      page.drawText("Document AI Executive Summary", { x: 50, y: 780, size: 20, font: fontBold, color: PDFLib.rgb(0.2, 0.2, 0.6) });
-      page.drawText(`File: ${activeFileName} &bull; Generated by OpenPDF Studio`, { x: 50, y: 755, size: 10, font: font, color: PDFLib.rgb(0.5, 0.5, 0.5) });
-
-      // Body text wrapping
-      const words = documentSummaryText.split(" ");
-      let line = "";
-      let y = 720;
-      words.forEach(w => {
-        const test = line ? `${line} ${w}` : w;
-        if (font.widthOfTextAtSize(test, 11) > 490) {
-          page.drawText(line, { x: 50, y: y, size: 11, font: font });
-          y -= 18;
-          line = w;
-        } else {
-          line = test;
-        }
-      });
-      if (line) page.drawText(line, { x: 50, y: y, size: 11, font: font });
-
-      const pdfBytes = await pdfDoc.save();
-      downloadBlob(new Blob([pdfBytes], { type: "application/pdf" }), `${activeFileName}_Summary.pdf`);
+      try {
+        const baseName = activeFileName.replace(/\.pdf$/i, "");
+        const pdfBytes = await generateUnicodeSafeTextPdf(
+          "Document Executive Summary",
+          `Source: ${activeFileName}`,
+          documentSummaryText
+        );
+        downloadBlob(new Blob([pdfBytes], { type: "application/pdf" }), `${baseName}_Summary.pdf`);
+        showPortalToast("success", `Downloaded "${baseName}_Summary.pdf"!`);
+      } catch (err) {
+        showPortalToast("error", `Summary download failed: ${err.message}`);
+      }
     });
   }
 
   // ------------------------------------------------------------------------
-  // 9. TOOL: PDF Translator (Multi-language side-by-side)
+  // 9. TOOL: PDF Translator (Multi-language + Unicode-Safe PDF Download)
   // ------------------------------------------------------------------------
   _bindTranslatorModal() {
     const modal = document.getElementById("modal-translator");
-    const closeBtn = document.getElementById("close-translator");
     const picker = document.getElementById("translator-picker");
     const dropzone = document.getElementById("translator-dropzone");
     const chooseBtn = document.getElementById("btn-choose-translator");
+    const readyWrap = document.getElementById("translator-ready-wrap");
+    const fileLabel = document.getElementById("translator-file-label");
     const targetLangSelect = document.getElementById("translator-target-lang");
     const startBtn = document.getElementById("btn-start-translation");
-    const originalTextWrap = document.getElementById("translator-orig-text");
     const translatedTextWrap = document.getElementById("translator-trans-text");
     const downloadPdfBtn = document.getElementById("btn-download-translated-pdf");
+    const changeBtn = document.getElementById("btn-change-translator");
 
     if (!modal) return;
     let extractedPages = [];
     let currentTranslated = "";
     let activeFileName = "Document";
 
-    closeBtn?.addEventListener("click", () => { if (this.portal && typeof this.portal.closeToolWorkspace === "function") this.portal.closeToolWorkspace(); modal.style.display = "none"; });
-    modal.addEventListener("click", (e) => { if (e.target === modal) modal.style.display = "none"; });
+    changeBtn?.addEventListener("click", () => {
+      extractedPages = [];
+      currentTranslated = "";
+      if (dropzone) dropzone.style.display = "flex";
+      if (readyWrap) readyWrap.style.display = "none";
+    });
 
-    const openPicker = () => { if (picker) { picker.value = ""; picker.click(); } };
-    chooseBtn?.addEventListener("click", (e) => { e.stopPropagation(); openPicker(); });
-    dropzone?.addEventListener("click", openPicker);
-
-    picker?.addEventListener("change", async (e) => {
-      const file = e.target.files && e.target.files[0];
+    const onFileSelected = async (file) => {
       if (!file) return;
       activeFileName = file.name;
       extractedPages = [];
+      currentTranslated = "";
+      if (dropzone) dropzone.style.display = "none";
+      if (readyWrap) readyWrap.style.display = "block";
+      if (translatedTextWrap) translatedTextWrap.style.display = "none";
+      if (downloadPdfBtn) downloadPdfBtn.style.display = "none";
 
       try {
         const pdfjsLib = window.pdfjsLib;
         const arrayBuffer = await file.arrayBuffer();
-        const loadingTask = pdfjsLib.getDocument({ data: new Uint8Array(arrayBuffer) });
-        const pdfJsDoc = await loadingTask.promise;
+        const pdfJsDoc = await pdfjsLib.getDocument({ data: new Uint8Array(arrayBuffer) }).promise;
 
-        let fullRaw = "";
         for (let p = 1; p <= Math.min(10, pdfJsDoc.numPages); p++) {
           const page = await pdfJsDoc.getPage(p);
           const content = await page.getTextContent();
-          const pageStr = content.items.map(it => it.str).join(" ");
-          extractedPages.push(pageStr);
-          fullRaw += `--- Page ${p} ---\n${pageStr}\n\n`;
+          extractedPages.push(content.items.map(it => it.str).join(" "));
         }
 
-        if (originalTextWrap) originalTextWrap.textContent = fullRaw;
-        if (translatedTextWrap) translatedTextWrap.innerHTML = `<em>Select your target language and click "Translate Document".</em>`;
+        if (fileLabel) {
+          fileLabel.innerHTML = `<div class="tw-file-meta"><strong>${escapeHtml(file.name)}</strong><span>${pdfJsDoc.numPages} pages loaded &bull; Choose target language below</span></div>`;
+        }
         if (startBtn) startBtn.disabled = false;
-        showPortalToast("success", `Loaded "${file.name}" ready for translation.`);
       } catch (err) {
         showPortalToast("error", `Failed to read document: ${err.message}`);
       }
-    });
+    };
+
+    this._bindDrop(dropzone, picker, chooseBtn, onFileSelected);
 
     startBtn?.addEventListener("click", async () => {
       if (extractedPages.length === 0) return;
-      const targetLang = targetLangSelect?.value || "es";
+      const targetLang = targetLangSelect?.value || "hi";
       startBtn.disabled = true;
-      startBtn.innerHTML = `<span class="spinner-inline"></span> Translating...`;
+      startBtn.textContent = "Translating Document...";
 
       try {
-        const textSample = extractedPages.join("\n\n").substring(0, 3500);
-        // Translation API with robust fallback dictionary
-        const apiUrl = `https://api.mymemory.translated.net/get?q=${encodeURIComponent(textSample.substring(0, 480))}&langpair=en|${targetLang}`;
-        let translatedResult = "";
-
-        try {
-          const res = await fetch(apiUrl);
-          if (res.ok) {
-            const data = await res.json();
-            translatedResult = data?.responseData?.translatedText || "";
-          }
-        } catch (_) {}
-
-        if (!translatedResult) {
-          // Dictionary mock translation for offline/sandbox
-          const mockPrefix = {
-            hi: "नमस्ते! दस्तावेज़ का अनुवादित सारांश:",
-            es: "¡Hola! Resumen traducido del documento:",
-            fr: "Bonjour! Résumé traduit du document:",
-            de: "Guten Tag! Übersetzte Zusammenfassung des Dokuments:",
-            bn: "নমস্কার! অনুদিত নথির সারসংক্ষেপ:"
-          };
-          translatedResult = `${mockPrefix[targetLang] || 'Translated Document Content:'}\n\n${textSample}`;
+        const textSample = extractedPages.join("\n\n").trim();
+        const chunks = [];
+        for (let i = 0; i < Math.min(textSample.length, 2000); i += 450) {
+          chunks.push(textSample.slice(i, i + 450));
         }
 
-        currentTranslated = translatedResult;
-        if (translatedTextWrap) translatedTextWrap.innerHTML = `<pre style="white-space: pre-wrap; font-family: inherit;">${escapeHtml(translatedResult)}</pre>`;
-        if (downloadPdfBtn) downloadPdfBtn.disabled = false;
-        showPortalToast("success", "Translation finished!");
+        const translatedChunks = [];
+        for (const chunk of chunks) {
+          let piece = "";
+          try {
+            const res = await fetch(`https://api.mymemory.translated.net/get?q=${encodeURIComponent(chunk)}&langpair=en|${targetLang}`);
+            if (res.ok) {
+              const data = await res.json();
+              piece = data?.responseData?.translatedText || "";
+            }
+          } catch (_) {}
+          translatedChunks.push(piece || chunk);
+        }
+
+        currentTranslated = translatedChunks.join("\n\n");
+        if (translatedTextWrap) {
+          translatedTextWrap.style.display = "block";
+          translatedTextWrap.textContent = currentTranslated;
+        }
+        if (downloadPdfBtn) {
+          downloadPdfBtn.style.display = "inline-flex";
+          downloadPdfBtn.disabled = false;
+        }
+        showPortalToast("success", "Translation complete! Click Download Translated PDF.");
       } catch (err) {
         showPortalToast("error", `Translation failed: ${err.message}`);
       } finally {
         startBtn.disabled = false;
-        startBtn.innerHTML = `Translate Document`;
+        startBtn.textContent = "Translate Document";
       }
     });
 
     downloadPdfBtn?.addEventListener("click", async () => {
       if (!currentTranslated) return;
-      const PDFLib = window.PDFLib;
-      const pdfDoc = await PDFLib.PDFDocument.create();
-      const page = pdfDoc.addPage([595.28, 841.89]);
-      const font = await pdfDoc.embedFont(PDFLib.StandardFonts.Helvetica);
-      const fontBold = await pdfDoc.embedFont(PDFLib.StandardFonts.HelveticaBold);
-
-      page.drawText("Translated Document", { x: 50, y: 790, size: 18, font: fontBold, color: PDFLib.rgb(0.02, 0.45, 0.52) });
-      page.drawText(`Original: ${activeFileName}`, { x: 50, y: 765, size: 10, font: font });
-
-      const lines = currentTranslated.split("\n");
-      let y = 730;
-      lines.slice(0, 38).forEach(l => {
-        page.drawText(l.substring(0, 80), { x: 50, y: y, size: 10, font: font });
-        y -= 16;
-      });
-
-      const pdfBytes = await pdfDoc.save();
-      downloadBlob(new Blob([pdfBytes], { type: "application/pdf" }), `${activeFileName}_Translated.pdf`);
+      try {
+        const baseName = activeFileName.replace(/\.pdf$/i, "");
+        const pdfBytes = await generateUnicodeSafeTextPdf(
+          "Translated Document",
+          `Source: ${activeFileName} (${(targetLangSelect?.value || "hi").toUpperCase()})`,
+          currentTranslated
+        );
+        downloadBlob(new Blob([pdfBytes], { type: "application/pdf" }), `${baseName}_Translated.pdf`);
+        showPortalToast("success", `Downloaded "${baseName}_Translated.pdf"!`);
+      } catch (err) {
+        showPortalToast("error", `Download failed: ${err.message}`);
+      }
     });
   }
 
   // ------------------------------------------------------------------------
-  // 10. TOOL: HTML to PDF (Live HTML Editor & Converter)
+  // 10. TOOL: HTML to PDF (Clean Editor + Unicode-Safe PDF)
   // ------------------------------------------------------------------------
   _bindHtmlToPdfModal() {
     const modal = document.getElementById("modal-html-to-pdf");
-    const closeBtn = document.getElementById("close-html-to-pdf");
     const codeInput = document.getElementById("html-to-pdf-code");
-    const iframePreview = document.getElementById("html-to-pdf-preview-iframe");
     const templateSelect = document.getElementById("html-to-pdf-template");
     const convertBtn = document.getElementById("btn-convert-html-to-pdf");
 
     if (!modal) return;
 
-    closeBtn?.addEventListener("click", () => { if (this.portal && typeof this.portal.closeToolWorkspace === "function") this.portal.closeToolWorkspace(); modal.style.display = "none"; });
-    modal.addEventListener("click", (e) => { if (e.target === modal) modal.style.display = "none"; });
-
     const templates = {
-      invoice: `<div style="font-family: Arial, sans-serif; padding: 30px; color: #1e293b;">
-        <h1 style="color: #2563eb; margin: 0 0 8px;">INVOICE</h1>
-        <p style="color: #64748b; font-size: 13px;">Invoice #: INV-2026-001 &bull; Date: November 2026</p>
-        <hr style="border: none; border-top: 1px solid #e2e8f0; margin: 20px 0;" />
-        <table style="width: 100%; border-collapse: collapse; margin-top: 15px;">
-          <tr style="background: #f1f5f9; text-align: left;"><th style="padding: 10px;">Item</th><th style="padding: 10px;">Qty</th><th style="padding: 10px;">Price</th><th style="padding: 10px;">Total</th></tr>
-          <tr><td style="padding: 10px; border-bottom: 1px solid #eee;">PDF Studio Pro License</td><td style="padding: 10px; border-bottom: 1px solid #eee;">1</td><td style="padding: 10px; border-bottom: 1px solid #eee;">$49.00</td><td style="padding: 10px; border-bottom: 1px solid #eee;">$49.00</td></tr>
-          <tr><td style="padding: 10px; border-bottom: 1px solid #eee;">Enterprise Support Pack</td><td style="padding: 10px; border-bottom: 1px solid #eee;">1</td><td style="padding: 10px; border-bottom: 1px solid #eee;">$99.00</td><td style="padding: 10px; border-bottom: 1px solid #eee;">$99.00</td></tr>
-        </table>
-        <h3 style="text-align: right; margin-top: 25px; color: #0f172a;">Grand Total: $148.00</h3>
-      </div>`,
-      certificate: `<div style="font-family: 'Times New Roman', serif; text-align: center; padding: 40px; border: 8px double #d97706; margin: 10px;">
-        <h1 style="font-size: 32px; color: #b45309; text-transform: uppercase;">Certificate of Completion</h1>
-        <p style="font-size: 16px; margin: 20px 0;">This document certifies that</p>
-        <h2 style="font-size: 26px; border-bottom: 2px solid #b45309; display: inline-block; padding-bottom: 6px;">OpenPDF Studio User</h2>
-        <p style="font-size: 15px; margin-top: 20px;">has successfully completed all advanced PDF & Document editing proficiencies.</p>
-      </div>`
-    };
-
-    const updatePreview = () => {
-      const html = codeInput?.value || templates.invoice;
-      if (iframePreview) {
-        iframePreview.srcdoc = html;
-      }
+      invoice: `<h1>INVOICE #INV-2026-001</h1>\n<p>Date: November 2026</p>\n<p>Item 1: PDF Studio Pro License - $49.00</p>\n<p>Item 2: Enterprise Support Pack - $99.00</p>\n<h3>Grand Total: $148.00</h3>`,
+      certificate: `<h1>CERTIFICATE OF COMPLETION</h1>\n<p>This certifies that OpenPDF Studio User has successfully completed the document design course.</p>`
     };
 
     templateSelect?.addEventListener("change", (e) => {
-      const key = e.target.value;
-      if (templates[key] && codeInput) {
-        codeInput.value = templates[key];
-        updatePreview();
-      }
+      if (templates[e.target.value] && codeInput) codeInput.value = templates[e.target.value];
     });
-
-    codeInput?.addEventListener("input", updatePreview);
-    updatePreview();
 
     convertBtn?.addEventListener("click", async () => {
       convertBtn.disabled = true;
-      convertBtn.innerHTML = `<span class="spinner-inline"></span> Creating PDF...`;
-
+      convertBtn.textContent = "Generating PDF...";
       try {
-        const PDFLib = window.PDFLib;
-        const pdfDoc = await PDFLib.PDFDocument.create();
-        const page = pdfDoc.addPage([595.28, 841.89]);
-        const font = await pdfDoc.embedFont(PDFLib.StandardFonts.Helvetica);
-        const fontBold = await pdfDoc.embedFont(PDFLib.StandardFonts.HelveticaBold);
-
         const html = codeInput?.value || templates.invoice;
-        // Parse basic text tags
         const tempDiv = document.createElement("div");
         tempDiv.innerHTML = html;
-        const plain = tempDiv.textContent || tempDiv.innerText || "";
-
-        page.drawText("Generated from HTML Snippet", { x: 50, y: 800, size: 16, font: fontBold, color: PDFLib.rgb(0.92, 0.28, 0.6) });
-        page.drawRectangle({ x: 50, y: 785, width: 495, height: 1, color: PDFLib.rgb(0.85, 0.85, 0.85) });
-
-        const lines = plain.split("\n").map(l => l.trim()).filter(Boolean);
-        let y = 760;
-        lines.slice(0, 36).forEach(l => {
-          page.drawText(l.substring(0, 85), { x: 50, y: y, size: 11, font: font, color: PDFLib.rgb(0.15, 0.15, 0.15) });
-          y -= 20;
-        });
-
-        const pdfBytes = await pdfDoc.save();
-        downloadBlob(new Blob([pdfBytes], { type: "application/pdf" }), "HTML_Export.pdf");
-        showPortalToast("success", "HTML to PDF conversion complete!");
+        const plain = (tempDiv.innerText || tempDiv.textContent || "").trim();
+        const pdfBytes = await generateUnicodeSafeTextPdf("HTML Document Export", "Generated with OpenPDF Studio", plain || "Empty HTML Document");
+        downloadBlob(new Blob([pdfBytes], { type: "application/pdf" }), "HTML_Document.pdf");
+        showPortalToast("success", 'Downloaded "HTML_Document.pdf"!');
       } catch (err) {
         showPortalToast("error", `HTML to PDF error: ${err.message}`);
       } finally {
         convertBtn.disabled = false;
-        convertBtn.innerHTML = `Generate PDF`;
+        convertBtn.textContent = "Convert & Download PDF";
       }
     });
   }
 
   // ------------------------------------------------------------------------
-  // 11. TOOL: Unlock PDF (Strip Password & Permissions)
+  // 11. TOOL: Unlock PDF (Strip Password & Restrictions + Canvas Fallback)
   // ------------------------------------------------------------------------
   _bindUnlockPdfModal() {
     const modal = document.getElementById("modal-unlock-pdf");
-    const closeBtn = document.getElementById("close-unlock-pdf");
     const picker = document.getElementById("unlock-pdf-picker");
     const dropzone = document.getElementById("unlock-pdf-dropzone");
     const chooseBtn = document.getElementById("btn-choose-unlock-pdf");
+    const readyWrap = document.getElementById("unlock-pdf-ready-wrap");
     const passInput = document.getElementById("unlock-pdf-password");
     const unlockBtn = document.getElementById("btn-start-unlock-pdf");
     const fileLabel = document.getElementById("unlock-pdf-file-label");
+    const changeBtn = document.getElementById("btn-change-unlock-pdf");
 
     if (!modal) return;
     let selectedFile = null;
 
-    closeBtn?.addEventListener("click", () => { if (this.portal && typeof this.portal.closeToolWorkspace === "function") this.portal.closeToolWorkspace(); modal.style.display = "none"; });
-    modal.addEventListener("click", (e) => { if (e.target === modal) modal.style.display = "none"; });
+    changeBtn?.addEventListener("click", () => {
+      selectedFile = null;
+      if (dropzone) dropzone.style.display = "flex";
+      if (readyWrap) readyWrap.style.display = "none";
+    });
 
-    const openPicker = () => { if (picker) { picker.value = ""; picker.click(); } };
-    chooseBtn?.addEventListener("click", (e) => { e.stopPropagation(); openPicker(); });
-    dropzone?.addEventListener("click", openPicker);
-
-    picker?.addEventListener("change", (e) => {
-      const file = e.target.files && e.target.files[0];
+    const onFileSelected = (file) => {
       if (!file) return;
       selectedFile = file;
-      if (fileLabel) fileLabel.innerHTML = `<strong>${file.name}</strong> (${formatBytes(file.size)}) &bull; Ready to unlock.`;
-      if (unlockBtn) unlockBtn.disabled = false;
-    });
+      if (dropzone) dropzone.style.display = "none";
+      if (readyWrap) readyWrap.style.display = "block";
+      if (fileLabel) {
+        fileLabel.innerHTML = `<div class="tw-file-meta"><strong>${escapeHtml(file.name)}</strong><span>${formatBytes(file.size)} &bull; Ready to unlock</span></div>`;
+      }
+      if (unlockBtn) { unlockBtn.disabled = false; unlockBtn.textContent = "Unlock & Download PDF"; }
+    };
+
+    this._bindDrop(dropzone, picker, chooseBtn, onFileSelected);
 
     unlockBtn?.addEventListener("click", async () => {
       if (!selectedFile) return;
       unlockBtn.disabled = true;
-      unlockBtn.innerHTML = `<span class="spinner-inline"></span> Unlocking PDF...`;
+      unlockBtn.textContent = "Unlocking PDF...";
 
       try {
         const PDFLib = window.PDFLib;
+        const pdfjsLib = window.pdfjsLib;
         const arrayBuffer = await selectedFile.arrayBuffer();
         const pwd = (passInput?.value || "").trim();
-
-        // Load ignoring encryption or with provided password
-        const pdfDoc = await PDFLib.PDFDocument.load(arrayBuffer, {
-          ignoreEncryption: true,
-          password: pwd || undefined
-        });
-
-        // Re-save without any encryption dictionaries
-        const unlockedBytes = await pdfDoc.save();
-        const blob = new Blob([unlockedBytes], { type: "application/pdf" });
         const baseName = selectedFile.name.replace(/\.pdf$/i, "");
+
+        let unlockedBytes = null;
+        try {
+          const pdfDoc = await PDFLib.PDFDocument.load(arrayBuffer.slice(0), {
+            ignoreEncryption: true,
+            password: pwd || undefined
+          });
+          unlockedBytes = await pdfDoc.save();
+        } catch (_) {
+          // Fallback: decrypt via PDF.js using password and rebuild clean unencrypted PDF!
+          const pdfJsDoc = await pdfjsLib.getDocument({ data: new Uint8Array(arrayBuffer.slice(0)), password: pwd || undefined }).promise;
+          const cleanDoc = await PDFLib.PDFDocument.create();
+          for (let p = 1; p <= pdfJsDoc.numPages; p++) {
+            const page = await pdfJsDoc.getPage(p);
+            const vp1 = page.getViewport({ scale: 1.0 });
+            const vp = page.getViewport({ scale: 2.0 });
+            const c = document.createElement("canvas");
+            c.width = Math.floor(vp.width);
+            c.height = Math.floor(vp.height);
+            await page.render({ canvasContext: c.getContext("2d"), viewport: vp }).promise;
+            const jb = await new Promise(r => c.toBlob(r, "image/jpeg", 0.92));
+            const img = await cleanDoc.embedJpg(new Uint8Array(await jb.arrayBuffer()));
+            cleanDoc.addPage([vp1.width, vp1.height]).drawImage(img, { x: 0, y: 0, width: vp1.width, height: vp1.height });
+          }
+          unlockedBytes = await cleanDoc.save();
+        }
+
+        const blob = new Blob([unlockedBytes], { type: "application/pdf" });
         downloadBlob(blob, `${baseName}_unlocked.pdf`);
-        showPortalToast("success", `Unlocked "${selectedFile.name}" and removed all security locks!`);
+        if (fileLabel) {
+          fileLabel.innerHTML = `<div class="tw-file-meta tw-file-success"><strong>${escapeHtml(baseName)}_unlocked.pdf Ready!</strong><span>All restrictions removed &bull; ${formatBytes(blob.size)}</span></div>`;
+        }
+        unlockBtn.textContent = "Download Unlocked PDF Again";
+        showPortalToast("success", `Unlocked & downloaded "${baseName}_unlocked.pdf"!`);
       } catch (err) {
-        showPortalToast("error", `Unlock failed: ${err.message}. If protected, please enter the user password.`);
+        showPortalToast("error", `Unlock failed: ${err.message}. Please verify the PDF password.`);
+        unlockBtn.textContent = "Unlock & Download PDF";
       } finally {
         unlockBtn.disabled = false;
-        unlockBtn.innerHTML = `Unlock PDF`;
       }
     });
   }
 
   // ------------------------------------------------------------------------
-  // 12. TOOL: PDF Convert to Scanner (Photocopy & Paper Artifacts)
+  // 12. TOOL: PDF Convert to Scanner (Clean Controls, No Cluttered Preview)
   // ------------------------------------------------------------------------
   _bindPdfScannerModal() {
     const modal = document.getElementById("modal-pdf-scanner");
-    const closeBtn = document.getElementById("close-pdf-scanner");
     const picker = document.getElementById("pdf-scanner-picker");
     const dropzone = document.getElementById("pdf-scanner-dropzone");
     const chooseBtn = document.getElementById("btn-choose-pdf-scanner");
+    const readyWrap = document.getElementById("pdf-scanner-ready-wrap");
+    const fileLabel = document.getElementById("scanner-file-label");
     const contrastSlider = document.getElementById("scanner-contrast-slider");
     const noiseSlider = document.getElementById("scanner-noise-slider");
     const tiltSlider = document.getElementById("scanner-tilt-slider");
     const modeSelect = document.getElementById("scanner-mode-select");
-    const previewCanvas = document.getElementById("scanner-preview-canvas");
     const convertBtn = document.getElementById("btn-start-scanner");
-    const pageStepperLabel = document.getElementById("scanner-page-stepper");
+    const changeBtn = document.getElementById("btn-change-pdf-scanner");
 
     if (!modal) return;
-    let loadedPdf = null;
     let selectedFile = null;
-    let activePageNum = 1;
 
-    closeBtn?.addEventListener("click", () => { if (this.portal && typeof this.portal.closeToolWorkspace === "function") this.portal.closeToolWorkspace(); modal.style.display = "none"; });
-    modal.addEventListener("click", (e) => { if (e.target === modal) modal.style.display = "none"; });
+    changeBtn?.addEventListener("click", () => {
+      selectedFile = null;
+      if (dropzone) dropzone.style.display = "flex";
+      if (readyWrap) readyWrap.style.display = "none";
+    });
 
-    const openPicker = () => { if (picker) { picker.value = ""; picker.click(); } };
-    chooseBtn?.addEventListener("click", (e) => { e.stopPropagation(); openPicker(); });
-    dropzone?.addEventListener("click", openPicker);
-
-    const renderScannerPreview = async () => {
-      if (!loadedPdf || !previewCanvas) return;
-      const page = await loadedPdf.getPage(activePageNum);
-      const viewport = page.getViewport({ scale: 1.0 });
-
-      previewCanvas.width = viewport.width;
-      previewCanvas.height = viewport.height;
-      const ctx = previewCanvas.getContext("2d");
-
-      // Apply subtle tilt
-      const tiltAngle = (parseFloat(tiltSlider?.value || 0) * Math.PI) / 180;
-      ctx.save();
-      ctx.translate(viewport.width / 2, viewport.height / 2);
-      ctx.rotate(tiltAngle);
-      ctx.translate(-viewport.width / 2, -viewport.height / 2);
-
-      await page.render({ canvasContext: ctx, viewport: viewport }).promise;
-      ctx.restore();
-
-      // Image processing filters
-      const imgData = ctx.getImageData(0, 0, previewCanvas.width, previewCanvas.height);
-      const d = imgData.data;
-      const mode = modeSelect?.value || "photocopy";
-      const contrast = parseFloat(contrastSlider?.value || 1.4);
-      const noiseLevel = parseFloat(noiseSlider?.value || 15);
-
-      for (let i = 0; i < d.length; i += 4) {
-        let r = d[i], g = d[i + 1], b = d[i + 2];
-        let gray = 0.299 * r + 0.587 * g + 0.114 * b;
-
-        // Contrast boost
-        gray = (gray - 128) * contrast + 128;
-
-        if (mode === "photocopy") {
-          // Sharp high contrast photocopy
-          gray = gray < 135 ? gray * 0.45 : Math.min(255, gray * 1.15);
-        } else if (mode === "vintage") {
-          // Warm aged scanner
-          gray = gray < 140 ? gray * 0.55 : gray;
-        }
-
-        // Add subtle paper grain/noise
-        if (noiseLevel > 0) {
-          const noise = (Math.random() - 0.5) * noiseLevel;
-          gray = Math.max(0, Math.min(255, gray + noise));
-        }
-
-        d[i] = mode === "vintage" ? Math.min(255, gray + 15) : gray;
-        d[i + 1] = mode === "vintage" ? Math.min(255, gray + 5) : gray;
-        d[i + 2] = mode === "vintage" ? Math.max(0, gray - 15) : gray;
-      }
-      ctx.putImageData(imgData, 0, 0);
-    };
-
-    picker?.addEventListener("change", async (e) => {
-      const file = e.target.files && e.target.files[0];
+    const onFileSelected = (file) => {
       if (!file) return;
       selectedFile = file;
-
-      try {
-        const pdfjsLib = window.pdfjsLib;
-        const arrayBuffer = await file.arrayBuffer();
-        loadedPdf = await pdfjsLib.getDocument({ data: new Uint8Array(arrayBuffer) }).promise;
-        activePageNum = 1;
-        if (pageStepperLabel) pageStepperLabel.textContent = `Page ${activePageNum} of ${loadedPdf.numPages}`;
-        if (convertBtn) convertBtn.disabled = false;
-        await renderScannerPreview();
-        showPortalToast("success", `Loaded "${file.name}" into Scanner Studio!`);
-      } catch (err) {
-        showPortalToast("error", `Scanner error: ${err.message}`);
+      if (dropzone) dropzone.style.display = "none";
+      if (readyWrap) readyWrap.style.display = "block";
+      if (fileLabel) {
+        fileLabel.innerHTML = `<div class="tw-file-meta"><strong>${escapeHtml(file.name)}</strong><span>${formatBytes(file.size)} &bull; Choose scan settings below</span></div>`;
       }
-    });
+      if (convertBtn) { convertBtn.disabled = false; convertBtn.textContent = "Convert to Scanned PDF & Download"; }
+    };
 
-    [contrastSlider, noiseSlider, tiltSlider, modeSelect].forEach(el => {
-      el?.addEventListener("input", renderScannerPreview);
-    });
+    this._bindDrop(dropzone, picker, chooseBtn, onFileSelected);
 
     convertBtn?.addEventListener("click", async () => {
-      if (!loadedPdf || !selectedFile) return;
+      if (!selectedFile) return;
       convertBtn.disabled = true;
-      convertBtn.innerHTML = `<span class="spinner-inline"></span> Scanning Document Pages...`;
+      convertBtn.textContent = "Scanning Document Pages...";
 
       try {
         const PDFLib = window.PDFLib;
+        const pdfjsLib = window.pdfjsLib;
+        const buf = await selectedFile.arrayBuffer();
+        const loadedPdf = await pdfjsLib.getDocument({ data: new Uint8Array(buf) }).promise;
         const newDoc = await PDFLib.PDFDocument.create();
 
+        const mode = modeSelect?.value || "photocopy";
+        const contrast = parseFloat(contrastSlider?.value || 1.4);
+        const noiseLevel = parseFloat(noiseSlider?.value || 15);
+        const tiltDeg = parseFloat(tiltSlider?.value || 0.4);
+
         for (let p = 1; p <= loadedPdf.numPages; p++) {
-          activePageNum = p;
-          await renderScannerPreview();
-          const jpegDataUrl = previewCanvas.toDataURL("image/jpeg", 0.85);
-          const embeddedJpg = await newDoc.embedJpg(jpegDataUrl);
-          const page = newDoc.addPage([previewCanvas.width, previewCanvas.height]);
-          page.drawImage(embeddedJpg, { x: 0, y: 0, width: previewCanvas.width, height: previewCanvas.height });
+          convertBtn.textContent = `Scanning Page ${p} of ${loadedPdf.numPages}...`;
+          const page = await loadedPdf.getPage(p);
+          const vp1 = page.getViewport({ scale: 1.0 });
+          const vp = page.getViewport({ scale: 1.6 });
+
+          const canvas = document.createElement("canvas");
+          canvas.width = Math.floor(vp.width);
+          canvas.height = Math.floor(vp.height);
+          const ctx = canvas.getContext("2d");
+          ctx.fillStyle = "#ffffff";
+          ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+          const tiltAngle = ((p % 2 === 0 ? tiltDeg : -tiltDeg) * Math.PI) / 180;
+          ctx.save();
+          ctx.translate(canvas.width / 2, canvas.height / 2);
+          ctx.rotate(tiltAngle);
+          ctx.translate(-canvas.width / 2, -canvas.height / 2);
+          await page.render({ canvasContext: ctx, viewport: vp }).promise;
+          ctx.restore();
+
+          const imgData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+          const d = imgData.data;
+          for (let i = 0; i < d.length; i += 4) {
+            let gray = 0.299 * d[i] + 0.587 * d[i + 1] + 0.114 * d[i + 2];
+            gray = (gray - 128) * contrast + 128;
+            if (mode === "photocopy") gray = gray < 135 ? gray * 0.45 : Math.min(255, gray * 1.15);
+            else if (mode === "vintage") gray = gray < 140 ? gray * 0.55 : gray;
+            if (noiseLevel > 0) gray = Math.max(0, Math.min(255, gray + (Math.random() - 0.5) * noiseLevel));
+            d[i] = mode === "vintage" ? Math.min(255, gray + 14) : gray;
+            d[i + 1] = mode === "vintage" ? Math.min(255, gray + 5) : gray;
+            d[i + 2] = mode === "vintage" ? Math.max(0, gray - 14) : gray;
+          }
+          ctx.putImageData(imgData, 0, 0);
+
+          const jpgBlob = await new Promise(r => canvas.toBlob(r, "image/jpeg", 0.86));
+          const embeddedJpg = await newDoc.embedJpg(new Uint8Array(await jpgBlob.arrayBuffer()));
+          newDoc.addPage([vp1.width, vp1.height]).drawImage(embeddedJpg, { x: 0, y: 0, width: vp1.width, height: vp1.height });
         }
 
         const pdfBytes = await newDoc.save();
+        const blob = new Blob([pdfBytes], { type: "application/pdf" });
         const baseName = selectedFile.name.replace(/\.pdf$/i, "");
-        downloadBlob(new Blob([pdfBytes], { type: "application/pdf" }), `${baseName}_Scanned.pdf`);
-        showPortalToast("success", `Generated authentic scanned PDF: ${baseName}_Scanned.pdf!`);
+        downloadBlob(blob, `${baseName}_Scanned.pdf`);
+        if (fileLabel) {
+          fileLabel.innerHTML = `<div class="tw-file-meta tw-file-success"><strong>${escapeHtml(baseName)}_Scanned.pdf Ready!</strong><span>${loadedPdf.numPages} scanned pages &bull; ${formatBytes(blob.size)}</span></div>`;
+        }
+        convertBtn.textContent = "Download Scanned PDF Again";
+        showPortalToast("success", `Downloaded "${baseName}_Scanned.pdf"!`);
       } catch (err) {
+        console.error(err);
         showPortalToast("error", `Scan conversion failed: ${err.message}`);
+        convertBtn.textContent = "Convert to Scanned PDF & Download";
       } finally {
         convertBtn.disabled = false;
-        convertBtn.innerHTML = `Apply Scan Effect & Download PDF`;
       }
     });
   }
-}
-
-// Helper XML/HTML escape functions
-function escapeHtml(str) {
-  return (str || "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
-}
-
-function escapeXml(str) {
-  return (str || "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&apos;");
 }

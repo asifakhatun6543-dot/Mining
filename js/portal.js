@@ -3,7 +3,7 @@
  * Powered by PDF-Lib, PDF.js, and HTML5 Canvas
  */
 
-import { AdvancedToolsManager } from "./portal-advanced-tools.js";
+import { AdvancedToolsManager } from "./portal-advanced-tools.js?v=4.0";
 
 export class PortalManager {
   constructor() {
@@ -179,6 +179,9 @@ export class PortalManager {
 
     const targetPanel = document.getElementById(panelId);
     if (targetPanel) {
+      // Reset to clean Select Files stage whenever a tool is opened fresh
+      const resetBtn = targetPanel.querySelector(".tw-change-btn");
+      if (resetBtn) resetBtn.click();
       targetPanel.style.display = "block";
     }
 
