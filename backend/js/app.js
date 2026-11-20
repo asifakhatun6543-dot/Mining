@@ -169,6 +169,20 @@ class OpenPDFStudioApp {
       document.getElementById("header-open-btn")?.click();
     });
 
+    document.getElementById("menu-opt-chat-ai")?.addEventListener("click", () => {
+      if (dropdownMenu) dropdownMenu.style.display = "none";
+      if (window.MobileLiquidNavController) {
+        window.MobileLiquidNavController.setTab("chat-ai", 2);
+      }
+    });
+
+    document.getElementById("menu-opt-history")?.addEventListener("click", () => {
+      if (dropdownMenu) dropdownMenu.style.display = "none";
+      if (window.MobileLiquidNavController) {
+        window.MobileLiquidNavController.setTab("history", 3);
+      }
+    });
+
     // Open file button
     document.getElementById("header-open-btn")?.addEventListener("click", () => {
       const picker = document.getElementById("pdf-file-picker");
@@ -908,6 +922,20 @@ class OpenPDFStudioApp {
 
       const totalPagesEl = document.getElementById("total-pages-label");
       if (totalPagesEl) totalPagesEl.textContent = docInfo.page_count;
+
+      // Sync with Recent History & Mobile Liquid Nav Assistant
+      if (window.RecentHistoryManager) {
+        const sizeStr = file.size ? ((file.size / (1024 * 1024)).toFixed(1) + " MB") : "Active Doc";
+        window.RecentHistoryManager.add({
+          name: file.name,
+          tool: "PDF Editor",
+          type: "pdf",
+          size: sizeStr
+        });
+      }
+      if (window.MobileLiquidNavController) {
+        window.MobileLiquidNavController.syncActiveDocument(file.name, "", docInfo.page_count);
+      }
 
       // Step 5: Render Document on Canvas
       this._updateLoadingProgress("Rendering high-resolution page canvas...", 88);

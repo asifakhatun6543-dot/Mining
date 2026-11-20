@@ -14,6 +14,28 @@ if (typeof window !== "undefined" && window.pdfjsLib && !window.pdfjsLib.GlobalW
 // --------------------------------------------------------------------------
 export function downloadBlob(blob, filename) {
   try {
+    if (typeof window !== "undefined" && window.RecentHistoryManager) {
+      const lower = (filename || "").toLowerCase();
+      let toolName = "PDF Export";
+      let type = "pdf";
+      if (lower.endsWith(".docx")) { toolName = "PDF to Word"; type = "docx"; }
+      else if (lower.endsWith(".xlsx")) { toolName = "PDF to Excel"; type = "xlsx"; }
+      else if (lower.endsWith(".pptx")) { toolName = "PDF to PowerPoint"; type = "pptx"; }
+      else if (lower.includes("compress")) { toolName = "Compress PDF"; type = "pdf"; }
+      else if (lower.includes("scanner")) { toolName = "PDF Scanner"; type = "pdf"; }
+      else if (lower.includes("unlock")) { toolName = "Unlock PDF"; type = "pdf"; }
+      else if (lower.includes("summary")) { toolName = "AI Summarizer"; type = "ai"; }
+      else if (lower.includes("translat")) { toolName = "PDF Translator"; type = "pdf"; }
+
+      const sizeStr = blob && blob.size ? formatBytes(blob.size) : "1.0 MB";
+      window.RecentHistoryManager.add({
+        name: filename,
+        tool: toolName,
+        type: type,
+        size: sizeStr
+      });
+    }
+
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;

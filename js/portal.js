@@ -3,7 +3,13 @@
  * Powered by PDF-Lib, PDF.js, and HTML5 Canvas
  */
 
-import { AdvancedToolsManager } from "./portal-advanced-tools.js?v=4.0";
+import { AdvancedToolsManager, formatBytes } from "./portal-advanced-tools.js?v=4.1";
+import { MobileLiquidNavController, RecentHistoryManager } from "./mobile-liquid-nav.js?v=4.1";
+
+if (typeof window !== "undefined") {
+  window.MobileLiquidNavController = MobileLiquidNavController;
+  window.RecentHistoryManager = RecentHistoryManager;
+}
 
 export class PortalManager {
   constructor() {
@@ -51,6 +57,7 @@ export class PortalManager {
     });
 
     this.advancedTools = new AdvancedToolsManager(this);
+    MobileLiquidNavController.init();
   }
 
   // ------------------------------------------------------------------------
@@ -60,11 +67,13 @@ export class PortalManager {
     if (viewName === "editor") {
       if (this.landingView) this.landingView.style.display = "none";
       if (this.editorView) this.editorView.style.display = "flex";
+      MobileLiquidNavController.hide();
       window.scrollTo(0, 0);
       window.location.hash = "#editor";
     } else {
       if (this.editorView) this.editorView.style.display = "none";
       if (this.landingView) this.landingView.style.display = "flex";
+      MobileLiquidNavController.show();
       window.scrollTo(0, 0);
       history.replaceState(null, null, " ");
     }
@@ -262,6 +271,14 @@ export class PortalManager {
   }
 
   _loadPDFIntoApp(file) {
+    if (file) {
+      RecentHistoryManager.add({
+        name: file.name,
+        tool: "PDF Editor",
+        type: "pdf",
+        size: formatBytes(file.size)
+      });
+    }
     if (window.app && typeof window.app.loadPDFFile === "function") {
       window.app.loadPDFFile(file);
       return;
