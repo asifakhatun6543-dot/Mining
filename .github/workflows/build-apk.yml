@@ -44,12 +44,11 @@ jobs:
       - name: Build Android Release APK
         working-directory: openpdf_mobile
         run: |
-          flutter build apk --release --no-tree-shake-icons 2>&1 | tee /tmp/build.log || (echo "=== BUILD ERROR TAIL ===" && tail -n 100 /tmp/build.log && exit 1)
+          flutter build apk --release --no-tree-shake-icons
 
       - name: Prepare Release APK Artifact
         run: |
           mkdir -p output_apk
-          echo "Searching for generated APK files..."
           find openpdf_mobile/build -name "*.apk"
           find openpdf_mobile/build -name "*release*.apk" -exec cp {} output_apk/OpenPDF-Studio-Release.apk \;
           echo "Prepared APK file:"
@@ -65,17 +64,17 @@ jobs:
       - name: Publish GitHub Release with Direct APK Download
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: v1.0.1
-          name: "OpenPDF Studio v1.0.1 — Production Android APK"
+          tag_name: v1.0.2
+          name: "OpenPDF Studio v1.0.2 — Production Android APK"
           allowUpdates: true
           generate_release_notes: false
           draft: false
           prerelease: false
           body: |
-            ## 📱 OpenPDF Studio — Production Android APK (Release v1.0.1)
+            ## 📱 OpenPDF Studio — Production Android APK (Release v1.0.2)
 
             Direct APK Download:
-            👉 **[OpenPDF-Studio-Release.apk](https://github.com/${{ github.repository }}/releases/download/v1.0.1/OpenPDF-Studio-Release.apk)**
+            👉 **[OpenPDF-Studio-Release.apk](https://github.com/${{ github.repository }}/releases/download/v1.0.2/OpenPDF-Studio-Release.apk)**
 
             ---
             ### ✨ Included Features & Architecture:
@@ -89,15 +88,16 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Commit and Push APK directly to apk-dist Branch
+      - name: Commit and Push APK directly to release-apk Branch
         continue-on-error: true
         run: |
           git config --global user.name "github-actions[bot]"
           git config --global user.email "github-actions[bot]@users.noreply.github.com"
           git remote set-url origin https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git
+          git checkout --orphan release-apk
+          git rm -rf .
           mkdir -p apk_dist
           cp output_apk/OpenPDF-Studio-Release.apk apk_dist/OpenPDF-Studio-Release.apk
-          git checkout -B apk-dist
-          git add -f apk_dist/OpenPDF-Studio-Release.apk
-          git commit -m "chore: publish compiled OpenPDF-Studio-Release.apk binary directly"
-          git push -f origin apk-dist
+          git add apk_dist/OpenPDF-Studio-Release.apk
+          git commit -m "chore: publish standalone APK binary"
+          git push -f origin release-apk
