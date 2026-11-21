@@ -1,0 +1,27 @@
+Upgrading gradle.properties
+Running Gradle task 'assembleRelease'...                        
+
+FAILURE: Build failed with an exception.
+
+* Where:
+Build file '/home/runner/work/Mining/Mining/openpdf_mobile/android/app/build.gradle' line: 4
+
+* What went wrong:
+An exception occurred applying plugin request [id: 'dev.flutter.flutter-gradle-plugin']
+> Failed to apply plugin 'dev.flutter.flutter-gradle-plugin'.
+   > Error: Your project's Gradle version (8.7.0) is lower than Flutter's minimum supported version of 9.3.1. Please upgrade your Gradle version. 
+     Alternatively, use the flag "--android-skip-build-dependency-validation" to bypass this check.
+
+     Potential fix: Your project's gradle version is typically defined in the gradle wrapper file. By default, this can be found at /home/runner/work/Mining/Mining/openpdf_mobile/android/gradle/wrapper/gradle-wrapper.properties. 
+     For more information, see https://docs.gradle.org/current/userguide/gradle_wrapper.html.
+
+
+* Try:
+> Run with --stacktrace option to get the stack trace.
+> Run with --info or --debug option to get more log output.
+> Run with --scan to get full insights.
+> Get more help at https://help.gradle.org.
+
+BUILD FAILED in 1m 7s
+Running Gradle task 'assembleRelease'...                           68.4s
+Gradle task assembleRelease failed with exit code 1
