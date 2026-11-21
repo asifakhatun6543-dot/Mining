@@ -30,16 +30,10 @@ jobs:
           channel: 'stable'
           cache: true
 
-      - name: Generate Official Android Platform Harness
+      - name: Install Dependencies
         working-directory: openpdf_mobile
         run: |
-          cp android/app/src/main/AndroidManifest.xml /tmp/AndroidManifest.xml
-          rm -rf android
-          flutter create . --platforms=android --org com.openpdf.studio
-          cp /tmp/AndroidManifest.xml android/app/src/main/AndroidManifest.xml
           rm -f test/widget_test.dart
-          sed -i 's/minSdkVersion = flutter.minSdkVersion/minSdkVersion = 24/g' android/app/build.gradle || true
-          sed -i 's/minSdkVersion flutter.minSdkVersion/minSdkVersion 24/g' android/app/build.gradle || true
           flutter pub get
 
       - name: Run Unit Verification Tests
@@ -49,7 +43,8 @@ jobs:
 
       - name: Build Android Release APK
         working-directory: openpdf_mobile
-        run: flutter build apk --release --no-tree-shake-icons -v
+        run: |
+          flutter build apk --release --no-tree-shake-icons 2>&1 | tee /tmp/build.log || (echo "=== BUILD ERROR TAIL ===" && tail -n 100 /tmp/build.log && exit 1)
 
       - name: Prepare Release APK Artifact
         run: |
