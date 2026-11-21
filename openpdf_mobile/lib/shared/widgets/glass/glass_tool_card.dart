@@ -120,10 +120,18 @@ class GlassToolCard extends StatelessWidget {
                   color: tool.accentColor,
                 ),
               ),
-              Icon(
-                Icons.arrow_forward_rounded,
-                size: 14,
-                color: tool.accentColor,
+              Container(
+                width: 26,
+                height: 26,
+                decoration: BoxDecoration(
+                  color: isDark ? const Color(0x1FFFFFFF) : const Color(0x0F000000),
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(
+                  Icons.north_east_rounded,
+                  size: 14,
+                  color: tool.accentColor,
+                ),
               ),
             ],
           ),

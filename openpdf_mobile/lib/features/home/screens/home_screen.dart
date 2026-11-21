@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/app_strings.dart';
 import '../../../core/services/file_service.dart';
@@ -13,7 +14,14 @@ import '../../../shared/widgets/glass/glass_file_card.dart';
 import '../../tools/screens/tool_workspace_screen.dart';
 import '../../settings/screens/settings_screen.dart';
 
-/// OpenPDF Studio - Mobile Executive Home Dashboard
+/// OpenPDF Studio - Executive Mobile Home Dashboard
+/// Styled to match the dark Liquid Glass visual aesthetic (Image 2 reference):
+/// - Top Status Bar with pill badge & avatar
+/// - Dynamic real-time date + Hero gradient headline ("Your Documents, Mastered Today")
+/// - Glowing "Your AI Assistant" card with action pill
+/// - "Today's Activity / Progress" neon capsule card
+/// - Quick Actions & Popular Tools with top-right diagonal arrows (↗)
+/// - Recent Documents list
 class HomeScreen extends StatefulWidget {
   final ValueChanged<int> onNavigateTab;
 
@@ -24,13 +32,6 @@ class HomeScreen extends StatefulWidget {
 }
 
 class _HomeScreenState extends State<HomeScreen> {
-  String _getGreeting() {
-    final hour = DateTime.now().hour;
-    if (hour < 12) return AppStrings.greetingMorning;
-    if (hour < 17) return AppStrings.greetingAfternoon;
-    return AppStrings.greetingEvening;
-  }
-
   void _openTool(ToolEntity tool) {
     Navigator.of(context).push(
       MaterialPageRoute(builder: (_) => ToolWorkspaceScreen(tool: tool)),
@@ -41,6 +42,7 @@ class _HomeScreenState extends State<HomeScreen> {
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final popularTools = ToolsData.allTools.where((t) => t.isPopular).take(6).toList();
+    final todayFormatted = DateFormat('EEEE, d MMM yyyy').format(DateTime.now());
 
     return Scaffold(
       backgroundColor: Colors.transparent,
@@ -49,70 +51,391 @@ class _HomeScreenState extends State<HomeScreen> {
         child: CustomScrollView(
           physics: const BouncingScrollPhysics(),
           slivers: [
-            // 1. Header (Logo, Greeting, Settings Gear)
+            // -----------------------------------------------------------------
+            // 1. Top Bar: App Pill Badge, Notifications, Profile Avatar (Image 2)
+            // -----------------------------------------------------------------
             SliverToBoxAdapter(
               child: Padding(
-                padding: const EdgeInsets.fromLTRB(20, 14, 20, 16),
+                padding: const EdgeInsets.fromLTRB(20, 12, 20, 10),
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
+                    // Left: Logo & Active Tools Badge
+                    Row(
                       children: [
-                        Text(
-                          _getGreeting(),
-                          style: TextStyle(
-                            fontSize: 13,
-                            fontWeight: FontWeight.w500,
-                            color: isDark ? AppColors.darkSecondaryText : AppColors.lightSecondaryText,
+                        Container(
+                          width: 32,
+                          height: 32,
+                          decoration: BoxDecoration(
+                            gradient: const LinearGradient(
+                              colors: [AppColors.brandRed, Color(0xFFF43F5E)],
+                              begin: Alignment.topLeft,
+                              end: Alignment.bottomRight,
+                            ),
+                            borderRadius: BorderRadius.circular(10),
+                            boxShadow: [
+                              BoxShadow(color: AppColors.brandRed.withOpacity(0.35), blurRadius: 10, offset: const Offset(0, 3)),
+                            ],
+                          ),
+                          child: const Center(
+                            child: Text('P', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w900, fontSize: 18)),
                           ),
                         ),
-                        const SizedBox(height: 2),
-                        Row(
-                          children: [
-                            Container(
-                              width: 26,
-                              height: 26,
-                              decoration: BoxDecoration(
-                                color: AppColors.brandRed,
-                                borderRadius: BorderRadius.circular(8),
-                              ),
-                              child: const Center(
-                                child: Text('P', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w900, fontSize: 16)),
-                              ),
+                        const SizedBox(width: 10),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                          decoration: BoxDecoration(
+                            color: isDark ? const Color(0x1FFFFFFF) : const Color(0x0F000000),
+                            borderRadius: BorderRadius.circular(9999),
+                            border: Border.all(
+                              color: isDark ? const Color(0x2EFFFFFF) : const Color(0x18000000),
+                              width: 0.8,
                             ),
-                            const SizedBox(width: 8),
-                            Text(
-                              'OpenPDF Studio',
-                              style: TextStyle(
-                                fontSize: 20,
-                                fontWeight: FontWeight.w800,
-                                color: isDark ? AppColors.darkPrimaryText : AppColors.lightPrimaryText,
-                                letterSpacing: -0.4,
+                          ),
+                          child: Row(
+                            children: [
+                              Icon(Icons.bolt_rounded, size: 14, color: isDark ? const Color(0xFFD4FF32) : AppColors.brandRed),
+                              const SizedBox(width: 4),
+                              Text(
+                                '23 Tools Ready',
+                                style: TextStyle(
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.w700,
+                                  color: isDark ? AppColors.darkPrimaryText : AppColors.lightPrimaryText,
+                                ),
                               ),
-                            ),
-                          ],
+                            ],
+                          ),
                         ),
                       ],
                     ),
-                    IconButton(
-                      icon: const Icon(Icons.settings_outlined, size: 24),
-                      color: isDark ? AppColors.darkPrimaryText : AppColors.lightPrimaryText,
-                      onPressed: () {
-                        Navigator.of(context).push(
-                          MaterialPageRoute(builder: (_) => const SettingsScreen()),
-                        );
-                      },
+
+                    // Right: Notification Bell & Settings Avatar
+                    Row(
+                      children: [
+                        IconButton(
+                          icon: const Icon(Icons.notifications_none_rounded, size: 22),
+                          color: isDark ? AppColors.darkPrimaryText : AppColors.lightPrimaryText,
+                          onPressed: () {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(content: Text('All document engines operating locally and offline ✓')),
+                            );
+                          },
+                        ),
+                        GestureDetector(
+                          onTap: () {
+                            Navigator.of(context).push(
+                              MaterialPageRoute(builder: (_) => const SettingsScreen()),
+                            );
+                          },
+                          child: Container(
+                            width: 34,
+                            height: 34,
+                            decoration: BoxDecoration(
+                              shape: BoxShape.circle,
+                              gradient: const LinearGradient(
+                                colors: [Color(0xFF6366F1), Color(0xFFA855F7)],
+                              ),
+                              border: Border.all(color: Colors.white, width: 1.5),
+                            ),
+                            child: const Icon(Icons.person_rounded, size: 20, color: Colors.white),
+                          ),
+                        ),
+                      ],
                     ),
                   ],
                 ),
               ),
             ),
 
-            // 2. Executive Smart Search
+            // -----------------------------------------------------------------
+            // 2. Hero Headline: "Your Documents, Mastered Today" (Image 2 style)
+            // -----------------------------------------------------------------
+            SliverToBoxAdapter(
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(20, 8, 20, 16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      todayFormatted,
+                      style: TextStyle(
+                        fontSize: 12.5,
+                        fontWeight: FontWeight.w600,
+                        color: isDark ? AppColors.darkSecondaryText : AppColors.lightSecondaryText,
+                        letterSpacing: 0.2,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      'Your Documents,',
+                      style: TextStyle(
+                        fontSize: 26,
+                        fontWeight: FontWeight.w800,
+                        color: isDark ? AppColors.darkPrimaryText : AppColors.lightPrimaryText,
+                        letterSpacing: -0.6,
+                        height: 1.15,
+                      ),
+                    ),
+                    ShaderMask(
+                      shaderCallback: (bounds) => LinearGradient(
+                        colors: isDark
+                            ? [const Color(0xFFD4FF32), const Color(0xFF38BDF8)]
+                            : [AppColors.brandRed, const Color(0xFFF43F5E)],
+                      ).createShader(bounds),
+                      child: const Text(
+                        'Mastered Today',
+                        style: TextStyle(
+                          fontSize: 26,
+                          fontWeight: FontWeight.w900,
+                          color: Colors.white,
+                          letterSpacing: -0.6,
+                          height: 1.15,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+
+            // -----------------------------------------------------------------
+            // 3. "Your AI Assistant" Hero Card (Exact Image 2 layout)
+            // -----------------------------------------------------------------
             SliverToBoxAdapter(
               child: Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 20),
+                child: GlassCard(
+                  onTap: () => widget.onNavigateTab(2), // Switch to Chat AI
+                  gradient: LinearGradient(
+                    colors: isDark
+                        ? [
+                            const Color(0xFF1E2B1E),
+                            const Color(0xFF111E2E),
+                          ]
+                        : [
+                            const Color(0xFFEFFDF5),
+                            const Color(0xFFEFF6FF),
+                          ],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                  ),
+                  borderColor: isDark ? const Color(0x40D4FF32) : const Color(0x3310B981),
+                  padding: const EdgeInsets.all(20),
+                  child: Stack(
+                    children: [
+                      // Glowing Ambient Orb on right side
+                      Positioned(
+                        right: -10,
+                        top: 0,
+                        bottom: 0,
+                        child: Container(
+                          width: 80,
+                          height: 80,
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            gradient: RadialGradient(
+                              colors: [
+                                (isDark ? const Color(0xFFD4FF32) : const Color(0xFF10B981)).withOpacity(0.35),
+                                Colors.transparent,
+                              ],
+                            ),
+                          ),
+                          child: Icon(
+                            Icons.auto_awesome_rounded,
+                            size: 42,
+                            color: isDark ? const Color(0xFFD4FF32) : const Color(0xFF10B981),
+                          ),
+                        ),
+                      ),
+
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            children: [
+                              Text(
+                                'Your AI Assistant',
+                                style: TextStyle(
+                                  fontSize: 17,
+                                  fontWeight: FontWeight.w800,
+                                  color: isDark ? AppColors.darkPrimaryText : AppColors.lightPrimaryText,
+                                  letterSpacing: -0.3,
+                                ),
+                              ),
+                              const SizedBox(width: 6),
+                              Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                decoration: BoxDecoration(
+                                  color: (isDark ? const Color(0xFFD4FF32) : const Color(0xFF10B981)).withOpacity(0.2),
+                                  borderRadius: BorderRadius.circular(6),
+                                ),
+                                child: Text(
+                                  'Private',
+                                  style: TextStyle(
+                                    fontSize: 9,
+                                    fontWeight: FontWeight.w800,
+                                    color: isDark ? const Color(0xFFD4FF32) : const Color(0xFF10B981),
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 6),
+                          SizedBox(
+                            width: 220,
+                            child: Text(
+                              'Summarize, translate, and extract insights from documents instantly.',
+                              style: TextStyle(
+                                fontSize: 12,
+                                fontWeight: FontWeight.w400,
+                                color: isDark ? AppColors.darkSecondaryText : AppColors.lightSecondaryText,
+                                height: 1.35,
+                              ),
+                            ),
+                          ),
+                          const SizedBox(height: 16),
+
+                          // Glowing Action Pill Button
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
+                            decoration: BoxDecoration(
+                              gradient: LinearGradient(
+                                colors: isDark
+                                    ? [const Color(0xFFD4FF32), const Color(0xFFA3E635)]
+                                    : [AppColors.brandRed, const Color(0xFFF43F5E)],
+                              ),
+                              borderRadius: BorderRadius.circular(9999),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: (isDark ? const Color(0xFFD4FF32) : AppColors.brandRed).withOpacity(0.35),
+                                  blurRadius: 14,
+                                  offset: const Offset(0, 4),
+                                ),
+                              ],
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Text(
+                                  'Ask AI anything',
+                                  style: TextStyle(
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.w800,
+                                    color: isDark ? const Color(0xFF0F172A) : Colors.white,
+                                  ),
+                                ),
+                                const SizedBox(width: 6),
+                                Icon(
+                                  Icons.north_east_rounded,
+                                  size: 14,
+                                  color: isDark ? const Color(0xFF0F172A) : Colors.white,
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+
+            // -----------------------------------------------------------------
+            // 4. "Today's Activity / Progress" Card (Image 2 style)
+            // -----------------------------------------------------------------
+            SliverToBoxAdapter(
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(20, 16, 20, 0),
+                child: GlassContainer(
+                  padding: const EdgeInsets.all(16),
+                  borderRadius: 18,
+                  child: Column(
+                    children: [
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Text(
+                            "Today's Activity",
+                            style: TextStyle(
+                              fontSize: 13,
+                              fontWeight: FontWeight.w700,
+                              color: isDark ? AppColors.darkPrimaryText : AppColors.lightPrimaryText,
+                            ),
+                          ),
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                            decoration: BoxDecoration(
+                              color: isDark ? const Color(0x1FFFFFFF) : const Color(0x0F000000),
+                              borderRadius: BorderRadius.circular(6),
+                            ),
+                            child: Text(
+                              'Offline & Local',
+                              style: TextStyle(
+                                fontSize: 10,
+                                fontWeight: FontWeight.w600,
+                                color: isDark ? const Color(0xFFD4FF32) : AppColors.success,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 10),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Text(
+                            '100% Privacy Preserved',
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: isDark ? AppColors.darkSecondaryText : AppColors.lightSecondaryText,
+                            ),
+                          ),
+                          Text(
+                            '0 KB Telemetry',
+                            style: TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w700,
+                              color: isDark ? AppColors.darkPrimaryText : AppColors.lightPrimaryText,
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 8),
+                      // Neon Green Glowing Progress Capsule
+                      ClipRRect(
+                        borderRadius: BorderRadius.circular(9999),
+                        child: Container(
+                          height: 8,
+                          color: isDark ? const Color(0xFF1E293B) : const Color(0xFFE2E8F0),
+                          child: FractionallySizedBox(
+                            alignment: Alignment.centerLeft,
+                            widthFactor: 0.88,
+                            child: Container(
+                              decoration: BoxDecoration(
+                                gradient: LinearGradient(
+                                  colors: isDark
+                                      ? [const Color(0xFFD4FF32), const Color(0xFF10B981)]
+                                      : [AppColors.brandRed, const Color(0xFFF59E0B)],
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+
+            // -----------------------------------------------------------------
+            // 5. Executive Smart Search Bar
+            // -----------------------------------------------------------------
+            SliverToBoxAdapter(
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(20, 16, 20, 0),
                 child: GlassSearchBar(
                   onFilterTap: () => widget.onNavigateTab(1), // Go to All Tools
                   onChanged: (val) {
@@ -124,7 +447,9 @@ class _HomeScreenState extends State<HomeScreen> {
               ),
             ),
 
-            // 3. Quick Action Floating Pill Shortcuts
+            // -----------------------------------------------------------------
+            // 6. Quick Action Tiles with Diagonal Arrows (↗)
+            // -----------------------------------------------------------------
             SliverToBoxAdapter(
               child: Padding(
                 padding: const EdgeInsets.fromLTRB(20, 20, 20, 0),
@@ -157,77 +482,9 @@ class _HomeScreenState extends State<HomeScreen> {
               ),
             ),
 
-            // 4. "Your Documents, Understood" AI Assistant Card
-            SliverToBoxAdapter(
-              child: Padding(
-                padding: const EdgeInsets.fromLTRB(20, 22, 20, 0),
-                child: GlassCard(
-                  onTap: () => widget.onNavigateTab(2), // Switch to Chat AI
-                  gradient: LinearGradient(
-                    colors: isDark
-                        ? [
-                            AppColors.aiPurple.withOpacity(0.28),
-                            AppColors.darkPrimaryAccent.withOpacity(0.18),
-                          ]
-                        : [
-                            AppColors.aiPurple.withOpacity(0.14),
-                            AppColors.lightPrimaryAccent.withOpacity(0.08),
-                          ],
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                  ),
-                  borderColor: AppColors.aiPurple.withOpacity(0.35),
-                  padding: const EdgeInsets.all(18),
-                  child: Row(
-                    children: [
-                      Container(
-                        width: 52,
-                        height: 52,
-                        decoration: BoxDecoration(
-                          gradient: const LinearGradient(colors: [AppColors.aiPurple, Color(0xFFA855F7)]),
-                          borderRadius: BorderRadius.circular(16),
-                          boxShadow: [
-                            BoxShadow(color: AppColors.aiPurple.withOpacity(0.35), blurRadius: 16, offset: const Offset(0, 4)),
-                          ],
-                        ),
-                        child: const Icon(Icons.auto_awesome_rounded, color: Colors.white, size: 28),
-                      ),
-                      const SizedBox(width: 16),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              AppStrings.aiCardTitle,
-                              style: TextStyle(
-                                fontSize: 16,
-                                fontWeight: FontWeight.w800,
-                                color: isDark ? AppColors.darkPrimaryText : AppColors.lightPrimaryText,
-                                letterSpacing: -0.3,
-                              ),
-                            ),
-                            const SizedBox(height: 3),
-                            Text(
-                              AppStrings.aiCardSubtitle,
-                              style: TextStyle(
-                                fontSize: 12,
-                                fontWeight: FontWeight.w400,
-                                color: isDark ? AppColors.darkSecondaryText : AppColors.lightSecondaryText,
-                                height: 1.35,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                      const SizedBox(width: 8),
-                      const Icon(Icons.arrow_forward_ios_rounded, size: 14, color: AppColors.aiPurple),
-                    ],
-                  ),
-                ),
-              ),
-            ),
-
-            // 5. Popular Tools Header & Grid
+            // -----------------------------------------------------------------
+            // 7. Popular Tools Header & Grid
+            // -----------------------------------------------------------------
             SliverToBoxAdapter(
               child: Padding(
                 padding: const EdgeInsets.fromLTRB(20, 26, 20, 12),
@@ -245,9 +502,13 @@ class _HomeScreenState extends State<HomeScreen> {
                     ),
                     GestureDetector(
                       onTap: () => widget.onNavigateTab(1), // All tools
-                      child: const Text(
+                      child: Text(
                         AppStrings.viewAll,
-                        style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: AppColors.brandRed),
+                        style: TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w700,
+                          color: isDark ? const Color(0xFFD4FF32) : AppColors.brandRed,
+                        ),
                       ),
                     ),
                   ],
@@ -277,7 +538,9 @@ class _HomeScreenState extends State<HomeScreen> {
               ),
             ),
 
-            // 6. Recent Documents Section
+            // -----------------------------------------------------------------
+            // 8. Recent Documents Section
+            // -----------------------------------------------------------------
             SliverToBoxAdapter(
               child: Padding(
                 padding: const EdgeInsets.fromLTRB(20, 28, 20, 12),
@@ -295,9 +558,13 @@ class _HomeScreenState extends State<HomeScreen> {
                     ),
                     GestureDetector(
                       onTap: () => widget.onNavigateTab(3), // History tab
-                      child: const Text(
+                      child: Text(
                         AppStrings.viewAll,
-                        style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: AppColors.brandRed),
+                        style: TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w700,
+                          color: isDark ? const Color(0xFFD4FF32) : AppColors.brandRed,
+                        ),
                       ),
                     ),
                   ],
@@ -305,7 +572,7 @@ class _HomeScreenState extends State<HomeScreen> {
               ),
             ),
 
-            // Animated Builder on HistoryService
+            // Listenable History Section
             ListenableBuilder(
               listenable: HistoryService.instance,
               builder: (context, _) {
@@ -387,19 +654,30 @@ class _HomeScreenState extends State<HomeScreen> {
       child: GlassCard(
         onTap: () => _openTool(tool),
         borderRadius: 16,
-        padding: const EdgeInsets.symmetric(vertical: 12),
+        padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 6),
         child: Column(
           children: [
-            Container(
-              width: 38,
-              height: 38,
-              decoration: BoxDecoration(
-                color: color.withOpacity(isDark ? 0.22 : 0.12),
-                shape: BoxShape.circle,
-              ),
-              child: Icon(icon, color: color, size: 20),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                const SizedBox(width: 14),
+                Container(
+                  width: 36,
+                  height: 36,
+                  decoration: BoxDecoration(
+                    color: color.withOpacity(isDark ? 0.22 : 0.12),
+                    shape: BoxShape.circle,
+                  ),
+                  child: Icon(icon, color: color, size: 20),
+                ),
+                Icon(
+                  Icons.north_east_rounded,
+                  size: 14,
+                  color: (isDark ? Colors.white38 : Colors.black26),
+                ),
+              ],
             ),
-            const SizedBox(height: 6),
+            const SizedBox(height: 8),
             Text(
               label,
               style: TextStyle(
@@ -408,6 +686,8 @@ class _HomeScreenState extends State<HomeScreen> {
                 color: isDark ? AppColors.darkPrimaryText : AppColors.lightPrimaryText,
               ),
               textAlign: TextAlign.center,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
             ),
           ],
         ),
