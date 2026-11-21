@@ -8,6 +8,7 @@ import '../../../core/services/image_processing_service.dart';
 import '../../../domain/entities/tool_entity.dart';
 import '../../../shared/widgets/glass/glass_container.dart';
 import '../../../shared/widgets/glass/glass_button.dart';
+import 'pdf_editor_canvas_screen.dart';
 
 /// OpenPDF Studio - Universal Dedicated Mobile Tool Workspace
 class ToolWorkspaceScreen extends StatefulWidget {
@@ -243,6 +244,36 @@ class _ToolWorkspaceScreenState extends State<ToolWorkspaceScreen> {
 
   Widget _buildConfigurationCard(bool isDark) {
     switch (widget.tool.id) {
+      case 'edit-pdf':
+      case 'sign-pdf':
+        return GlassContainer(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text('Interactive Visual Canvas', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 14)),
+              const SizedBox(height: 6),
+              Text(
+                'Open this PDF in the full visual editor to add in-place text, stamp signatures, and blackout sensitive data.',
+                style: TextStyle(
+                  fontSize: 12,
+                  color: isDark ? AppColors.darkSecondaryText : AppColors.lightSecondaryText,
+                ),
+              ),
+              const SizedBox(height: 14),
+              GlassButton(
+                label: 'Launch In-Place Editor Canvas',
+                icon: Icons.edit_note_rounded,
+                onPressed: () {
+                  Navigator.of(context).push(
+                    MaterialPageRoute(builder: (_) => PdfEditorCanvasScreen(pdfFile: _selectedFile!)),
+                  );
+                },
+              ),
+            ],
+          ),
+        );
+
       case 'compress-pdf':
         return GlassContainer(
           padding: const EdgeInsets.all(16),
