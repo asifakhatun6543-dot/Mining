@@ -27,6 +27,10 @@ dependencies:
   # Image Processing & Scanner Simulation (Pure Dart)
   image: ^4.2.0
 
+  # On-Device OCR & ML Kit Text Recognition for Camera/Scanned Receipts
+  google_mlkit_text_recognition: ^0.13.0
+  image_picker: ^1.1.0
+
   # File Management & Storage Access Framework
   path_provider: ^2.1.3
   file_picker: ^8.0.3

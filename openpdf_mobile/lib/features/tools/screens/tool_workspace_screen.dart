@@ -5,10 +5,12 @@ import '../../../core/services/file_service.dart';
 import '../../../core/services/pdf_processing_service.dart';
 import '../../../core/services/office_conversion_service.dart';
 import '../../../core/services/image_processing_service.dart';
+import '../../../core/services/ocr_scanning_service.dart';
 import '../../../domain/entities/tool_entity.dart';
 import '../../../shared/widgets/glass/glass_container.dart';
 import '../../../shared/widgets/glass/glass_button.dart';
 import 'pdf_editor_canvas_screen.dart';
+import 'ocr_scanner_screen.dart';
 
 /// OpenPDF Studio - Universal Dedicated Mobile Tool Workspace
 class ToolWorkspaceScreen extends StatefulWidget {
@@ -274,6 +276,37 @@ class _ToolWorkspaceScreenState extends State<ToolWorkspaceScreen> {
           ),
         );
 
+      case 'ocr':
+        return GlassContainer(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text('On-Device ML Kit OCR', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 14)),
+              const SizedBox(height: 6),
+              Text(
+                'Launch the dedicated camera receipt scanner to photograph physical papers, detect text blocks, and create a searchable PDF.',
+                style: TextStyle(
+                  fontSize: 12,
+                  color: isDark ? AppColors.darkSecondaryText : AppColors.lightSecondaryText,
+                ),
+              ),
+              const SizedBox(height: 14),
+              GlassButton(
+                label: 'Launch Camera & Receipt Scanner',
+                icon: Icons.camera_alt_rounded,
+                onPressed: () {
+                  Navigator.of(context).push(
+                    MaterialPageRoute(
+                      builder: (_) => OcrScannerScreen(initialImage: _selectedFile),
+                    ),
+                  );
+                },
+              ),
+            ],
+          ),
+        );
+
       case 'compress-pdf':
         return GlassContainer(
           padding: const EdgeInsets.all(16),
@@ -357,6 +390,17 @@ class _ToolWorkspaceScreenState extends State<ToolWorkspaceScreen> {
     setState(() => _isProcessing = true);
     try {
       switch (widget.tool.id) {
+        case 'ocr':
+          if (_selectedFile != null) {
+            final ocrRes = await OcrScanningService.instance.processImageOcr(_selectedFile!);
+            _resultFile = await OcrScanningService.instance.createSearchablePdf(
+              scannedImage: _selectedFile!,
+              ocrResult: ocrRes,
+            );
+            _resultDetails = 'Extracted ${ocrRes.lines.length} lines & created searchable PDF';
+          }
+          break;
+
         case 'compress-pdf':
           final res = await PdfProcessingService.instance.compressPdf(
             file: _selectedFile!,
