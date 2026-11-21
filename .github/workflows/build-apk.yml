@@ -1,0 +1,82 @@
+name: Build OpenPDF Studio Android APK
+
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build-apk:
+    name: Build & Package Release APK
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Set up Java JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+          cache: 'gradle'
+
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: 'stable'
+          cache: true
+
+      - name: Synchronize Android Harness & Local Properties
+        working-directory: openpdf_mobile
+        run: |
+          flutter create . --platforms=android --org com.openpdf.studio
+          flutter pub get
+
+      - name: Run Unit Verification Tests
+        working-directory: openpdf_mobile
+        run: flutter test
+
+      - name: Build Android Release APK
+        working-directory: openpdf_mobile
+        run: flutter build apk --release
+
+      - name: Prepare Release APK Artifact
+        run: |
+          mkdir -p output_apk
+          cp openpdf_mobile/build/app/outputs/flutter-apk/app-release.apk output_apk/OpenPDF-Studio-Release.apk
+          echo "Generated APK size:"
+          ls -lh output_apk/OpenPDF-Studio-Release.apk
+
+      - name: Upload Release APK as Workflow Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: OpenPDF-Studio-Release-APK
+          path: output_apk/OpenPDF-Studio-Release.apk
+          retention-days: 30
+
+      - name: Publish GitHub Release with Direct APK Download
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v1.0.0
+          name: "OpenPDF Studio v1.0.0 — Production Android APK"
+          body: |
+            ## 📱 OpenPDF Studio — Production Android APK (Release v1.0.0)
+
+            Direct APK Download:
+            👉 **[OpenPDF-Studio-Release.apk](https://github.com/${{ github.repository }}/releases/download/v1.0.0/OpenPDF-Studio-Release.apk)**
+
+            ---
+            ### ✨ Included Features & Architecture:
+            - **Liquid Glass Navigation**: Floating 4-tab mobile bottom bar (Home, All Tools, Chat AI, History).
+            - **23 Local Document Utilities**: PDF to Word (.docx), Excel (.xlsx), PowerPoint (.pptx), Compress, Merge, Split, Rotate, Sign, Redact, Watermark, etc.
+            - **In-Place Visual Canvas Editor**: Interactive multi-touch canvas, vector text, Bézier touch signature stamps, page navigation, and live annotations.
+            - **On-Device OCR & Scanner**: Google ML Kit text recognition for receipts and camera scans.
+            - **Document AI Assistant**: Local summarization, Hindi translation, fiscal number detection, and action item extraction.
+            - **100% Privacy Focused**: Runs completely on-device with 0 KB telemetry or backend dependency.
+          files: output_apk/OpenPDF-Studio-Release.apk
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
