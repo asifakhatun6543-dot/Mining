@@ -49,11 +49,22 @@ jobs:
       - name: Prepare Release APK Artifact
         run: |
           mkdir -p output_apk
-          echo "Found APK files:"
+          echo "Searching for generated APK files..."
           find openpdf_mobile/build -name "*.apk"
           find openpdf_mobile/build -name "*release*.apk" -exec cp {} output_apk/OpenPDF-Studio-Release.apk \;
-          echo "Prepared APK:"
+          echo "Prepared APK file:"
           ls -lh output_apk/
+
+      - name: Commit and Push APK directly to apk-dist Branch
+        run: |
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+          mkdir -p apk_dist
+          cp output_apk/OpenPDF-Studio-Release.apk apk_dist/OpenPDF-Studio-Release.apk
+          git checkout -B apk-dist
+          git add -f apk_dist/OpenPDF-Studio-Release.apk
+          git commit -m "chore: publish compiled OpenPDF-Studio-Release.apk binary directly"
+          git push -f origin apk-dist
 
       - name: Upload Release APK as Workflow Artifact
         uses: actions/upload-artifact@v4
@@ -65,17 +76,17 @@ jobs:
       - name: Publish GitHub Release with Direct APK Download
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: v1.0.0
-          name: "OpenPDF Studio v1.0.0 — Production Android APK"
+          tag_name: v1.0.1
+          name: "OpenPDF Studio v1.0.1 — Production Android APK"
           allowUpdates: true
           generate_release_notes: false
           draft: false
           prerelease: false
           body: |
-            ## 📱 OpenPDF Studio — Production Android APK (Release v1.0.0)
+            ## 📱 OpenPDF Studio — Production Android APK (Release v1.0.1)
 
             Direct APK Download:
-            👉 **[OpenPDF-Studio-Release.apk](https://github.com/${{ github.repository }}/releases/download/v1.0.0/OpenPDF-Studio-Release.apk)**
+            👉 **[OpenPDF-Studio-Release.apk](https://github.com/${{ github.repository }}/releases/download/v1.0.1/OpenPDF-Studio-Release.apk)**
 
             ---
             ### ✨ Included Features & Architecture:
