@@ -49,9 +49,11 @@ jobs:
       - name: Prepare Release APK Artifact
         run: |
           mkdir -p output_apk
-          cp openpdf_mobile/build/app/outputs/flutter-apk/app-release.apk output_apk/OpenPDF-Studio-Release.apk
-          echo "Generated APK size:"
-          ls -lh output_apk/OpenPDF-Studio-Release.apk
+          echo "Found APK files:"
+          find openpdf_mobile/build -name "*.apk"
+          find openpdf_mobile/build -name "*release*.apk" -exec cp {} output_apk/OpenPDF-Studio-Release.apk \;
+          echo "Prepared APK:"
+          ls -lh output_apk/
 
       - name: Upload Release APK as Workflow Artifact
         uses: actions/upload-artifact@v4
