@@ -31,6 +31,11 @@ jobs:
           channel: 'stable'
           cache: true
 
+      - name: Ensure Android SDK Platform 35 is Installed
+        run: |
+          yes | sdkmanager --licenses || true
+          sdkmanager "platforms;android-35" "build-tools;35.0.0" || true
+
       - name: Clean and Install Dependencies
         working-directory: openpdf_mobile
         run: |
