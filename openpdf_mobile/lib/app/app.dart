@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import '../config/theme/app_theme.dart';
 import '../core/constants/app_strings.dart';
-import '../features/shell/screens/main_shell_screen.dart';
+import '../features/splash/screens/splash_screen.dart';
 
 /// OpenPDF Studio - Root Application Widget
 class OpenPdfStudioApp extends StatelessWidget {
@@ -15,7 +15,7 @@ class OpenPdfStudioApp extends StatelessWidget {
       theme: AppTheme.lightTheme,
       darkTheme: AppTheme.darkTheme,
       themeMode: ThemeMode.system,
-      home: const MainShellScreen(),
+      home: const SplashScreen(),
     );
   }
 }

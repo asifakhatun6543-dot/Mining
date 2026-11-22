@@ -59,4 +59,8 @@ class AppStrings {
   // Privacy
   static const String privacyPledge = '100% Private & Local Processing';
   static const String privacyPledgeDesc = 'Your documents are processed securely on your device. No telemetry or hidden cloud collection.';
+
+  // Company & Developer Branding
+  static const String builtBy = 'Built by RS7 Private Limited';
+  static const String companyName = 'RS7 Private Limited';
 }

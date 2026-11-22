@@ -49,10 +49,10 @@ jobs:
         run: flutter test test/unit/
         continue-on-error: true
 
-      - name: Build Android Release APK
+      - name: Build Android Release APK (Optimized Lightweight Split-ABI)
         working-directory: openpdf_mobile
         run: |
-          flutter build apk --release --no-tree-shake-icons --android-skip-build-dependency-validation > /tmp/build_log.txt 2>&1 || true
+          flutter build apk --release --split-per-abi --no-tree-shake-icons --android-skip-build-dependency-validation > /tmp/build_log.txt 2>&1 || true
 
       - name: Save and Commit Build Log
         run: |
@@ -78,8 +78,12 @@ jobs:
         run: |
           mkdir -p output_apk
           find openpdf_mobile/build -name "*.apk"
-          find openpdf_mobile/build -name "*release*.apk" -exec cp {} output_apk/OpenPDF-Studio-Release.apk \;
-          echo "Prepared APK file:"
+          if [ -f openpdf_mobile/build/app/outputs/flutter-apk/app-arm64-v8a-release.apk ]; then
+            cp openpdf_mobile/build/app/outputs/flutter-apk/app-arm64-v8a-release.apk output_apk/OpenPDF-Studio-Release.apk
+          else
+            find openpdf_mobile/build -name "*release*.apk" -exec cp {} output_apk/OpenPDF-Studio-Release.apk \;
+          fi
+          echo "Prepared APK file (Lightweight size optimized):"
           ls -lh output_apk/
 
       - name: Upload Release APK as Workflow Artifact

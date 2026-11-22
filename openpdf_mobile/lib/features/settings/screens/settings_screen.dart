@@ -181,6 +181,37 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       height: 1.4,
                     ),
                   ),
+                  const SizedBox(height: 14),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                    decoration: BoxDecoration(
+                      color: (isDark ? const Color(0xFFD4FF32) : AppColors.brandRed).withOpacity(0.08),
+                      borderRadius: BorderRadius.circular(10),
+                      border: Border.all(
+                        color: (isDark ? const Color(0xFFD4FF32) : AppColors.brandRed).withOpacity(0.25),
+                      ),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(
+                          Icons.verified_rounded,
+                          size: 16,
+                          color: isDark ? const Color(0xFFD4FF32) : AppColors.brandRed,
+                        ),
+                        const SizedBox(width: 8),
+                        Text(
+                          AppStrings.builtBy,
+                          style: TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w700,
+                            color: isDark ? AppColors.darkPrimaryText : AppColors.lightPrimaryText,
+                            letterSpacing: 0.2,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
                 ],
               ),
             ),

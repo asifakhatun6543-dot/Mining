@@ -640,6 +640,45 @@ class _HomeScreenState extends State<HomeScreen> {
                 );
               },
             ),
+
+            // Footer Company Branding Badge: [ Built by RS7 Private Limited ]
+            SliverToBoxAdapter(
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(20, 10, 20, 110),
+                child: Center(
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                    decoration: BoxDecoration(
+                      color: (isDark ? Colors.white : Colors.black).withOpacity(0.04),
+                      borderRadius: BorderRadius.circular(20),
+                      border: Border.all(
+                        color: (isDark ? Colors.white : Colors.black).withOpacity(0.08),
+                      ),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(
+                          Icons.verified_rounded,
+                          size: 14,
+                          color: isDark ? const Color(0xFFD4FF32) : AppColors.brandRed,
+                        ),
+                        const SizedBox(width: 8),
+                        Text(
+                          'OpenPDF Studio • Built by RS7 Private Limited',
+                          style: TextStyle(
+                            fontSize: 11,
+                            fontWeight: FontWeight.w600,
+                            color: (isDark ? AppColors.darkSecondaryText : AppColors.lightSecondaryText).withOpacity(0.85),
+                            letterSpacing: 0.2,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ),
           ],
         ),
       ),
