@@ -14,10 +14,12 @@ subprojects {
 }
 
 subprojects {
-    afterEvaluate { project ->
-        if (project.hasProperty('android')) {
-            project.android {
-                compileSdkVersion 35
+    if (project.name != 'app') {
+        afterEvaluate {
+            if (project.hasProperty('android')) {
+                project.android {
+                    compileSdkVersion 35
+                }
             }
         }
     }
