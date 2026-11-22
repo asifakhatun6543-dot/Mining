@@ -1,5 +1,6 @@
 import 'dart:io';
 import 'dart:typed_data';
+import 'dart:ui';
 import 'package:flutter/foundation.dart';
 import 'package:google_mlkit_text_recognition/google_mlkit_text_recognition.dart';
 import 'package:image_picker/image_picker.dart';
@@ -112,9 +113,9 @@ class OcrScanningService {
       return OcrResult(
         fullText: 'Invoice / Scanned Document\nTotal Amount: \$245.50\nDate: 11/21/2026\nMerchant: OpenPDF Studio',
         lines: [
-          OcrLineBlock(text: 'Invoice / Scanned Document', bounds: const Rect.fromLTWH(20, 20, 200, 24)),
-          OcrLineBlock(text: 'Total Amount: \$245.50', bounds: const Rect.fromLTWH(20, 50, 160, 20)),
-          OcrLineBlock(text: 'Date: 11/21/2026', bounds: const Rect.fromLTWH(20, 75, 120, 18)),
+          OcrLineBlock(text: 'Invoice / Scanned Document', bounds: Rect.fromLTWH(20, 20, 200, 24)),
+          OcrLineBlock(text: 'Total Amount: \$245.50', bounds: Rect.fromLTWH(20, 50, 160, 20)),
+          OcrLineBlock(text: 'Date: 11/21/2026', bounds: Rect.fromLTWH(20, 75, 120, 18)),
         ],
         processingTime: stopwatch.elapsed,
       );
@@ -147,7 +148,7 @@ class OcrScanningService {
 
       // Stamp selectable text at exact coordinates
       final font = PdfStandardFont(PdfFontFamily.helvetica, 10);
-      final transparentBrush = PdfSolidBrush(const PdfColor(0, 0, 0, 0)); // Transparent text for OCR layer
+      final transparentBrush = PdfSolidBrush(PdfColor(0, 0, 0, 0)); // Transparent text for OCR layer
 
       for (final line in ocrResult.lines) {
         final scaledRect = Rect.fromLTWH(
