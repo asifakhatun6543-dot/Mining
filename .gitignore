@@ -5,3 +5,13 @@ __pycache__/
 .pytest_cache/
 scratch/
 openpdf_studio_storage/
+
+# Flutter & Android artifacts
+openpdf_mobile/.dart_tool/
+openpdf_mobile/.flutter-plugins-dependencies
+openpdf_mobile/android/.gradle/
+openpdf_mobile/android/local.properties
+openpdf_mobile/build/
+.idea/
+*.iml
+openpdf_mobile/android/app/src/main/java/
