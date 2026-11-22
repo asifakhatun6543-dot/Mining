@@ -20,3 +20,12 @@
 -keepclasseswithmembernames class * {
     native <methods>;
 }
+
+# Deferred components & Play Core
+-dontwarn com.google.android.play.core.**
+-dontwarn io.flutter.embedding.engine.deferredcomponents.**
+
+# ML Kit optional languages
+-dontwarn com.google.mlkit.vision.text.**
+-dontwarn com.google_mlkit_text_recognition.**
+-keep class com.google_mlkit_text_recognition.** { *; }
