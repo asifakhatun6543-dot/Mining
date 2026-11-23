@@ -1,27 +1,18 @@
 import 'package:flutter/material.dart';
-import 'package:intl/intl.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/app_strings.dart';
 import '../../../core/services/file_service.dart';
 import '../../../core/services/history_service.dart';
 import '../../../data/datasources/tools_data.dart';
 import '../../../domain/entities/tool_entity.dart';
-import '../../../shared/widgets/glass/glass_container.dart';
 import '../../../shared/widgets/glass/glass_card.dart';
-import '../../../shared/widgets/glass/glass_search_bar.dart';
-import '../../../shared/widgets/glass/glass_tool_card.dart';
-import '../../../shared/widgets/glass/glass_file_card.dart';
+import '../../../shared/widgets/glass/glass_container.dart';
+import '../../../shared/widgets/document_actions_sheet.dart';
 import '../../tools/screens/tool_workspace_screen.dart';
-import '../../settings/screens/settings_screen.dart';
 
-/// OpenPDF Studio - Executive Mobile Home Dashboard
-/// Styled to match the dark Liquid Glass visual aesthetic (Image 2 reference):
-/// - Top Status Bar with pill badge & avatar
-/// - Dynamic real-time date + Hero gradient headline ("Your Documents, Mastered Today")
-/// - Glowing "Your AI Assistant" card with action pill
-/// - "Today's Activity / Progress" neon capsule card
-/// - Quick Actions & Popular Tools with top-right diagonal arrows (↗)
-/// - Recent Documents list
+/// OpenPDF Studio - Next-Gen Clean Mobile Dashboard
+/// High-end typography, rapid workflow shortcuts, category filtering,
+/// cloud storage launchers, and document history with 3-dot actions drawer.
 class HomeScreen extends StatefulWidget {
   final ValueChanged<int> onNavigateTab;
 
@@ -32,6 +23,18 @@ class HomeScreen extends StatefulWidget {
 }
 
 class _HomeScreenState extends State<HomeScreen> {
+  String _searchQuery = '';
+  String _selectedCategory = 'All';
+
+  final List<String> _categories = [
+    'All',
+    'Edit & Sign',
+    'Convert',
+    'Optimize',
+    'Security',
+    'Organize',
+  ];
+
   void _openTool(ToolEntity tool) {
     Navigator.of(context).push(
       MaterialPageRoute(builder: (_) => ToolWorkspaceScreen(tool: tool)),
@@ -41,8 +44,31 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final popularTools = ToolsData.allTools.where((t) => t.isPopular).take(6).toList();
-    final todayFormatted = DateFormat('EEEE, d MMM yyyy').format(DateTime.now());
+    final primaryAccent = isDark ? const Color(0xFFFF2A55) : AppColors.brandRed;
+
+    // Filtered tools based on search and category
+    final displayedTools = ToolsData.allTools.where((tool) {
+      final matchesSearch = _searchQuery.isEmpty ||
+          tool.title.toLowerCase().contains(_searchQuery.toLowerCase()) ||
+          tool.description.toLowerCase().contains(_searchQuery.toLowerCase());
+      if (_selectedCategory == 'All') return matchesSearch;
+      if (_selectedCategory == 'Convert') {
+        return matchesSearch && (tool.category.contains('Convert') || tool.id.contains('convert') || tool.id.contains('to_'));
+      }
+      if (_selectedCategory == 'Edit & Sign') {
+        return matchesSearch && (tool.id.contains('edit') || tool.id.contains('sign') || tool.id.contains('watermark') || tool.id.contains('redact'));
+      }
+      if (_selectedCategory == 'Optimize') {
+        return matchesSearch && (tool.id.contains('compress') || tool.id.contains('ocr') || tool.id.contains('scanner'));
+      }
+      if (_selectedCategory == 'Security') {
+        return matchesSearch && (tool.id.contains('lock') || tool.id.contains('unlock') || tool.id.contains('protect'));
+      }
+      if (_selectedCategory == 'Organize') {
+        return matchesSearch && (tool.id.contains('merge') || tool.id.contains('split') || tool.id.contains('rotate') || tool.id.contains('page'));
+      }
+      return matchesSearch;
+    }).toList();
 
     return Scaffold(
       backgroundColor: Colors.transparent,
@@ -51,463 +77,271 @@ class _HomeScreenState extends State<HomeScreen> {
         child: CustomScrollView(
           physics: const BouncingScrollPhysics(),
           slivers: [
-            // -----------------------------------------------------------------
-            // 1. Top Bar: App Pill Badge, Notifications, Profile Avatar (Image 2)
-            // -----------------------------------------------------------------
+            // 1. Header Bar: Studio Title, Online Status & Profile Avatar
             SliverToBoxAdapter(
               child: Padding(
-                padding: const EdgeInsets.fromLTRB(20, 12, 20, 10),
+                padding: const EdgeInsets.fromLTRB(20, 16, 20, 10),
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    // Left: Logo & Active Tools Badge
-                    Row(
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Container(
-                          width: 32,
-                          height: 32,
-                          decoration: BoxDecoration(
-                            gradient: const LinearGradient(
-                              colors: [AppColors.brandRed, Color(0xFFF43F5E)],
-                              begin: Alignment.topLeft,
-                              end: Alignment.bottomRight,
-                            ),
-                            borderRadius: BorderRadius.circular(10),
-                            boxShadow: [
-                              BoxShadow(color: AppColors.brandRed.withOpacity(0.35), blurRadius: 10, offset: const Offset(0, 3)),
-                            ],
-                          ),
-                          child: const Center(
-                            child: Text('P', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w900, fontSize: 18)),
-                          ),
-                        ),
-                        const SizedBox(width: 10),
-                        Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-                          decoration: BoxDecoration(
-                            color: isDark ? const Color(0x1FFFFFFF) : const Color(0x0F000000),
-                            borderRadius: BorderRadius.circular(9999),
-                            border: Border.all(
-                              color: isDark ? const Color(0x2EFFFFFF) : const Color(0x18000000),
-                              width: 0.8,
-                            ),
-                          ),
-                          child: Row(
-                            children: [
-                              Icon(Icons.bolt_rounded, size: 14, color: isDark ? const Color(0xFFD4FF32) : AppColors.brandRed),
-                              const SizedBox(width: 4),
-                              Text(
-                                '23 Tools Ready',
-                                style: TextStyle(
-                                  fontSize: 11,
-                                  fontWeight: FontWeight.w700,
-                                  color: isDark ? AppColors.darkPrimaryText : AppColors.lightPrimaryText,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ],
-                    ),
-
-                    // Right: Notification Bell & Settings Avatar
-                    Row(
-                      children: [
-                        IconButton(
-                          icon: const Icon(Icons.notifications_none_rounded, size: 22),
-                          color: isDark ? AppColors.darkPrimaryText : AppColors.lightPrimaryText,
-                          onPressed: () {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(content: Text('All document engines operating locally and offline ✓')),
-                            );
-                          },
-                        ),
-                        GestureDetector(
-                          onTap: () {
-                            Navigator.of(context).push(
-                              MaterialPageRoute(builder: (_) => const SettingsScreen()),
-                            );
-                          },
-                          child: Container(
-                            width: 34,
-                            height: 34,
-                            decoration: BoxDecoration(
-                              shape: BoxShape.circle,
-                              gradient: const LinearGradient(
-                                colors: [Color(0xFF6366F1), Color(0xFFA855F7)],
-                              ),
-                              border: Border.all(color: Colors.white, width: 1.5),
-                            ),
-                            child: const Icon(Icons.person_rounded, size: 20, color: Colors.white),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
-              ),
-            ),
-
-            // -----------------------------------------------------------------
-            // 2. Hero Headline: "Your Documents, Mastered Today" (Image 2 style)
-            // -----------------------------------------------------------------
-            SliverToBoxAdapter(
-              child: Padding(
-                padding: const EdgeInsets.fromLTRB(20, 8, 20, 16),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      todayFormatted,
-                      style: TextStyle(
-                        fontSize: 12.5,
-                        fontWeight: FontWeight.w600,
-                        color: isDark ? AppColors.darkSecondaryText : AppColors.lightSecondaryText,
-                        letterSpacing: 0.2,
-                      ),
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      'Your Documents,',
-                      style: TextStyle(
-                        fontSize: 26,
-                        fontWeight: FontWeight.w800,
-                        color: isDark ? AppColors.darkPrimaryText : AppColors.lightPrimaryText,
-                        letterSpacing: -0.6,
-                        height: 1.15,
-                      ),
-                    ),
-                    ShaderMask(
-                      shaderCallback: (bounds) => LinearGradient(
-                        colors: isDark
-                            ? [const Color(0xFFD4FF32), const Color(0xFF38BDF8)]
-                            : [AppColors.brandRed, const Color(0xFFF43F5E)],
-                      ).createShader(bounds),
-                      child: const Text(
-                        'Mastered Today',
-                        style: TextStyle(
-                          fontSize: 26,
-                          fontWeight: FontWeight.w900,
-                          color: Colors.white,
-                          letterSpacing: -0.6,
-                          height: 1.15,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-
-            // -----------------------------------------------------------------
-            // 3. "Your AI Assistant" Hero Card (Exact Image 2 layout)
-            // -----------------------------------------------------------------
-            SliverToBoxAdapter(
-              child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 20),
-                child: GlassCard(
-                  onTap: () => widget.onNavigateTab(2), // Switch to Chat AI
-                  gradient: LinearGradient(
-                    colors: isDark
-                        ? [
-                            const Color(0xFF1E2B1E),
-                            const Color(0xFF111E2E),
-                          ]
-                        : [
-                            const Color(0xFFEFFDF5),
-                            const Color(0xFFEFF6FF),
-                          ],
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                  ),
-                  borderColor: isDark ? const Color(0x40D4FF32) : const Color(0x3310B981),
-                  padding: const EdgeInsets.all(20),
-                  child: Stack(
-                    children: [
-                      // Glowing Ambient Orb on right side
-                      Positioned(
-                        right: -10,
-                        top: 0,
-                        bottom: 0,
-                        child: Container(
-                          width: 80,
-                          height: 80,
-                          decoration: BoxDecoration(
-                            shape: BoxShape.circle,
-                            gradient: RadialGradient(
-                              colors: [
-                                (isDark ? const Color(0xFFD4FF32) : const Color(0xFF10B981)).withOpacity(0.35),
-                                Colors.transparent,
-                              ],
-                            ),
-                          ),
-                          child: Icon(
-                            Icons.auto_awesome_rounded,
-                            size: 42,
-                            color: isDark ? const Color(0xFFD4FF32) : const Color(0xFF10B981),
-                          ),
-                        ),
-                      ),
-
-                      Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Row(
-                            children: [
-                              Text(
-                                'Your AI Assistant',
-                                style: TextStyle(
-                                  fontSize: 17,
-                                  fontWeight: FontWeight.w800,
-                                  color: isDark ? AppColors.darkPrimaryText : AppColors.lightPrimaryText,
-                                  letterSpacing: -0.3,
-                                ),
-                              ),
-                              const SizedBox(width: 6),
-                              Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                                decoration: BoxDecoration(
-                                  color: (isDark ? const Color(0xFFD4FF32) : const Color(0xFF10B981)).withOpacity(0.2),
-                                  borderRadius: BorderRadius.circular(6),
-                                ),
-                                child: Text(
-                                  'Private',
-                                  style: TextStyle(
-                                    fontSize: 9,
-                                    fontWeight: FontWeight.w800,
-                                    color: isDark ? const Color(0xFFD4FF32) : const Color(0xFF10B981),
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ),
-                          const SizedBox(height: 6),
-                          SizedBox(
-                            width: 220,
-                            child: Text(
-                              'Summarize, translate, and extract insights from documents instantly.',
+                        Row(
+                          children: [
+                            Text(
+                              'OpenPDF',
                               style: TextStyle(
-                                fontSize: 12,
-                                fontWeight: FontWeight.w400,
-                                color: isDark ? AppColors.darkSecondaryText : AppColors.lightSecondaryText,
-                                height: 1.35,
+                                fontSize: 24,
+                                fontWeight: FontWeight.w900,
+                                color: isDark ? AppColors.darkPrimaryText : AppColors.lightPrimaryText,
+                                letterSpacing: -0.6,
                               ),
                             ),
-                          ),
-                          const SizedBox(height: 16),
-
-                          // Glowing Action Pill Button
-                          Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
-                            decoration: BoxDecoration(
-                              gradient: LinearGradient(
-                                colors: isDark
-                                    ? [const Color(0xFFD4FF32), const Color(0xFFA3E635)]
-                                    : [AppColors.brandRed, const Color(0xFFF43F5E)],
-                              ),
-                              borderRadius: BorderRadius.circular(9999),
-                              boxShadow: [
-                                BoxShadow(
-                                  color: (isDark ? const Color(0xFFD4FF32) : AppColors.brandRed).withOpacity(0.35),
-                                  blurRadius: 14,
-                                  offset: const Offset(0, 4),
-                                ),
-                              ],
-                            ),
-                            child: Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Text(
-                                  'Ask AI anything',
-                                  style: TextStyle(
-                                    fontSize: 12,
-                                    fontWeight: FontWeight.w800,
-                                    color: isDark ? const Color(0xFF0F172A) : Colors.white,
-                                  ),
-                                ),
-                                const SizedBox(width: 6),
-                                Icon(
-                                  Icons.north_east_rounded,
-                                  size: 14,
-                                  color: isDark ? const Color(0xFF0F172A) : Colors.white,
-                                ),
-                              ],
-                            ),
-                          ),
-                        ],
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            ),
-
-            // -----------------------------------------------------------------
-            // 4. "Today's Activity / Progress" Card (Image 2 style)
-            // -----------------------------------------------------------------
-            SliverToBoxAdapter(
-              child: Padding(
-                padding: const EdgeInsets.fromLTRB(20, 16, 20, 0),
-                child: GlassContainer(
-                  padding: const EdgeInsets.all(16),
-                  borderRadius: 18,
-                  child: Column(
-                    children: [
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          Text(
-                            "Today's Activity",
-                            style: TextStyle(
-                              fontSize: 13,
-                              fontWeight: FontWeight.w700,
-                              color: isDark ? AppColors.darkPrimaryText : AppColors.lightPrimaryText,
-                            ),
-                          ),
-                          Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                            decoration: BoxDecoration(
-                              color: isDark ? const Color(0x1FFFFFFF) : const Color(0x0F000000),
-                              borderRadius: BorderRadius.circular(6),
-                            ),
-                            child: Text(
-                              'Offline & Local',
-                              style: TextStyle(
-                                fontSize: 10,
-                                fontWeight: FontWeight.w600,
-                                color: isDark ? const Color(0xFFD4FF32) : AppColors.success,
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 10),
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          Text(
-                            '100% Privacy Preserved',
-                            style: TextStyle(
-                              fontSize: 12,
-                              color: isDark ? AppColors.darkSecondaryText : AppColors.lightSecondaryText,
-                            ),
-                          ),
-                          Text(
-                            '0 KB Telemetry',
-                            style: TextStyle(
-                              fontSize: 12,
-                              fontWeight: FontWeight.w700,
-                              color: isDark ? AppColors.darkPrimaryText : AppColors.lightPrimaryText,
-                            ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 8),
-                      // Neon Green Glowing Progress Capsule
-                      ClipRRect(
-                        borderRadius: BorderRadius.circular(9999),
-                        child: Container(
-                          height: 8,
-                          color: isDark ? const Color(0xFF1E293B) : const Color(0xFFE2E8F0),
-                          child: FractionallySizedBox(
-                            alignment: Alignment.centerLeft,
-                            widthFactor: 0.88,
-                            child: Container(
+                            const SizedBox(width: 4),
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                               decoration: BoxDecoration(
-                                gradient: LinearGradient(
-                                  colors: isDark
-                                      ? [const Color(0xFFD4FF32), const Color(0xFF10B981)]
-                                      : [AppColors.brandRed, const Color(0xFFF59E0B)],
+                                color: primaryAccent,
+                                borderRadius: BorderRadius.circular(6),
+                              ),
+                              child: const Text(
+                                'STUDIO',
+                                style: TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 10,
+                                  fontWeight: FontWeight.w800,
+                                  letterSpacing: 0.5,
                                 ),
                               ),
                             ),
+                          ],
+                        ),
+                        const SizedBox(height: 2),
+                        Row(
+                          children: [
+                            Container(
+                              width: 6,
+                              height: 6,
+                              decoration: const BoxDecoration(
+                                color: Color(0xFF10B981),
+                                shape: BoxShape.circle,
+                              ),
+                            ),
+                            const SizedBox(width: 6),
+                            Text(
+                              '23 Pro Document Engines • 100% Local',
+                              style: TextStyle(
+                                fontSize: 11,
+                                fontWeight: FontWeight.w500,
+                                color: isDark ? AppColors.darkSecondaryText : AppColors.lightSecondaryText,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                    // Profile Button (Navigates to Profile Tab)
+                    InkWell(
+                      onTap: () => widget.onNavigateTab(3), // Jump to Profile
+                      borderRadius: BorderRadius.circular(50),
+                      child: Container(
+                        width: 42,
+                        height: 42,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          color: (isDark ? Colors.white : Colors.black).withValues(alpha: 0.08),
+                          border: Border.all(
+                            color: primaryAccent.withValues(alpha: 0.4),
+                            width: 1.5,
                           ),
                         ),
+                        child: Icon(Icons.person_rounded, size: 22, color: primaryAccent),
                       ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+
+            // 2. Search Bar
+            SliverToBoxAdapter(
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+                child: GlassContainer(
+                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 4),
+                  child: TextField(
+                    onChanged: (val) => setState(() => _searchQuery = val),
+                    style: TextStyle(
+                      fontSize: 14,
+                      color: isDark ? AppColors.darkPrimaryText : AppColors.lightPrimaryText,
+                    ),
+                    decoration: InputDecoration(
+                      icon: Icon(
+                        Icons.search_rounded,
+                        size: 20,
+                        color: isDark ? AppColors.darkSecondaryText : AppColors.lightSecondaryText,
+                      ),
+                      hintText: 'Search tools, convert, compress, sign...',
+                      hintStyle: TextStyle(
+                        fontSize: 13,
+                        color: (isDark ? AppColors.darkSecondaryText : AppColors.lightSecondaryText).withValues(alpha: 0.6),
+                      ),
+                      border: InputBorder.none,
+                      isDense: true,
+                    ),
+                  ),
+                ),
+              ),
+            ),
+
+            // 3. Primary Quick Action Hub (Edit, Convert, Compress, Sign)
+            SliverToBoxAdapter(
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(20, 10, 20, 14),
+                child: Row(
+                  children: [
+                    _buildHeroActionCard(
+                      title: 'Edit PDF',
+                      subtitle: 'Vector & text',
+                      icon: Icons.edit_note_rounded,
+                      color: const Color(0xFFFF2A55),
+                      isDark: isDark,
+                      onTap: () {
+                        final tool = ToolsData.allTools.firstWhere((t) => t.id == 'edit_pdf');
+                        _openTool(tool);
+                      },
+                    ),
+                    const SizedBox(width: 10),
+                    _buildHeroActionCard(
+                      title: 'Convert',
+                      subtitle: 'Word, Excel, PPT',
+                      icon: Icons.transform_rounded,
+                      color: const Color(0xFF3B82F6),
+                      isDark: isDark,
+                      onTap: () {
+                        final tool = ToolsData.allTools.firstWhere((t) => t.id == 'pdf_to_word');
+                        _openTool(tool);
+                      },
+                    ),
+                    const SizedBox(width: 10),
+                    _buildHeroActionCard(
+                      title: 'Compress',
+                      subtitle: 'Custom size',
+                      icon: Icons.compress_rounded,
+                      color: const Color(0xFF10B981),
+                      isDark: isDark,
+                      onTap: () {
+                        final tool = ToolsData.allTools.firstWhere((t) => t.id == 'compress_pdf');
+                        _openTool(tool);
+                      },
+                    ),
+                    const SizedBox(width: 10),
+                    _buildHeroActionCard(
+                      title: 'Sign & Draw',
+                      subtitle: 'Touch stamp',
+                      icon: Icons.draw_rounded,
+                      color: const Color(0xFFF59E0B),
+                      isDark: isDark,
+                      onTap: () {
+                        final tool = ToolsData.allTools.firstWhere((t) => t.id == 'sign_pdf');
+                        _openTool(tool);
+                      },
+                    ),
+                  ],
+                ),
+              ),
+            ),
+
+            // 4. Cloud Quick Access Bar (Google Drive, Dropbox, OneDrive, Device)
+            SliverToBoxAdapter(
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(20, 4, 20, 14),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                  decoration: BoxDecoration(
+                    color: (isDark ? Colors.white : Colors.black).withValues(alpha: 0.03),
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(
+                      color: (isDark ? Colors.white : Colors.black).withValues(alpha: 0.06),
+                    ),
+                  ),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceAround,
+                    children: [
+                      _buildCloudShortcut(Icons.phone_android_rounded, 'Device', const Color(0xFF64748B), isDark),
+                      _buildCloudShortcut(Icons.add_to_drive_rounded, 'Drive', const Color(0xFF34A853), isDark),
+                      _buildCloudShortcut(Icons.cloud_queue_rounded, 'Dropbox', const Color(0xFF0061FE), isDark),
+                      _buildCloudShortcut(Icons.cloud_done_rounded, 'OneDrive', const Color(0xFF0078D4), isDark),
                     ],
                   ),
                 ),
               ),
             ),
 
-            // -----------------------------------------------------------------
-            // 5. Executive Smart Search Bar
-            // -----------------------------------------------------------------
+            // 5. Category Chips Row
             SliverToBoxAdapter(
-              child: Padding(
-                padding: const EdgeInsets.fromLTRB(20, 16, 20, 0),
-                child: GlassSearchBar(
-                  onFilterTap: () => widget.onNavigateTab(1), // Go to All Tools
-                  onChanged: (val) {
-                    if (val.trim().isNotEmpty) {
-                      widget.onNavigateTab(1);
-                    }
+              child: SizedBox(
+                height: 38,
+                child: ListView.builder(
+                  scrollDirection: Axis.horizontal,
+                  physics: const BouncingScrollPhysics(),
+                  padding: const EdgeInsets.symmetric(horizontal: 18),
+                  itemCount: _categories.length,
+                  itemBuilder: (context, i) {
+                    final cat = _categories[i];
+                    final isSelected = _selectedCategory == cat;
+                    return Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 3),
+                      child: ChoiceChip(
+                        label: Text(cat),
+                        selected: isSelected,
+                        onSelected: (_) => setState(() => _selectedCategory = cat),
+                        selectedColor: primaryAccent,
+                        backgroundColor: (isDark ? Colors.white : Colors.black).withValues(alpha: 0.04),
+                        labelStyle: TextStyle(
+                          fontSize: 12,
+                          fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
+                          color: isSelected ? Colors.white : (isDark ? AppColors.darkSecondaryText : AppColors.lightSecondaryText),
+                        ),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(20),
+                          side: BorderSide(
+                            color: isSelected ? Colors.transparent : (isDark ? Colors.white10 : Colors.black12),
+                          ),
+                        ),
+                      ),
+                    );
                   },
                 ),
               ),
             ),
 
-            // -----------------------------------------------------------------
-            // 6. Quick Action Tiles with Diagonal Arrows (↗)
-            // -----------------------------------------------------------------
-            SliverToBoxAdapter(
-              child: Padding(
-                padding: const EdgeInsets.fromLTRB(20, 20, 20, 0),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      AppStrings.quickActionsTitle,
-                      style: TextStyle(
-                        fontSize: 14,
-                        fontWeight: FontWeight.w700,
-                        color: isDark ? AppColors.darkSecondaryText : AppColors.lightSecondaryText,
-                        letterSpacing: 0.2,
-                      ),
-                    ),
-                    const SizedBox(height: 12),
-                    Row(
-                      children: [
-                        _buildQuickActionTile('Edit PDF', Icons.edit_note_rounded, AppColors.brandRed, 'edit-pdf'),
-                        const SizedBox(width: 10),
-                        _buildQuickActionTile('Compress', Icons.compress_rounded, AppColors.success, 'compress-pdf'),
-                        const SizedBox(width: 10),
-                        _buildQuickActionTile('Merge', Icons.call_merge_rounded, AppColors.organizeAmber, 'merge-pdf'),
-                        const SizedBox(width: 10),
-                        _buildQuickActionTile('Scanner', Icons.document_scanner_rounded, AppColors.scannerTeal, 'pdf-scanner'),
-                      ],
-                    ),
-                  ],
-                ),
-              ),
-            ),
+            const SliverToBoxAdapter(child: SizedBox(height: 14)),
 
-            // -----------------------------------------------------------------
-            // 7. Popular Tools Header & Grid
-            // -----------------------------------------------------------------
+            // 6. Tools Grid Section Header
             SliverToBoxAdapter(
               child: Padding(
-                padding: const EdgeInsets.fromLTRB(20, 26, 20, 12),
+                padding: const EdgeInsets.symmetric(horizontal: 20),
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     Text(
-                      AppStrings.popularToolsTitle,
+                      '$_selectedCategory Tools (${displayedTools.length})',
                       style: TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.w800,
+                        fontSize: 14,
+                        fontWeight: FontWeight.w700,
                         color: isDark ? AppColors.darkPrimaryText : AppColors.lightPrimaryText,
-                        letterSpacing: -0.3,
                       ),
                     ),
-                    GestureDetector(
-                      onTap: () => widget.onNavigateTab(1), // All tools
+                    InkWell(
+                      onTap: () => widget.onNavigateTab(1), // All Tools tab
                       child: Text(
-                        AppStrings.viewAll,
+                        'View All ↗',
                         style: TextStyle(
-                          fontSize: 13,
+                          fontSize: 12,
                           fontWeight: FontWeight.w700,
-                          color: isDark ? const Color(0xFFD4FF32) : AppColors.brandRed,
+                          color: primaryAccent,
                         ),
                       ),
                     ),
@@ -516,54 +350,123 @@ class _HomeScreenState extends State<HomeScreen> {
               ),
             ),
 
+            const SliverToBoxAdapter(child: SizedBox(height: 10)),
+
+            // Tools Grid (Clean 2-Column Layout)
             SliverPadding(
               padding: const EdgeInsets.symmetric(horizontal: 20),
               sliver: SliverGrid(
                 gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
                   crossAxisCount: 2,
-                  crossAxisSpacing: 12,
-                  mainAxisSpacing: 12,
-                  childAspectRatio: 0.95,
+                  mainAxisSpacing: 10,
+                  crossAxisSpacing: 10,
+                  childAspectRatio: 1.55,
                 ),
                 delegate: SliverChildBuilderDelegate(
                   (context, index) {
-                    final tool = popularTools[index];
-                    return GlassToolCard(
-                      tool: tool,
+                    final tool = displayedTools[index];
+                    return InkWell(
                       onTap: () => _openTool(tool),
+                      borderRadius: BorderRadius.circular(16),
+                      child: GlassContainer(
+                        padding: const EdgeInsets.all(12),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                Container(
+                                  width: 32,
+                                  height: 32,
+                                  decoration: BoxDecoration(
+                                    color: (tool.categoryColor ?? primaryAccent).withValues(alpha: 0.15),
+                                    borderRadius: BorderRadius.circular(8),
+                                  ),
+                                  child: Icon(
+                                    tool.icon,
+                                    size: 18,
+                                    color: tool.categoryColor ?? primaryAccent,
+                                  ),
+                                ),
+                                if (tool.isPopular)
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                    decoration: BoxDecoration(
+                                      color: const Color(0xFF10B981).withValues(alpha: 0.15),
+                                      borderRadius: BorderRadius.circular(6),
+                                    ),
+                                    child: const Text(
+                                      'POPULAR',
+                                      style: TextStyle(
+                                        color: Color(0xFF10B981),
+                                        fontSize: 8,
+                                        fontWeight: FontWeight.w800,
+                                      ),
+                                    ),
+                                  ),
+                              ],
+                            ),
+                            Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  tool.title,
+                                  style: TextStyle(
+                                    fontSize: 12.5,
+                                    fontWeight: FontWeight.w700,
+                                    color: isDark ? AppColors.darkPrimaryText : AppColors.lightPrimaryText,
+                                  ),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                                Text(
+                                  tool.description,
+                                  style: TextStyle(
+                                    fontSize: 10.5,
+                                    color: isDark ? AppColors.darkSecondaryText : AppColors.lightSecondaryText,
+                                  ),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ],
+                            ),
+                          ],
+                        ),
+                      ),
                     );
                   },
-                  childCount: popularTools.length,
+                  childCount: displayedTools.length,
                 ),
               ),
             ),
 
-            // -----------------------------------------------------------------
-            // 8. Recent Documents Section
-            // -----------------------------------------------------------------
+            const SliverToBoxAdapter(child: SizedBox(height: 24)),
+
+            // 7. Recent Activity Header
             SliverToBoxAdapter(
               child: Padding(
-                padding: const EdgeInsets.fromLTRB(20, 28, 20, 12),
+                padding: const EdgeInsets.symmetric(horizontal: 20),
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     Text(
-                      AppStrings.recentDocumentsTitle,
+                      'Recent Documents',
                       style: TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.w800,
+                        fontSize: 14,
+                        fontWeight: FontWeight.w700,
                         color: isDark ? AppColors.darkPrimaryText : AppColors.lightPrimaryText,
-                        letterSpacing: -0.3,
                       ),
                     ),
-                    GestureDetector(
-                      onTap: () => widget.onNavigateTab(3), // History tab
+                    InkWell(
+                      onTap: () => widget.onNavigateTab(3), // Profile tab
                       child: Text(
-                        AppStrings.viewAll,
+                        'History ↗',
                         style: TextStyle(
-                          fontSize: 13,
+                          fontSize: 12,
                           fontWeight: FontWeight.w700,
-                          color: isDark ? const Color(0xFFD4FF32) : AppColors.brandRed,
+                          color: primaryAccent,
                         ),
                       ),
                     ),
@@ -572,40 +475,27 @@ class _HomeScreenState extends State<HomeScreen> {
               ),
             ),
 
-            // Listenable History Section
+            const SliverToBoxAdapter(child: SizedBox(height: 8)),
+
+            // Recent Documents List with 3-Dot Actions Drawer
             ListenableBuilder(
               listenable: HistoryService.instance,
               builder: (context, _) {
                 final items = HistoryService.instance.items.take(3).toList();
-
                 if (items.isEmpty) {
                   return SliverToBoxAdapter(
                     child: Padding(
-                      padding: const EdgeInsets.fromLTRB(20, 0, 20, 100),
+                      padding: const EdgeInsets.symmetric(horizontal: 20),
                       child: GlassContainer(
-                        padding: const EdgeInsets.symmetric(vertical: 24, horizontal: 16),
-                        child: Column(
-                          children: [
-                            Icon(Icons.folder_open_rounded, size: 38, color: (isDark ? AppColors.darkSecondaryText : AppColors.lightSecondaryText).withOpacity(0.6)),
-                            const SizedBox(height: 8),
-                            Text(
-                              AppStrings.noRecentDocs,
-                              style: TextStyle(
-                                fontSize: 14,
-                                fontWeight: FontWeight.w700,
-                                color: isDark ? AppColors.darkPrimaryText : AppColors.lightPrimaryText,
-                              ),
+                        padding: const EdgeInsets.all(16),
+                        child: Center(
+                          child: Text(
+                            'Processed files will appear here',
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: isDark ? AppColors.darkSecondaryText : AppColors.lightSecondaryText,
                             ),
-                            const SizedBox(height: 4),
-                            Text(
-                              AppStrings.noRecentDocsDesc,
-                              style: TextStyle(
-                                fontSize: 12,
-                                color: isDark ? AppColors.darkSecondaryText : AppColors.lightSecondaryText,
-                              ),
-                              textAlign: TextAlign.center,
-                            ),
-                          ],
+                          ),
                         ),
                       ),
                     ),
@@ -613,24 +503,57 @@ class _HomeScreenState extends State<HomeScreen> {
                 }
 
                 return SliverPadding(
-                  padding: const EdgeInsets.fromLTRB(20, 0, 20, 110),
+                  padding: const EdgeInsets.symmetric(horizontal: 20),
                   sliver: SliverList(
                     delegate: SliverChildBuilderDelegate(
                       (context, index) {
                         final item = items[index];
                         return Padding(
-                          padding: const EdgeInsets.only(bottom: 10),
-                          child: GlassFileCard(
-                            item: item,
-                            onTap: () {
-                              if (item.filePath != null) {
-                                FileService.instance.shareFile(item.filePath!);
-                              }
-                            },
-                            onShare: item.filePath != null
-                                ? () => FileService.instance.shareFile(item.filePath!)
-                                : null,
-                            onDelete: () => HistoryService.instance.removeRecord(item.id),
+                          padding: const EdgeInsets.only(bottom: 8),
+                          child: GlassContainer(
+                            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                            child: Row(
+                              children: [
+                                Icon(Icons.picture_as_pdf_rounded, color: primaryAccent, size: 22),
+                                const SizedBox(width: 12),
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        item.fileName,
+                                        style: TextStyle(
+                                          fontSize: 13,
+                                          fontWeight: FontWeight.w600,
+                                          color: isDark ? AppColors.darkPrimaryText : AppColors.lightPrimaryText,
+                                        ),
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
+                                      ),
+                                      Text(
+                                        '${item.toolUsed} • ${item.sizeFormatted}',
+                                        style: TextStyle(
+                                          fontSize: 10.5,
+                                          color: isDark ? AppColors.darkSecondaryText : AppColors.lightSecondaryText,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                                // 3-Dot Action Button
+                                IconButton(
+                                  icon: const Icon(Icons.more_vert_rounded, size: 18),
+                                  onPressed: () {
+                                    DocumentActionsSheet.show(
+                                      context,
+                                      item: item,
+                                      documentTitle: item.fileName,
+                                      documentPath: item.filePath,
+                                    );
+                                  },
+                                ),
+                              ],
+                            ),
                           ),
                         );
                       },
@@ -641,35 +564,40 @@ class _HomeScreenState extends State<HomeScreen> {
               },
             ),
 
-            // Footer Company Branding Badge: [ Built by RS7 Private Limited ]
+            // 8. Bottom Branding: Built with love 🫰 RS7 Private Limited
             SliverToBoxAdapter(
               child: Padding(
-                padding: const EdgeInsets.fromLTRB(20, 10, 20, 110),
+                padding: const EdgeInsets.fromLTRB(20, 20, 20, 110),
                 child: Center(
                   child: Container(
                     padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
                     decoration: BoxDecoration(
-                      color: (isDark ? Colors.white : Colors.black).withOpacity(0.04),
+                      color: (isDark ? Colors.white : Colors.black).withValues(alpha: 0.04),
                       borderRadius: BorderRadius.circular(20),
                       border: Border.all(
-                        color: (isDark ? Colors.white : Colors.black).withOpacity(0.08),
+                        color: (isDark ? Colors.white : Colors.black).withValues(alpha: 0.08),
                       ),
                     ),
                     child: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        Icon(
-                          Icons.verified_rounded,
-                          size: 14,
-                          color: isDark ? const Color(0xFFD4FF32) : AppColors.brandRed,
-                        ),
-                        const SizedBox(width: 8),
                         Text(
-                          'OpenPDF Studio • Built by RS7 Private Limited',
+                          'Built with love',
                           style: TextStyle(
                             fontSize: 11,
-                            fontWeight: FontWeight.w600,
-                            color: (isDark ? AppColors.darkSecondaryText : AppColors.lightSecondaryText).withOpacity(0.85),
+                            fontWeight: FontWeight.w500,
+                            color: isDark ? AppColors.darkSecondaryText : AppColors.lightSecondaryText,
+                          ),
+                        ),
+                        const SizedBox(width: 4),
+                        const Text('🫰', style: TextStyle(fontSize: 13)),
+                        const SizedBox(width: 4),
+                        Text(
+                          'RS7 Private Limited',
+                          style: TextStyle(
+                            fontSize: 11,
+                            fontWeight: FontWeight.w700,
+                            color: isDark ? AppColors.darkPrimaryText : AppColors.lightPrimaryText,
                             letterSpacing: 0.2,
                           ),
                         ),
@@ -685,48 +613,97 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  Widget _buildQuickActionTile(String label, IconData icon, Color color, String toolId) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    final tool = ToolsData.allTools.firstWhere((t) => t.id == toolId, orElse: () => ToolsData.allTools.first);
-
+  Widget _buildHeroActionCard({
+    required String title,
+    required String subtitle,
+    required IconData icon,
+    required Color color,
+    required bool isDark,
+    required VoidCallback onTap,
+  }) {
     return Expanded(
-      child: GlassCard(
-        onTap: () => _openTool(tool),
-        borderRadius: 16,
-        padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 6),
-        child: Column(
-          children: [
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                const SizedBox(width: 14),
-                Container(
-                  width: 36,
-                  height: 36,
-                  decoration: BoxDecoration(
-                    color: color.withOpacity(isDark ? 0.22 : 0.12),
-                    shape: BoxShape.circle,
-                  ),
-                  child: Icon(icon, color: color, size: 20),
-                ),
-                Icon(
-                  Icons.north_east_rounded,
-                  size: 14,
-                  color: (isDark ? Colors.white38 : Colors.black26),
-                ),
-              ],
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(16),
+        child: Container(
+          padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 8),
+          decoration: BoxDecoration(
+            color: color.withValues(alpha: isDark ? 0.16 : 0.08),
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(
+              color: color.withValues(alpha: isDark ? 0.35 : 0.2),
             ),
-            const SizedBox(height: 8),
+          ),
+          child: Column(
+            children: [
+              Container(
+                width: 36,
+                height: 36,
+                decoration: BoxDecoration(
+                  color: color,
+                  shape: BoxShape.circle,
+                  boxShadow: [
+                    BoxShadow(
+                      color: color.withValues(alpha: 0.35),
+                      blurRadius: 8,
+                      offset: const Offset(0, 3),
+                    ),
+                  ],
+                ),
+                child: Icon(icon, color: Colors.white, size: 20),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                title,
+                style: TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w700,
+                  color: isDark ? AppColors.darkPrimaryText : AppColors.lightPrimaryText,
+                ),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 1),
+              Text(
+                subtitle,
+                style: TextStyle(
+                  fontSize: 9.5,
+                  color: isDark ? AppColors.darkSecondaryText : AppColors.lightSecondaryText,
+                ),
+                textAlign: TextAlign.center,
+                maxLines: 1,
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildCloudShortcut(IconData icon, String label, Color color, bool isDark) {
+    return InkWell(
+      onTap: () {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Connecting to $label Storage...'),
+            duration: const Duration(seconds: 1),
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      },
+      borderRadius: BorderRadius.circular(10),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+        child: Row(
+          children: [
+            Icon(icon, size: 16, color: color),
+            const SizedBox(width: 6),
             Text(
               label,
               style: TextStyle(
-                fontSize: 11,
-                fontWeight: FontWeight.w700,
+                fontSize: 11.5,
+                fontWeight: FontWeight.w600,
                 color: isDark ? AppColors.darkPrimaryText : AppColors.lightPrimaryText,
               ),
-              textAlign: TextAlign.center,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
             ),
           ],
         ),

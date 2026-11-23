@@ -6,64 +6,70 @@
     android:viewportWidth="108"
     android:viewportHeight="108">
 
-    <!-- Document Shadow -->
+    <!-- Ambient Glow behind Document -->
     <path
-        android:pathData="M34,26 L64,26 L76,38 L76,82 C76,85.3 73.3,88 70,88 L34,88 C30.7,88 28,85.3 28,82 L28,32 C28,28.7 30.7,26 34,26 Z"
-        android:fillColor="#150008"/>
+        android:pathData="M32,26 L66,26 L78,38 L78,82 C78,85.5 75.5,88 72,88 L32,88 C28.5,88 26,85.5 26,82 L26,32 C26,28.5 28.5,26 32,26 Z"
+        android:fillColor="#33FF2A55"/>
 
-    <!-- Document Body with Crimson-to-Coral Gradient -->
+    <!-- Document Card Base with Vibrant Crimson-Red Gradient -->
     <path
-        android:pathData="M33,24 L63,24 L75,36 L75,80 C75,83.3 72.3,86 69,86 L33,86 C29.7,86 27,83.3 27,80 L27,30 C27,26.7 29.7,24 33,24 Z">
+        android:pathData="M34,24 L64,24 L76,36 L76,80 C76,84 73,86 69,86 L34,86 C30,86 28,84 28,80 L28,30 C28,26 30,24 34,24 Z">
         <aapt:attr name="android:fillColor">
             <gradient
-                android:startX="27"
+                android:startX="28"
                 android:startY="24"
-                android:endX="75"
+                android:endX="76"
                 android:endY="86"
                 android:type="linear">
-                <item android:offset="0.0" android:color="#FF3366"/>
-                <item android:offset="1.0" android:color="#FF5E3A"/>
+                <item android:offset="0.0" android:color="#FF1744"/>
+                <item android:offset="0.5" android:color="#E11D48"/>
+                <item android:offset="1.0" android:color="#BE123C"/>
             </gradient>
         </aapt:attr>
     </path>
 
-    <!-- Folded Corner -->
+    <!-- Folded Corner Accent -->
     <path
-        android:pathData="M63,24 L75,36 L66,36 C64.3,36 63,34.7 63,33 L63,24 Z"
-        android:fillColor="#FF859F"/>
+        android:pathData="M64,24 L76,36 L67,36 C65,36 64,35 64,33 L64,24 Z"
+        android:fillColor="#FFA5B5"/>
 
-    <!-- Document Header Highlight -->
+    <!-- Document Gloss Highlight -->
     <path
-        android:pathData="M33,25 L62,25 C62.5,25 63,25.5 63,26 C63,26.5 62.5,27 62,27 L33,27 C31.3,27 30,28.3 30,30 L30,31 C29.4,31 29,30.6 29,30 C29,27.2 30.8,25 33,25 Z"
+        android:pathData="M34,26 L62,26 C63,26 63,27 63,27 L32,58 L30,56 L30,30 C30,28 32,26 34,26 Z"
         android:fillColor="#FFFFFF"
-        android:fillAlpha="0.45"/>
+        android:fillAlpha="0.18"/>
 
-    <!-- PDF Badge Capsule -->
+    <!-- Centered Studio Monogram Card -->
     <path
-        android:pathData="M35,46 C35,43.8 36.8,42 39,42 L63,42 C65.2,42 67,43.8 67,46 L67,60 C67,62.2 65.2,64 63,64 L39,64 C36.8,64 35,62.2 35,60 Z"
+        android:pathData="M36,44 C36,42 38,40 40,40 L64,40 C66,40 68,42 68,44 L68,60 C68,62 66,64 64,64 L40,64 C38,64 36,62 36,60 Z"
         android:fillColor="#FFFFFF"/>
 
-    <!-- Text: PDF Cutout -->
+    <!-- PDF Bold Letters in Studio Red -->
     <!-- P -->
     <path
-        android:pathData="M40,46 L46,46 C47.7,46 49,47.3 49,49 C49,50.7 47.7,52 46,52 L42.5,52 L42.5,60 L40,60 L40,46 Z M42.5,48 L42.5,50 L45.5,50 C46.1,50 46.5,49.6 46.5,49 C46.5,48.4 46.1,48 45.5,48 L42.5,48 Z"
-        android:fillColor="#E11D48"/>
+        android:pathData="M41,45 L46,45 C47.5,45 49,46.2 49,48 C49,49.8 47.5,51 46,51 L43.5,51 L43.5,59 L41,59 L41,45 Z M43.5,47.2 L43.5,49 L45.5,49 C46.2,49 46.8,48.5 46.8,48 C46.8,47.5 46.2,47.2 45.5,47.2 L43.5,47.2 Z"
+        android:fillColor="#BE123C"/>
 
     <!-- D -->
     <path
-        android:pathData="M50,46 L54.5,46 C57.5,46 59.5,48.2 59.5,53 C59.5,57.8 57.5,60 54.5,60 L50,60 L50,46 Z M52.5,48 L52.5,58 L54.5,58 C56.2,58 57,56.5 57,53 C57,49.5 56.2,48 54.5,48 L52.5,48 Z"
-        android:fillColor="#E11D48"/>
+        android:pathData="M51,45 L55,45 C58,45 59.8,47 59.8,52 C59.8,57 58,59 55,59 L51,59 L51,45 Z M53.5,47.2 L53.5,56.8 L55,56.8 C56.8,56.8 57.4,55.5 57.4,52 C57.4,48.5 56.8,47.2 55,47.2 L53.5,47.2 Z"
+        android:fillColor="#BE123C"/>
 
-    <!-- Decorative Accent Dot -->
+    <!-- F Spark Dot -->
     <path
         android:pathData="M64,57m-2,0a2,2 0 1,0 4,0a2,2 0 1,0 -4,0"
-        android:fillColor="#FF5E3A"/>
+        android:fillColor="#FF1744"/>
 
-    <!-- Stylized Pen / Quill Wave -->
+    <!-- Vector Edit Pen Wave -->
     <path
-        android:pathData="M35,72 C43,69 51,75 59,72 C63,70.5 67,71.5 70,72"
+        android:pathData="M36,73 C42,70 48,76 56,73 C62,71 68,73 72,73"
         android:strokeColor="#FFFFFF"
-        android:strokeWidth="2.5"
+        android:strokeWidth="2.8"
         android:strokeLineCap="round"/>
+
+    <!-- Pen Tip Diamond -->
+    <path
+        android:pathData="M35,73 L33,75 L36,75 Z"
+        android:fillColor="#FFFFFF"/>
 
 </vector>

@@ -128,11 +128,10 @@ class GlassBottomNavigation extends StatelessWidget {
                         ),
                         _buildNavItem(
                           index: 3,
-                          label: 'History',
-                          icon: Icons.history_rounded,
+                          label: 'Profile',
+                          icon: Icons.person_rounded,
                           width: tabWidth,
                           isDark: isDark,
-                          badgeCount: historyCount,
                         ),
                       ],
                     ),

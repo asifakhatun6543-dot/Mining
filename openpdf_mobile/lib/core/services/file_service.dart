@@ -3,6 +3,7 @@ import 'dart:typed_data';
 import 'package:file_picker/file_picker.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:share_plus/share_plus.dart';
+import 'package:printing/printing.dart';
 import '../../domain/entities/document_entity.dart';
 
 /// OpenPDF Studio - Centralized File Management Service
@@ -101,6 +102,20 @@ class FileService {
     try {
       final xFile = XFile(filePath);
       await Share.shareXFiles([xFile], subject: subject);
+    } catch (_) {}
+  }
+
+  /// Prints a document file via Android native printing spooler
+  Future<void> printDocument({required String filePath, String? docName}) async {
+    try {
+      final file = File(filePath);
+      if (await file.exists()) {
+        final bytes = await file.readAsBytes();
+        await Printing.layoutPdf(
+          onLayout: (_) async => bytes,
+          name: docName ?? 'Document.pdf',
+        );
+      }
     } catch (_) {}
   }
 

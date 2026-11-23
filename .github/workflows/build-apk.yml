@@ -126,8 +126,8 @@ jobs:
           git config --global user.name "github-actions[bot]"
           git config --global user.email "github-actions[bot]@users.noreply.github.com"
           git remote set-url origin https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git
-          git checkout --orphan release-apk
-          git rm -rf .
+          git checkout -B release-apk
+          git rm -rf . || true
           mkdir -p apk_dist
           cp output_apk/OpenPDF-Studio-Release.apk apk_dist/OpenPDF-Studio-Release.apk
           git add apk_dist/OpenPDF-Studio-Release.apk

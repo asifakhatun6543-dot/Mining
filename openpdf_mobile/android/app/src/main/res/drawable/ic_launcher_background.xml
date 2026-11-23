@@ -4,14 +4,15 @@
     android:height="108dp"
     android:viewportWidth="108"
     android:viewportHeight="108">
+    <!-- Deep obsidian velvet gradient background -->
     <path
         android:pathData="M0,0h108v108h-108z"
-        android:fillColor="#090E1A"/>
-    <!-- Subtle radial ambient glow -->
+        android:fillColor="#0B0F19"/>
+    <!-- Subtle luxury circular aura -->
     <path
-        android:pathData="M54,54m-46,0a46,46 0 1,0 92,0a46,46 0 1,0 -92,0"
-        android:fillColor="#151F33"/>
+        android:pathData="M54,54m-42,0a42,42 0 1,0 84,0a42,42 0 1,0 -84,0"
+        android:fillColor="#121A2B"/>
     <path
-        android:pathData="M54,54m-30,0a30,30 0 1,0 60,0a30,30 0 1,0 -60,0"
-        android:fillColor="#1C2B47"/>
+        android:pathData="M54,54m-26,0a26,26 0 1,0 52,0a26,26 0 1,0 -52,0"
+        android:fillColor="#1B273E"/>
 </vector>

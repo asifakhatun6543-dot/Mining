@@ -13,14 +13,29 @@ subprojects {
     project.evaluationDependsOn(':app')
 }
 
-subprojects {
-    if (project.name != 'app') {
-        afterEvaluate {
-            if (project.hasProperty('android')) {
+subprojects { project ->
+    def configureSdk = {
+        if (project.hasProperty('android')) {
+            try {
                 project.android {
                     compileSdkVersion 35
                 }
-            }
+            } catch (Throwable ignored) {}
+        }
+    }
+
+    project.plugins.withId('com.android.library') {
+        configureSdk()
+    }
+    project.plugins.withId('com.android.application') {
+        configureSdk()
+    }
+
+    if (project.state.executed) {
+        configureSdk()
+    } else {
+        project.afterEvaluate {
+            configureSdk()
         }
     }
 }

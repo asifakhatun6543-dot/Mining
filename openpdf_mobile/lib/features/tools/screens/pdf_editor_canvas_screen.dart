@@ -6,16 +6,18 @@ import 'package:syncfusion_flutter_pdf/pdf.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/services/file_service.dart';
 import '../../../core/services/history_service.dart';
-import '../../../shared/widgets/glass/glass_container.dart';
 import '../../../shared/widgets/glass/glass_signature_pad.dart';
+import '../../../shared/widgets/document_actions_sheet.dart';
 
 enum EditorActiveTool {
   select,
   text,
   sign,
+  highlight,
+  shapes,
+  stamp,
   erase,
   image,
-  shapes,
   redact,
 }
 
@@ -24,6 +26,9 @@ enum AnnotationType {
   signature,
   image,
   redact,
+  highlight,
+  shape,
+  stamp,
 }
 
 class CanvasAnnotationAction {
@@ -90,11 +95,47 @@ class CanvasRedactItem {
   CanvasRedactItem({required this.id, required this.rect});
 }
 
+class CanvasHighlightItem {
+  String id;
+  Rect rect;
+  Color color;
+
+  CanvasHighlightItem({
+    required this.id,
+    required this.rect,
+    this.color = const Color(0xFFFFEB3B),
+  });
+}
+
+class CanvasShapeItem {
+  String id;
+  Rect rect;
+  String shapeType; // 'rect', 'circle'
+  Color color;
+
+  CanvasShapeItem({
+    required this.id,
+    required this.rect,
+    required this.shapeType,
+    this.color = const Color(0xFFFF2A55),
+  });
+}
+
+class CanvasStampItem {
+  String id;
+  String stampText;
+  Offset position;
+  Color color;
+
+  CanvasStampItem({
+    required this.id,
+    required this.stampText,
+    required this.position,
+    this.color = const Color(0xFF10B981),
+  });
+}
+
 /// OpenPDF Studio - In-Place Interactive PDF Canvas Editor
-/// Replicates and elevates the web editor UX (Image 1 reference):
-/// - Top Bar: `< All Tools`, Clock icon + `Untitled.pdf` rename pill, Hamburger menu
-/// - Floating Page & Zoom Bar: `^ 1/1 v | - 100% + | Fit`
-/// - Docked Ribbon Toolbar: `Pages`, `Undo`, `Redo`, `|`, `Select`, `Text` (active red), `Sign`, `Erase`, `Image`, `Shapes`
 class PdfEditorCanvasScreen extends StatefulWidget {
   final File pdfFile;
 
@@ -118,6 +159,9 @@ class _PdfEditorCanvasScreenState extends State<PdfEditorCanvasScreen> {
   final List<CanvasSignatureItem> _signatureItems = [];
   final List<CanvasImageStampItem> _imageStampItems = [];
   final List<CanvasRedactItem> _redactItems = [];
+  final List<CanvasHighlightItem> _highlightItems = [];
+  final List<CanvasShapeItem> _shapeItems = [];
+  final List<CanvasStampItem> _stampItems = [];
 
   // Undo & Redo History Stacks
   final List<CanvasAnnotationAction> _undoStack = [];
@@ -184,6 +228,15 @@ class _PdfEditorCanvasScreenState extends State<PdfEditorCanvasScreen> {
         case AnnotationType.redact:
           _redactItems.removeWhere((i) => i.id == action.item.id);
           break;
+        case AnnotationType.highlight:
+          _highlightItems.removeWhere((i) => i.id == action.item.id);
+          break;
+        case AnnotationType.shape:
+          _shapeItems.removeWhere((i) => i.id == action.item.id);
+          break;
+        case AnnotationType.stamp:
+          _stampItems.removeWhere((i) => i.id == action.item.id);
+          break;
       }
     });
   }
@@ -206,6 +259,15 @@ class _PdfEditorCanvasScreenState extends State<PdfEditorCanvasScreen> {
           break;
         case AnnotationType.redact:
           _redactItems.add(action.item as CanvasRedactItem);
+          break;
+        case AnnotationType.highlight:
+          _highlightItems.add(action.item as CanvasHighlightItem);
+          break;
+        case AnnotationType.shape:
+          _shapeItems.add(action.item as CanvasShapeItem);
+          break;
+        case AnnotationType.stamp:
+          _stampItems.add(action.item as CanvasStampItem);
           break;
       }
     });
@@ -239,7 +301,34 @@ class _PdfEditorCanvasScreenState extends State<PdfEditorCanvasScreen> {
       case EditorActiveTool.text:
         _showAddTextDialog(pos);
         break;
+
+      case EditorActiveTool.highlight:
+        final hItem = CanvasHighlightItem(
+          id: 'hl_${DateTime.now().millisecondsSinceEpoch}',
+          rect: Rect.fromLTWH(pos.dx - 50, pos.dy - 10, 100, 20),
+        );
+        setState(() {
+          _highlightItems.add(hItem);
+          _pushAction(CanvasAnnotationAction(type: AnnotationType.highlight, item: hItem));
+        });
+        break;
+
       case EditorActiveTool.shapes:
+        final shapeItem = CanvasShapeItem(
+          id: 'shape_${DateTime.now().millisecondsSinceEpoch}',
+          rect: Rect.fromLTWH(pos.dx - 40, pos.dy - 25, 80, 50),
+          shapeType: 'rect',
+        );
+        setState(() {
+          _shapeItems.add(shapeItem);
+          _pushAction(CanvasAnnotationAction(type: AnnotationType.shape, item: shapeItem));
+        });
+        break;
+
+      case EditorActiveTool.stamp:
+        _showStampSelector(pos);
+        break;
+
       case EditorActiveTool.redact:
         final redact = CanvasRedactItem(
           id: 'redact_${DateTime.now().millisecondsSinceEpoch}',
@@ -250,6 +339,7 @@ class _PdfEditorCanvasScreenState extends State<PdfEditorCanvasScreen> {
           _pushAction(CanvasAnnotationAction(type: AnnotationType.redact, item: redact));
         });
         break;
+
       default:
         break;
     }
@@ -304,6 +394,52 @@ class _PdfEditorCanvasScreenState extends State<PdfEditorCanvasScreen> {
             child: const Text('Add Text', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
           ),
         ],
+      ),
+    );
+  }
+
+  void _showStampSelector(Offset position) {
+    final stamps = ['APPROVED', 'CONFIDENTIAL', 'DRAFT', 'PAID', 'VERIFIED'];
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: const Color(0xFF101827),
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
+      builder: (ctx) => Padding(
+        padding: const EdgeInsets.all(20),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text('Select Stamp to Apply', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16)),
+            const SizedBox(height: 14),
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: stamps.map((s) {
+                return ElevatedButton(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFF1E293B),
+                    side: const BorderSide(color: AppColors.brandRed),
+                  ),
+                  onPressed: () {
+                    final item = CanvasStampItem(
+                      id: 'stamp_${DateTime.now().millisecondsSinceEpoch}',
+                      stampText: s,
+                      position: position,
+                    );
+                    setState(() {
+                      _stampItems.add(item);
+                      _pushAction(CanvasAnnotationAction(type: AnnotationType.stamp, item: item));
+                      _activeTool = EditorActiveTool.select;
+                    });
+                    Navigator.of(ctx).pop();
+                  },
+                  child: Text(s, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w700)),
+                );
+              }).toList(),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -363,7 +499,7 @@ class _PdfEditorCanvasScreenState extends State<PdfEditorCanvasScreen> {
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  const Text('Document Pages', style: TextStyle(color: Colors.white, fontSize: 17, fontWeight: FontWeight.bold)),
+                  const Text('Document Pages & Organization', style: TextStyle(color: Colors.white, fontSize: 17, fontWeight: FontWeight.bold)),
                   IconButton(
                     icon: const Icon(Icons.close_rounded, color: Colors.white70),
                     onPressed: () => Navigator.of(ctx).pop(),
@@ -388,7 +524,7 @@ class _PdfEditorCanvasScreenState extends State<PdfEditorCanvasScreen> {
                         width: 80,
                         margin: const EdgeInsets.only(right: 12),
                         decoration: BoxDecoration(
-                          color: isCurrent ? AppColors.brandRed.withOpacity(0.15) : const Color(0xFF1E293B),
+                          color: isCurrent ? AppColors.brandRed.withValues(alpha: 0.15) : const Color(0xFF1E293B),
                           borderRadius: BorderRadius.circular(10),
                           border: Border.all(
                             color: isCurrent ? AppColors.brandRed : Colors.white24,
@@ -415,103 +551,7 @@ class _PdfEditorCanvasScreenState extends State<PdfEditorCanvasScreen> {
     );
   }
 
-  void _showHamburgerMenu() {
-    showModalBottomSheet(
-      context: context,
-      backgroundColor: const Color(0xFF101827),
-      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
-      builder: (ctx) {
-        return SafeArea(
-          child: Padding(
-            padding: const EdgeInsets.symmetric(vertical: 16),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                ListTile(
-                  leading: const Icon(Icons.save_outlined, color: AppColors.brandRed),
-                  title: const Text('Save Document', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600)),
-                  subtitle: const Text('Save modifications directly', style: TextStyle(color: Colors.white54, fontSize: 12)),
-                  onTap: () {
-                    Navigator.of(ctx).pop();
-                    _exportAndSave();
-                  },
-                ),
-                ListTile(
-                  leading: const Icon(Icons.file_download_outlined, color: Colors.blueAccent),
-                  title: const Text('Save As...', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600)),
-                  subtitle: const Text('Export under a new name', style: TextStyle(color: Colors.white54, fontSize: 12)),
-                  onTap: () {
-                    Navigator.of(ctx).pop();
-                    _showSaveAsDialog();
-                  },
-                ),
-                ListTile(
-                  leading: const Icon(Icons.layers_outlined, color: Colors.amber),
-                  title: const Text('Page Overview', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600)),
-                  onTap: () {
-                    Navigator.of(ctx).pop();
-                    _showPagesBottomSheet();
-                  },
-                ),
-                ListTile(
-                  leading: const Icon(Icons.delete_sweep_outlined, color: Colors.redAccent),
-                  title: const Text('Clear All Annotations', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600)),
-                  onTap: () {
-                    Navigator.of(ctx).pop();
-                    setState(() {
-                      _textItems.clear();
-                      _signatureItems.clear();
-                      _imageStampItems.clear();
-                      _redactItems.clear();
-                      _undoStack.clear();
-                      _redoStack.clear();
-                    });
-                  },
-                ),
-              ],
-            ),
-          ),
-        );
-      },
-    );
-  }
-
-  void _showSaveAsDialog() {
-    final nameCtrl = TextEditingController(text: _titleController.text);
-    showDialog(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        backgroundColor: const Color(0xFF101827),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: const Text('Save As', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
-        content: TextField(
-          controller: nameCtrl,
-          style: const TextStyle(color: Colors.white),
-          decoration: const InputDecoration(
-            hintText: 'Enter new filename...',
-            hintStyle: TextStyle(color: Colors.white54),
-          ),
-        ),
-        actions: [
-          TextButton(onPressed: () => Navigator.of(ctx).pop(), child: const Text('Cancel')),
-          ElevatedButton(
-            style: ElevatedButton.styleFrom(backgroundColor: AppColors.brandRed),
-            onPressed: () {
-              final newName = nameCtrl.text.trim();
-              if (newName.isNotEmpty) {
-                setState(() => _titleController.text = newName);
-                Navigator.of(ctx).pop();
-                _exportAndSave();
-              }
-            },
-            child: const Text('Save', style: TextStyle(color: Colors.white)),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Future<void> _exportAndSave() async {
+  Future<File?> _exportAndSave() async {
     setState(() => _isSaving = true);
     try {
       final inputBytes = await widget.pdfFile.readAsBytes();
@@ -578,23 +618,61 @@ class _PdfEditorCanvasScreenState extends State<PdfEditorCanvasScreen> {
         sizeFormatted: '${(outputBytes.length / (1024 * 1024)).toStringAsFixed(1)} MB',
       );
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Document saved successfully: $outName ✓'),
-          backgroundColor: AppColors.success,
-          action: SnackBarAction(
-            label: 'Share',
-            textColor: Colors.white,
-            onPressed: () => FileService.instance.shareFile(savedFile.path),
-          ),
-        ),
-      );
+      return savedFile;
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Save error: $e'), backgroundColor: AppColors.error),
       );
+      return null;
     } finally {
       setState(() => _isSaving = false);
+    }
+  }
+
+  Future<void> _handleDone() async {
+    // Show circular loading popup ("Please wait... Saving changes")
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (_) => AlertDialog(
+        backgroundColor: const Color(0xFF101827),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
+        content: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 8),
+          child: Row(
+            children: const [
+              SizedBox(
+                width: 32,
+                height: 32,
+                child: CircularProgressIndicator(
+                  strokeWidth: 3,
+                  color: AppColors.brandRed,
+                ),
+              ),
+              SizedBox(width: 20),
+              Text(
+                'Please wait...\nSaving changes',
+                style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600, fontSize: 14),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+
+    final savedFile = await _exportAndSave();
+
+    if (mounted) {
+      Navigator.of(context).pop(); // dismiss loading dialog
+      if (savedFile != null) {
+        final docName = savedFile.path.split(Platform.isWindows ? r'\' : '/').last;
+        // Open the comprehensive 15-Action Drawer
+        DocumentActionsSheet.show(
+          context,
+          documentTitle: docName,
+          documentPath: savedFile.path,
+        );
+      }
     }
   }
 
@@ -605,7 +683,7 @@ class _PdfEditorCanvasScreenState extends State<PdfEditorCanvasScreen> {
     return Scaffold(
       backgroundColor: isDark ? const Color(0xFF080D18) : const Color(0xFFD6DFEB),
       // -----------------------------------------------------------------------
-      // 1. Top Bar: `< All Tools` | `🕒 Untitled.pdf` | `☰` (Exact Image 1 layout)
+      // 1. Top Bar: `< All Tools` | `🕒 Title.pdf` | Prominent `Done` button
       // -----------------------------------------------------------------------
       appBar: AppBar(
         backgroundColor: isDark ? const Color(0xFF101827) : Colors.white,
@@ -674,23 +752,29 @@ class _PdfEditorCanvasScreenState extends State<PdfEditorCanvasScreen> {
           ],
         ),
         actions: [
-          IconButton(
-            icon: _isSaving
-                ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.brandRed))
-                : const Icon(Icons.file_download_outlined, color: AppColors.brandRed),
-            tooltip: 'Download & Export PDF',
-            onPressed: _isSaving ? null : _exportAndSave,
-          ),
-          IconButton(
-            icon: Icon(Icons.menu_rounded, color: isDark ? Colors.white : Colors.black87),
-            tooltip: 'Menu',
-            onPressed: _showHamburgerMenu,
+          // Replaced 3-line hamburger menu & download icon with single, high-contrast Done Button
+          Padding(
+            padding: const EdgeInsets.only(right: 12, top: 8, bottom: 8),
+            child: ElevatedButton.icon(
+              onPressed: _isSaving ? null : _handleDone,
+              icon: _isSaving
+                  ? const SizedBox(width: 14, height: 14, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                  : const Icon(Icons.check_rounded, size: 16),
+              label: const Text('Done', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 13)),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.brandRed,
+                foregroundColor: Colors.white,
+                elevation: 0,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                padding: const EdgeInsets.symmetric(horizontal: 14),
+              ),
+            ),
           ),
         ],
       ),
 
       // -----------------------------------------------------------------------
-      // 2. Canvas Body + Floating Pill + Bottom Ribbon (Exact Image 1 layout)
+      // 2. Canvas Body + Floating Pill + Elevated Ribbon Toolbar
       // -----------------------------------------------------------------------
       body: Stack(
         children: [
@@ -704,15 +788,15 @@ class _PdfEditorCanvasScreenState extends State<PdfEditorCanvasScreen> {
                 child: Container(
                   width: 360,
                   height: 520,
-                  margin: const EdgeInsets.only(bottom: 74),
+                  margin: const EdgeInsets.only(bottom: 96),
                   decoration: BoxDecoration(
                     color: Colors.white,
-                    borderRadius: BorderRadius.circular(6),
+                    borderRadius: BorderRadius.circular(8),
                     boxShadow: [
                       BoxShadow(
-                        color: Colors.black.withOpacity(0.24),
-                        blurRadius: 24,
-                        offset: const Offset(0, 8),
+                        color: Colors.black.withValues(alpha: 0.22),
+                        blurRadius: 28,
+                        offset: const Offset(0, 10),
                       ),
                     ],
                   ),
@@ -720,30 +804,205 @@ class _PdfEditorCanvasScreenState extends State<PdfEditorCanvasScreen> {
                     onTapUp: _handleCanvasTap,
                     child: Stack(
                       children: [
-                        // Document simulated paper lines
+                        // Rich, realistic PDF Document Content Layout (Prevents white void appearance)
                         Positioned.fill(
                           child: Padding(
-                            padding: const EdgeInsets.all(24.0),
+                            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                Container(height: 16, width: 150, color: const Color(0xFFE2E8F0)),
-                                const SizedBox(height: 14),
-                                Container(height: 10, width: double.infinity, color: const Color(0xFFF1F5F9)),
+                                // Document Header Bar
+                                Row(
+                                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                  children: [
+                                    Row(
+                                      children: [
+                                        Container(
+                                          width: 22,
+                                          height: 22,
+                                          decoration: BoxDecoration(
+                                            color: AppColors.brandRed.withValues(alpha: 0.12),
+                                            borderRadius: BorderRadius.circular(5),
+                                          ),
+                                          child: const Icon(Icons.picture_as_pdf_rounded, size: 14, color: AppColors.brandRed),
+                                        ),
+                                        const SizedBox(width: 8),
+                                        ConstrainedBox(
+                                          constraints: const BoxConstraints(maxWidth: 180),
+                                          child: Text(
+                                            _titleController.text.isNotEmpty ? _titleController.text : 'OpenPDF Document',
+                                            style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Color(0xFF1E293B)),
+                                            overflow: TextOverflow.ellipsis,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                    Container(
+                                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                      decoration: BoxDecoration(
+                                        color: const Color(0xFFF1F5F9),
+                                        borderRadius: BorderRadius.circular(4),
+                                        border: Border.all(color: const Color(0xFFCBD5E1)),
+                                      ),
+                                      child: Text(
+                                        'Page $_currentPage of $_totalPages',
+                                        style: const TextStyle(fontSize: 9, fontWeight: FontWeight.bold, color: Color(0xFF64748B)),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                                const SizedBox(height: 12),
+                                Container(height: 1, color: const Color(0xFFE2E8F0)),
+                                const SizedBox(height: 16),
+
+                                // Simulated High-Fidelity Paragraphs & Blocks
+                                Container(height: 14, width: 190, decoration: BoxDecoration(color: const Color(0xFF334155), borderRadius: BorderRadius.circular(3))),
+                                const SizedBox(height: 12),
+                                Container(height: 8, width: double.infinity, decoration: BoxDecoration(color: const Color(0xFF94A3B8), borderRadius: BorderRadius.circular(2))),
+                                const SizedBox(height: 6),
+                                Container(height: 8, width: double.infinity, decoration: BoxDecoration(color: const Color(0xFFCBD5E1), borderRadius: BorderRadius.circular(2))),
+                                const SizedBox(height: 6),
+                                Container(height: 8, width: 240, decoration: BoxDecoration(color: const Color(0xFFCBD5E1), borderRadius: BorderRadius.circular(2))),
+                                const SizedBox(height: 18),
+
+                                // Section 2
+                                Container(height: 12, width: 140, decoration: BoxDecoration(color: const Color(0xFF475569), borderRadius: BorderRadius.circular(3))),
+                                const SizedBox(height: 10),
+                                Container(height: 8, width: double.infinity, decoration: BoxDecoration(color: const Color(0xFFE2E8F0), borderRadius: BorderRadius.circular(2))),
+                                const SizedBox(height: 6),
+                                Container(height: 8, width: 220, decoration: BoxDecoration(color: const Color(0xFFE2E8F0), borderRadius: BorderRadius.circular(2))),
+                                const SizedBox(height: 16),
+
+                                // Simulated Data Matrix / Table Form
+                                Container(
+                                  padding: const EdgeInsets.all(8),
+                                  decoration: BoxDecoration(
+                                    border: Border.all(color: const Color(0xFFE2E8F0)),
+                                    borderRadius: BorderRadius.circular(4),
+                                    color: const Color(0xFFF8FAFC),
+                                  ),
+                                  child: Column(
+                                    children: [
+                                      Row(
+                                        children: [
+                                          Expanded(child: Container(height: 7, color: const Color(0xFFCBD5E1))),
+                                          const SizedBox(width: 8),
+                                          Expanded(child: Container(height: 7, color: const Color(0xFFCBD5E1))),
+                                          const SizedBox(width: 8),
+                                          Expanded(child: Container(height: 7, color: const Color(0xFFCBD5E1))),
+                                        ],
+                                      ),
+                                      const SizedBox(height: 6),
+                                      Row(
+                                        children: [
+                                          Expanded(child: Container(height: 6, color: const Color(0xFFE2E8F0))),
+                                          const SizedBox(width: 8),
+                                          Expanded(child: Container(height: 6, color: const Color(0xFFE2E8F0))),
+                                          const SizedBox(width: 8),
+                                          Expanded(child: Container(height: 6, color: const Color(0xFFE2E8F0))),
+                                        ],
+                                      ),
+                                    ],
+                                  ),
+                                ),
+
+                                const Spacer(),
+
+                                // Document Footer
+                                Container(height: 1, color: const Color(0xFFE2E8F0)),
                                 const SizedBox(height: 8),
-                                Container(height: 10, width: double.infinity, color: const Color(0xFFF1F5F9)),
-                                const SizedBox(height: 8),
-                                Container(height: 10, width: 230, color: const Color(0xFFF1F5F9)),
-                                const SizedBox(height: 24),
-                                Container(height: 10, width: double.infinity, color: const Color(0xFFF1F5F9)),
-                                const SizedBox(height: 8),
-                                Container(height: 10, width: 280, color: const Color(0xFFF1F5F9)),
+                                Row(
+                                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                  children: const [
+                                    Text('OpenPDF Studio Engine', style: TextStyle(fontSize: 8, color: Color(0xFF94A3B8), fontWeight: FontWeight.w600)),
+                                    Text('CONFIDENTIAL & CERTIFIED', style: TextStyle(fontSize: 8, color: Color(0xFF94A3B8), fontWeight: FontWeight.w600)),
+                                  ],
+                                ),
                               ],
                             ),
                           ),
                         ),
 
-                        // Text Annotations (draggable & selectable)
+                        // Highlights
+                        ..._highlightItems.map((hl) {
+                          return Positioned(
+                            left: hl.rect.left,
+                            top: hl.rect.top,
+                            width: hl.rect.width,
+                            height: hl.rect.height,
+                            child: GestureDetector(
+                              onTap: () {
+                                if (_activeTool == EditorActiveTool.erase) {
+                                  setState(() => _highlightItems.remove(hl));
+                                }
+                              },
+                              child: Container(
+                                decoration: BoxDecoration(
+                                  color: hl.color.withValues(alpha: 0.38),
+                                  borderRadius: BorderRadius.circular(3),
+                                ),
+                              ),
+                            ),
+                          );
+                        }),
+
+                        // Shapes
+                        ..._shapeItems.map((sh) {
+                          return Positioned(
+                            left: sh.rect.left,
+                            top: sh.rect.top,
+                            width: sh.rect.width,
+                            height: sh.rect.height,
+                            child: GestureDetector(
+                              onTap: () {
+                                if (_activeTool == EditorActiveTool.erase) {
+                                  setState(() => _shapeItems.remove(sh));
+                                }
+                              },
+                              child: Container(
+                                decoration: BoxDecoration(
+                                  border: Border.all(color: sh.color, width: 2),
+                                  borderRadius: BorderRadius.circular(4),
+                                ),
+                              ),
+                            ),
+                          );
+                        }),
+
+                        // Stamps (APPROVED, CONFIDENTIAL, etc.)
+                        ..._stampItems.map((st) {
+                          return Positioned(
+                            left: st.position.dx,
+                            top: st.position.dy,
+                            child: GestureDetector(
+                              onTap: () {
+                                if (_activeTool == EditorActiveTool.erase) {
+                                  setState(() => _stampItems.remove(st));
+                                }
+                              },
+                              onPanUpdate: (d) => setState(() => st.position += d.delta),
+                              child: Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                                decoration: BoxDecoration(
+                                  border: Border.all(color: st.color, width: 2),
+                                  borderRadius: BorderRadius.circular(6),
+                                  color: st.color.withValues(alpha: 0.08),
+                                ),
+                                child: Text(
+                                  st.stampText,
+                                  style: TextStyle(
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.w900,
+                                    color: st.color,
+                                    letterSpacing: 1.2,
+                                  ),
+                                ),
+                              ),
+                            ),
+                          );
+                        }),
+
+                        // Text Annotations
                         ..._textItems.map((item) {
                           return Positioned(
                             left: item.position.dx,
@@ -754,16 +1013,12 @@ class _PdfEditorCanvasScreenState extends State<PdfEditorCanvasScreen> {
                                   setState(() => _textItems.remove(item));
                                 }
                               },
-                              onPanUpdate: (d) {
-                                setState(() {
-                                  item.position += d.delta;
-                                });
-                              },
+                              onPanUpdate: (d) => setState(() => item.position += d.delta),
                               child: Container(
                                 padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                                 decoration: BoxDecoration(
-                                  border: Border.all(color: Colors.blue.withOpacity(0.5), width: 1),
-                                  color: Colors.blue.withOpacity(0.06),
+                                  border: Border.all(color: Colors.blue.withValues(alpha: 0.5), width: 1),
+                                  color: Colors.blue.withValues(alpha: 0.06),
                                   borderRadius: BorderRadius.circular(4),
                                 ),
                                 child: Text(
@@ -779,7 +1034,7 @@ class _PdfEditorCanvasScreenState extends State<PdfEditorCanvasScreen> {
                           );
                         }),
 
-                        // Signature Stamps (draggable & removable)
+                        // Signature Stamps
                         ..._signatureItems.map((sig) {
                           return Positioned(
                             left: sig.position.dx,
@@ -790,16 +1045,12 @@ class _PdfEditorCanvasScreenState extends State<PdfEditorCanvasScreen> {
                                   setState(() => _signatureItems.remove(sig));
                                 }
                               },
-                              onPanUpdate: (d) {
-                                setState(() {
-                                  sig.position += d.delta;
-                                });
-                              },
+                              onPanUpdate: (d) => setState(() => sig.position += d.delta),
                               child: Container(
                                 width: sig.width,
                                 height: sig.height,
                                 decoration: BoxDecoration(
-                                  border: Border.all(color: AppColors.brandRed.withOpacity(0.5), width: 1),
+                                  border: Border.all(color: AppColors.brandRed.withValues(alpha: 0.5), width: 1),
                                   borderRadius: BorderRadius.circular(6),
                                 ),
                                 child: Image.memory(sig.imageBytes, fit: BoxFit.contain),
@@ -819,16 +1070,12 @@ class _PdfEditorCanvasScreenState extends State<PdfEditorCanvasScreen> {
                                   setState(() => _imageStampItems.remove(img));
                                 }
                               },
-                              onPanUpdate: (d) {
-                                setState(() {
-                                  img.position += d.delta;
-                                });
-                              },
+                              onPanUpdate: (d) => setState(() => img.position += d.delta),
                               child: Container(
                                 width: img.width,
                                 height: img.height,
                                 decoration: BoxDecoration(
-                                  border: Border.all(color: Colors.cyan.withOpacity(0.5), width: 1),
+                                  border: Border.all(color: Colors.cyan.withValues(alpha: 0.5), width: 1),
                                   borderRadius: BorderRadius.circular(6),
                                 ),
                                 child: Image.memory(img.imageBytes, fit: BoxFit.contain),
@@ -863,16 +1110,15 @@ class _PdfEditorCanvasScreenState extends State<PdfEditorCanvasScreen> {
           ),
 
           // -------------------------------------------------------------------
-          // B. Floating Page & Zoom Control Pill (Exact Image 1 layout):
-          //    `^ 1/1 v | - 100% + | Fit`
+          // B. Elevated Floating Page & Zoom Control Pill (Lifted to bottom: 84)
           // -------------------------------------------------------------------
           Positioned(
-            bottom: 74,
+            bottom: 84,
             left: 0,
             right: 0,
             child: Center(
               child: Container(
-                height: 44,
+                height: 42,
                 padding: const EdgeInsets.symmetric(horizontal: 10),
                 decoration: BoxDecoration(
                   color: isDark ? const Color(0xE6101827) : const Color(0xE61E293B),
@@ -880,7 +1126,7 @@ class _PdfEditorCanvasScreenState extends State<PdfEditorCanvasScreen> {
                   border: Border.all(color: Colors.white24, width: 0.8),
                   boxShadow: [
                     BoxShadow(
-                      color: Colors.black.withOpacity(0.35),
+                      color: Colors.black.withValues(alpha: 0.35),
                       blurRadius: 18,
                       offset: const Offset(0, 6),
                     ),
@@ -897,7 +1143,6 @@ class _PdfEditorCanvasScreenState extends State<PdfEditorCanvasScreen> {
                       constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
                       onPressed: _currentPage > 1 ? () => setState(() => _currentPage--) : null,
                     ),
-                    // Current / Total Pages
                     Padding(
                       padding: const EdgeInsets.symmetric(horizontal: 6),
                       child: Text(
@@ -913,7 +1158,6 @@ class _PdfEditorCanvasScreenState extends State<PdfEditorCanvasScreen> {
                       constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
                       onPressed: _currentPage < _totalPages ? () => setState(() => _currentPage++) : null,
                     ),
-                    // Divider 1
                     Container(height: 18, width: 1, color: Colors.white30, margin: const EdgeInsets.symmetric(horizontal: 8)),
                     // Minus (Zoom Out)
                     IconButton(
@@ -923,7 +1167,6 @@ class _PdfEditorCanvasScreenState extends State<PdfEditorCanvasScreen> {
                       constraints: const BoxConstraints(minWidth: 28, minHeight: 28),
                       onPressed: _zoomOut,
                     ),
-                    // Zoom Percentage Text
                     Padding(
                       padding: const EdgeInsets.symmetric(horizontal: 4),
                       child: Text(
@@ -939,9 +1182,7 @@ class _PdfEditorCanvasScreenState extends State<PdfEditorCanvasScreen> {
                       constraints: const BoxConstraints(minWidth: 28, minHeight: 28),
                       onPressed: _zoomIn,
                     ),
-                    // Divider 2
                     Container(height: 18, width: 1, color: Colors.white30, margin: const EdgeInsets.symmetric(horizontal: 8)),
-                    // Fit Button
                     GestureDetector(
                       onTap: _fitToScreen,
                       child: Row(
@@ -960,53 +1201,62 @@ class _PdfEditorCanvasScreenState extends State<PdfEditorCanvasScreen> {
           ),
 
           // -------------------------------------------------------------------
-          // C. Docked Bottom Ribbon Toolbar (Exact Image 1 layout):
-          //    `Pages` `Undo` `Redo` | `Select` `Text` `Sign` `Erase` `Image` `Shapes`
+          // C. Elevated Docked Bottom Ribbon Toolbar (With All Website Tools)
           // -------------------------------------------------------------------
           Positioned(
             bottom: 0,
             left: 0,
             right: 0,
-            child: Container(
-              height: 64,
-              decoration: BoxDecoration(
-                color: isDark ? const Color(0xFF101827) : Colors.white,
-                border: Border(
-                  top: BorderSide(
-                    color: isDark ? AppColors.darkBorder : AppColors.lightBorder,
-                    width: 1,
+            child: SafeArea(
+              top: false,
+              child: Container(
+                height: 68,
+                margin: const EdgeInsets.only(bottom: 4),
+                decoration: BoxDecoration(
+                  color: isDark ? const Color(0xFF101827) : Colors.white,
+                  border: Border(
+                    top: BorderSide(
+                      color: isDark ? AppColors.darkBorder : AppColors.lightBorder,
+                      width: 1,
+                    ),
                   ),
+                  boxShadow: [
+                    BoxShadow(color: Colors.black.withValues(alpha: 0.12), blurRadius: 16, offset: const Offset(0, -4)),
+                  ],
                 ),
-                boxShadow: [
-                  BoxShadow(color: Colors.black.withOpacity(0.12), blurRadius: 16, offset: const Offset(0, -4)),
-                ],
-              ),
-              child: ListView(
-                scrollDirection: Axis.horizontal,
-                physics: const BouncingScrollPhysics(),
-                padding: const EdgeInsets.symmetric(horizontal: 8),
-                children: [
-                  // Pages Button
-                  _buildRibbonActionBtn('Pages', Icons.layers_outlined, _showPagesBottomSheet),
-                  // Undo
-                  _buildRibbonActionBtn('Undo', Icons.undo_rounded, _undo, enabled: _undoStack.isNotEmpty),
-                  // Redo
-                  _buildRibbonActionBtn('Redo', Icons.redo_rounded, _redo, enabled: _redoStack.isNotEmpty),
-                  // Divider
-                  Container(height: 28, width: 1, color: isDark ? Colors.white24 : Colors.black12, margin: const EdgeInsets.symmetric(horizontal: 6, vertical: 18)),
-                  // Select Tool
-                  _buildRibbonToolBtn(EditorActiveTool.select, 'Select', Icons.near_me_outlined),
-                  // Text Tool (active with red border in Image 1!)
-                  _buildRibbonToolBtn(EditorActiveTool.text, 'Text', Icons.text_fields_rounded),
-                  // Sign Tool
-                  _buildRibbonActionBtn('Sign', Icons.draw_rounded, _openSignaturePad),
-                  // Erase Tool
-                  _buildRibbonToolBtn(EditorActiveTool.erase, 'Erase', Icons.cleaning_services_outlined),
-                  // Image Stamp Tool
-                  _buildRibbonActionBtn('Image', Icons.image_outlined, _pickAndStampImage),
-                  // Shapes / Redact Tool
-                  _buildRibbonToolBtn(EditorActiveTool.redact, 'Redact', Icons.shield_outlined),
-                ],
+                child: ListView(
+                  scrollDirection: Axis.horizontal,
+                  physics: const BouncingScrollPhysics(),
+                  padding: const EdgeInsets.symmetric(horizontal: 8),
+                  children: [
+                    // Pages / Organize
+                    _buildRibbonActionBtn('Pages', Icons.layers_outlined, _showPagesBottomSheet),
+                    // Undo
+                    _buildRibbonActionBtn('Undo', Icons.undo_rounded, _undo, enabled: _undoStack.isNotEmpty),
+                    // Redo
+                    _buildRibbonActionBtn('Redo', Icons.redo_rounded, _redo, enabled: _redoStack.isNotEmpty),
+                    // Divider
+                    Container(height: 28, width: 1, color: isDark ? Colors.white24 : Colors.black12, margin: const EdgeInsets.symmetric(horizontal: 6, vertical: 18)),
+                    // Select Tool
+                    _buildRibbonToolBtn(EditorActiveTool.select, 'Select', Icons.near_me_outlined),
+                    // Text Tool
+                    _buildRibbonToolBtn(EditorActiveTool.text, 'Text', Icons.text_fields_rounded),
+                    // Sign Tool
+                    _buildRibbonActionBtn('Sign', Icons.draw_rounded, _openSignaturePad),
+                    // Highlight Tool (From website)
+                    _buildRibbonToolBtn(EditorActiveTool.highlight, 'Highlight', Icons.border_color_rounded),
+                    // Shapes Tool (From website)
+                    _buildRibbonToolBtn(EditorActiveTool.shapes, 'Shapes', Icons.crop_square_rounded),
+                    // Stamp Tool (From website)
+                    _buildRibbonToolBtn(EditorActiveTool.stamp, 'Stamp', Icons.verified_rounded),
+                    // Redact Tool (From website)
+                    _buildRibbonToolBtn(EditorActiveTool.redact, 'Redact', Icons.shield_outlined),
+                    // Image Stamp Tool
+                    _buildRibbonActionBtn('Image', Icons.image_outlined, _pickAndStampImage),
+                    // Erase Tool
+                    _buildRibbonToolBtn(EditorActiveTool.erase, 'Erase', Icons.cleaning_services_outlined),
+                  ],
+                ),
               ),
             ),
           ),
@@ -1026,7 +1276,7 @@ class _PdfEditorCanvasScreenState extends State<PdfEditorCanvasScreen> {
         margin: const EdgeInsets.symmetric(horizontal: 3, vertical: 8),
         decoration: BoxDecoration(
           color: isSelected
-              ? (isDark ? AppColors.brandRed.withOpacity(0.22) : const Color(0xFFFEE2E2))
+              ? (isDark ? AppColors.brandRed.withValues(alpha: 0.22) : const Color(0xFFFEE2E2))
               : Colors.transparent,
           borderRadius: BorderRadius.circular(8),
           border: Border.all(
@@ -1051,8 +1301,8 @@ class _PdfEditorCanvasScreenState extends State<PdfEditorCanvasScreen> {
                 fontSize: 10,
                 fontWeight: isSelected ? FontWeight.w800 : FontWeight.w500,
                 color: isSelected
-                  ? AppColors.brandRed
-                  : (isDark ? AppColors.darkSecondaryText : AppColors.lightSecondaryText),
+                    ? AppColors.brandRed
+                    : (isDark ? AppColors.darkSecondaryText : AppColors.lightSecondaryText),
               ),
             ),
           ],

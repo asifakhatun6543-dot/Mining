@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../domain/entities/history_entity.dart';
+import '../document_actions_sheet.dart';
 import 'glass_card.dart';
 
 /// OpenPDF Studio - Document History File Card
@@ -9,6 +10,7 @@ class GlassFileCard extends StatelessWidget {
   final VoidCallback onTap;
   final VoidCallback? onShare;
   final VoidCallback? onDelete;
+  final VoidCallback? onMore;
 
   const GlassFileCard({
     super.key,
@@ -16,6 +18,7 @@ class GlassFileCard extends StatelessWidget {
     required this.onTap,
     this.onShare,
     this.onDelete,
+    this.onMore,
   });
 
   Color _getTypeColor() {
@@ -139,21 +142,22 @@ class GlassFileCard extends StatelessWidget {
             ),
           ),
 
-          // Actions
-          if (onShare != null)
-            IconButton(
-              icon: const Icon(Icons.share_rounded, size: 18),
-              color: isDark ? AppColors.darkSecondaryText : AppColors.lightSecondaryText,
-              onPressed: onShare,
-              visualDensity: VisualDensity.compact,
-            ),
-          if (onDelete != null)
-            IconButton(
-              icon: const Icon(Icons.delete_outline_rounded, size: 18),
-              color: AppColors.error.withOpacity(0.8),
-              onPressed: onDelete,
-              visualDensity: VisualDensity.compact,
-            ),
+          // 3-Dot Actions Drawer Button (All 15 Actions)
+          IconButton(
+            icon: const Icon(Icons.more_vert_rounded, size: 20),
+            color: isDark ? AppColors.darkSecondaryText : AppColors.lightSecondaryText,
+            tooltip: 'Document Actions',
+            onPressed: onMore ??
+                () {
+                  DocumentActionsSheet.show(
+                    context,
+                    item: item,
+                    documentTitle: item.fileName,
+                    documentPath: item.filePath,
+                  );
+                },
+            visualDensity: VisualDensity.compact,
+          ),
         ],
       ),
     );

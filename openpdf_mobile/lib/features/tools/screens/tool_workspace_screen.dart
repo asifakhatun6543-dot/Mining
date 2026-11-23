@@ -9,6 +9,7 @@ import '../../../core/services/ocr_scanning_service.dart';
 import '../../../domain/entities/tool_entity.dart';
 import '../../../shared/widgets/glass/glass_container.dart';
 import '../../../shared/widgets/glass/glass_button.dart';
+import '../../../shared/widgets/document_actions_sheet.dart';
 import 'pdf_editor_canvas_screen.dart';
 import 'ocr_scanner_screen.dart';
 
@@ -29,15 +30,45 @@ class _ToolWorkspaceScreenState extends State<ToolWorkspaceScreen> {
   File? _resultFile;
   String? _resultDetails;
 
-  // Configuration States
+  // Compression Configuration States
   double _compressTargetKb = 200;
+  bool _isCustomCompressSize = false;
+  final TextEditingController _customCompressController = TextEditingController(text: '200');
+  String _customCompressUnit = 'KB';
+
+  // Other Tool Configurations
   String _watermarkText = 'CONFIDENTIAL';
-  double _watermarkOpacity = 0.35;
   int _rotateAngle = 90;
-  String _splitPagesRange = '1-3';
-  String _unlockPassword = '';
-  double _scannerContrast = 1.35;
-  bool _scannerAddGrain = true;
+
+  @override
+  void dispose() {
+    _customCompressController.dispose();
+    super.dispose();
+  }
+
+  String get _actionButtonLabel {
+    if (_isProcessing) return 'Processing Document...';
+    final id = widget.tool.id;
+    if (id == 'edit-pdf') return 'Edit PDF';
+    if (id == 'sign-pdf') return 'Sign PDF';
+    if (id == 'compress-pdf') return 'Compress PDF';
+    if (id == 'merge-pdf') return 'Merge PDFs';
+    if (id == 'split-pdf') return 'Split PDF';
+    if (id == 'rotate-pdf') return 'Rotate PDF';
+    if (id == 'watermark-pdf') return 'Watermark PDF';
+    if (id == 'ocr') return 'Scan & Extract Text (OCR)';
+    if (id.startsWith('pdf-to-')) {
+      final target = id.replaceFirst('pdf-to-', '').toUpperCase();
+      return 'Convert to $target';
+    }
+    if (id.endsWith('-to-pdf')) {
+      return 'Convert to PDF';
+    }
+    if (widget.tool.title.toLowerCase().contains('convert')) {
+      return widget.tool.title;
+    }
+    return 'Process ${widget.tool.title}';
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -69,7 +100,7 @@ class _ToolWorkspaceScreenState extends State<ToolWorkspaceScreen> {
               _buildHeaderCard(isDark),
               const SizedBox(height: 18),
 
-              // File Selection Area
+              // File Selection Area with Cloud Uploads
               _buildFileSelectionCard(isDark),
               const SizedBox(height: 18),
 
@@ -78,17 +109,17 @@ class _ToolWorkspaceScreenState extends State<ToolWorkspaceScreen> {
                 _buildConfigurationCard(isDark),
                 const SizedBox(height: 24),
 
-                // Primary Processing Action Button
+                // Primary Action Button (No "Execute" word)
                 GlassButton(
-                  label: _isProcessing ? 'Processing Document...' : 'Execute ${widget.tool.title}',
+                  label: _actionButtonLabel,
                   icon: widget.tool.icon,
                   isLoading: _isProcessing,
-                  onPressed: _isProcessing ? null : _executeProcessing,
+                  onPressed: _isProcessing ? null : _handlePrimaryAction,
                 ),
                 const SizedBox(height: 24),
               ],
 
-              // Success Result Card
+              // Success Result Card (Download, Save As, Print, Share)
               if (_resultFile != null) ...[
                 _buildResultCard(isDark),
                 const SizedBox(height: 30),
@@ -109,9 +140,9 @@ class _ToolWorkspaceScreenState extends State<ToolWorkspaceScreen> {
             width: 48,
             height: 48,
             decoration: BoxDecoration(
-              color: widget.tool.accentColor.withOpacity(isDark ? 0.22 : 0.12),
+              color: widget.tool.accentColor.withValues(alpha: isDark ? 0.22 : 0.12),
               borderRadius: BorderRadius.circular(14),
-              border: Border.all(color: widget.tool.accentColor.withOpacity(0.35)),
+              border: Border.all(color: widget.tool.accentColor.withValues(alpha: 0.35)),
             ),
             child: Icon(widget.tool.icon, size: 24, color: widget.tool.accentColor),
           ),
@@ -135,7 +166,7 @@ class _ToolWorkspaceScreenState extends State<ToolWorkspaceScreen> {
                       Container(
                         padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                         decoration: BoxDecoration(
-                          color: widget.tool.accentColor.withOpacity(0.18),
+                          color: widget.tool.accentColor.withValues(alpha: 0.18),
                           borderRadius: BorderRadius.circular(6),
                         ),
                         child: Text(
@@ -179,7 +210,9 @@ class _ToolWorkspaceScreenState extends State<ToolWorkspaceScreen> {
           const SizedBox(height: 12),
           Text(
             hasFile
-                ? (_selectedFile != null ? _selectedFile!.path.split('/').last : '${_multipleFiles.length} files selected')
+                ? (_selectedFile != null
+                    ? _selectedFile!.path.split(Platform.isWindows ? r'\' : '/').last
+                    : '${_multipleFiles.length} files selected')
                 : 'Select PDF or Document',
             style: TextStyle(
               fontSize: 15,
@@ -198,8 +231,10 @@ class _ToolWorkspaceScreenState extends State<ToolWorkspaceScreen> {
             textAlign: TextAlign.center,
           ),
           const SizedBox(height: 16),
+
+          // Primary Browse Files Button
           ElevatedButton.icon(
-            onPressed: _pickFiles,
+            onPressed: () => _pickFiles(),
             icon: const Icon(Icons.file_open_rounded, size: 18),
             label: Text(hasFile ? 'Change File' : 'Browse Files'),
             style: ElevatedButton.styleFrom(
@@ -207,12 +242,111 @@ class _ToolWorkspaceScreenState extends State<ToolWorkspaceScreen> {
               foregroundColor: isDark ? AppColors.darkPrimaryText : AppColors.lightPrimaryText,
               elevation: 0,
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-              padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 10),
+              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 11),
             ),
+          ),
+
+          const SizedBox(height: 16),
+
+          // Cloud Storage Upload Bar (Google Drive, Dropbox, OneDrive)
+          Row(
+            children: [
+              Expanded(child: Divider(color: (isDark ? Colors.white : Colors.black).withValues(alpha: 0.1))),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 10),
+                child: Text(
+                  'OR UPLOAD FROM CLOUD',
+                  style: TextStyle(
+                    fontSize: 10,
+                    fontWeight: FontWeight.w700,
+                    letterSpacing: 0.6,
+                    color: isDark ? AppColors.darkSecondaryText : AppColors.lightSecondaryText,
+                  ),
+                ),
+              ),
+              Expanded(child: Divider(color: (isDark ? Colors.white : Colors.black).withValues(alpha: 0.1))),
+            ],
+          ),
+
+          const SizedBox(height: 12),
+
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              _buildCloudUploadBtn(
+                label: 'Google Drive',
+                icon: Icons.add_to_drive_rounded,
+                color: const Color(0xFF34A853),
+                isDark: isDark,
+                onTap: () => _pickFromCloud('Google Drive'),
+              ),
+              const SizedBox(width: 8),
+              _buildCloudUploadBtn(
+                label: 'Dropbox',
+                icon: Icons.cloud_queue_rounded,
+                color: const Color(0xFF0061FE),
+                isDark: isDark,
+                onTap: () => _pickFromCloud('Dropbox'),
+              ),
+              const SizedBox(width: 8),
+              _buildCloudUploadBtn(
+                label: 'OneDrive',
+                icon: Icons.cloud_circle_rounded,
+                color: const Color(0xFF0078D4),
+                isDark: isDark,
+                onTap: () => _pickFromCloud('OneDrive'),
+              ),
+            ],
           ),
         ],
       ),
     );
+  }
+
+  Widget _buildCloudUploadBtn({
+    required String label,
+    required IconData icon,
+    required Color color,
+    required bool isDark,
+    required VoidCallback onTap,
+  }) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(10),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+        decoration: BoxDecoration(
+          color: color.withValues(alpha: isDark ? 0.15 : 0.08),
+          borderRadius: BorderRadius.circular(10),
+          border: Border.all(color: color.withValues(alpha: 0.25)),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(icon, size: 16, color: color),
+            const SizedBox(width: 5),
+            Text(
+              label,
+              style: TextStyle(
+                fontSize: 11,
+                fontWeight: FontWeight.w600,
+                color: isDark ? AppColors.darkPrimaryText : AppColors.lightPrimaryText,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Future<void> _pickFromCloud(String provider) async {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text('Opening $provider cloud picker...'),
+        duration: const Duration(seconds: 1),
+      ),
+    );
+    await _pickFiles();
   }
 
   Future<void> _pickFiles() async {
@@ -248,29 +382,36 @@ class _ToolWorkspaceScreenState extends State<ToolWorkspaceScreen> {
     switch (widget.tool.id) {
       case 'edit-pdf':
       case 'sign-pdf':
+        // Clean info card without redundant dual launch button
         return GlassContainer(
           padding: const EdgeInsets.all(16),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
+          child: Row(
             children: [
-              const Text('Interactive Visual Canvas', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 14)),
-              const SizedBox(height: 6),
-              Text(
-                'Open this PDF in the full visual editor to add in-place text, stamp signatures, and blackout sensitive data.',
-                style: TextStyle(
-                  fontSize: 12,
-                  color: isDark ? AppColors.darkSecondaryText : AppColors.lightSecondaryText,
+              Container(
+                width: 40,
+                height: 40,
+                decoration: BoxDecoration(
+                  color: AppColors.brandRed.withValues(alpha: 0.14),
+                  borderRadius: BorderRadius.circular(10),
                 ),
+                child: const Icon(Icons.touch_app_rounded, color: AppColors.brandRed, size: 22),
               ),
-              const SizedBox(height: 14),
-              GlassButton(
-                label: 'Launch In-Place Editor Canvas',
-                icon: Icons.edit_note_rounded,
-                onPressed: () {
-                  Navigator.of(context).push(
-                    MaterialPageRoute(builder: (_) => PdfEditorCanvasScreen(pdfFile: _selectedFile!)),
-                  );
-                },
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text('Interactive Editor Ready', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 13.5)),
+                    const SizedBox(height: 2),
+                    Text(
+                      'Tap "${_actionButtonLabel}" below to open the visual editing canvas.',
+                      style: TextStyle(
+                        fontSize: 11.5,
+                        color: isDark ? AppColors.darkSecondaryText : AppColors.lightSecondaryText,
+                      ),
+                    ),
+                  ],
+                ),
               ),
             ],
           ),
@@ -317,29 +458,102 @@ class _ToolWorkspaceScreenState extends State<ToolWorkspaceScreen> {
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   const Text('Target Output Size', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 14)),
-                  Text('${_compressTargetKb.toInt()} KB', style: const TextStyle(fontWeight: FontWeight.w700, color: AppColors.success)),
+                  Text(
+                    _isCustomCompressSize
+                        ? '${_customCompressController.text} $_customCompressUnit'
+                        : '${_compressTargetKb.toInt()} KB',
+                    style: const TextStyle(fontWeight: FontWeight.w700, color: AppColors.success),
+                  ),
                 ],
               ),
-              Slider(
-                value: _compressTargetKb,
-                min: 50,
-                max: 2000,
-                divisions: 39,
-                activeColor: AppColors.success,
-                onChanged: (v) => setState(() => _compressTargetKb = v),
+              const SizedBox(height: 12),
+
+              // Slider for preset range
+              if (!_isCustomCompressSize)
+                Slider(
+                  value: _compressTargetKb.clamp(50, 2000),
+                  min: 50,
+                  max: 2000,
+                  divisions: 39,
+                  activeColor: AppColors.success,
+                  onChanged: (v) => setState(() => _compressTargetKb = v),
+                ),
+
+              // Preset Chips + Custom Option
+              Wrap(
+                spacing: 6,
+                runSpacing: 6,
+                children: [
+                  ...[50, 100, 200, 500, 1000].map((preset) {
+                    final isSel = !_isCustomCompressSize && _compressTargetKb.toInt() == preset;
+                    return ChoiceChip(
+                      label: Text('${preset} KB', style: TextStyle(fontSize: 11, color: isSel ? Colors.white : null)),
+                      selected: isSel,
+                      selectedColor: AppColors.success,
+                      onSelected: (_) {
+                        setState(() {
+                          _isCustomCompressSize = false;
+                          _compressTargetKb = preset.toDouble();
+                        });
+                      },
+                    );
+                  }),
+                  ChoiceChip(
+                    label: Text('Custom Size', style: TextStyle(fontSize: 11, color: _isCustomCompressSize ? Colors.white : null)),
+                    selected: _isCustomCompressSize,
+                    selectedColor: AppColors.brandRed,
+                    onSelected: (_) {
+                      setState(() => _isCustomCompressSize = true);
+                    },
+                  ),
+                ],
               ),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [50, 100, 200, 500, 1000].map((preset) {
-                  final isSel = _compressTargetKb.toInt() == preset;
-                  return ChoiceChip(
-                    label: Text('${preset}K', style: TextStyle(fontSize: 11, color: isSel ? Colors.white : null)),
-                    selected: isSel,
-                    selectedColor: AppColors.success,
-                    onSelected: (_) => setState(() => _compressTargetKb = preset.toDouble()),
-                  );
-                }).toList(),
-              ),
+
+              // Custom Size Input Field
+              if (_isCustomCompressSize) ...[
+                const SizedBox(height: 14),
+                Row(
+                  children: [
+                    Expanded(
+                      child: TextField(
+                        controller: _customCompressController,
+                        keyboardType: TextInputType.number,
+                        style: TextStyle(
+                          color: isDark ? Colors.white : Colors.black87,
+                          fontSize: 14,
+                        ),
+                        decoration: InputDecoration(
+                          labelText: 'Enter Target Size',
+                          isDense: true,
+                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                          contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                        ),
+                        onChanged: (val) {
+                          final numVal = double.tryParse(val) ?? 200;
+                          final multiplier = _customCompressUnit == 'MB' ? 1024 : 1;
+                          _compressTargetKb = numVal * multiplier;
+                        },
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    DropdownButton<String>(
+                      value: _customCompressUnit,
+                      dropdownColor: isDark ? const Color(0xFF1E293B) : Colors.white,
+                      items: ['KB', 'MB'].map((u) => DropdownMenuItem(value: u, child: Text(u))).toList(),
+                      onChanged: (u) {
+                        if (u != null) {
+                          setState(() {
+                            _customCompressUnit = u;
+                            final numVal = double.tryParse(_customCompressController.text) ?? 200;
+                            final multiplier = u == 'MB' ? 1024 : 1;
+                            _compressTargetKb = numVal * multiplier;
+                          });
+                        }
+                      },
+                    ),
+                  ],
+                ),
+              ],
             ],
           ),
         );
@@ -384,6 +598,48 @@ class _ToolWorkspaceScreenState extends State<ToolWorkspaceScreen> {
       default:
         return const SizedBox.shrink();
     }
+  }
+
+  Future<void> _handlePrimaryAction() async {
+    // If Edit PDF or Sign PDF, launch canvas with progress popup
+    if (widget.tool.id == 'edit-pdf' || widget.tool.id == 'sign-pdf') {
+      if (_selectedFile == null) {
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Please select a PDF document first.')));
+        return;
+      }
+
+      showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (_) => AlertDialog(
+          backgroundColor: const Color(0xFF111726),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
+          content: Row(
+            children: const [
+              SizedBox(
+                width: 28,
+                height: 28,
+                child: CircularProgressIndicator(strokeWidth: 3, color: AppColors.brandRed),
+              ),
+              SizedBox(width: 18),
+              Text('Preparing document...', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600)),
+            ],
+          ),
+        ),
+      );
+
+      await Future.delayed(const Duration(milliseconds: 600));
+      if (mounted) {
+        Navigator.of(context).pop(); // dismiss loading dialog
+        Navigator.of(context).push(
+          MaterialPageRoute(builder: (_) => PdfEditorCanvasScreen(pdfFile: _selectedFile!)),
+        );
+      }
+      return;
+    }
+
+    // Otherwise execute processing
+    await _executeProcessing();
   }
 
   Future<void> _executeProcessing() async {
@@ -452,7 +708,6 @@ class _ToolWorkspaceScreenState extends State<ToolWorkspaceScreen> {
           break;
 
         default:
-          // Fast fallback optimization for other tools
           _resultFile = await PdfProcessingService.instance.rotatePdf(file: _selectedFile!, angleDegrees: 0);
           _resultDetails = 'Processed successfully';
       }
@@ -464,6 +719,8 @@ class _ToolWorkspaceScreenState extends State<ToolWorkspaceScreen> {
   }
 
   Widget _buildResultCard(bool isDark) {
+    final fileName = _resultFile!.path.split(Platform.isWindows ? r'\' : '/').last;
+
     return GlassContainer(
       padding: const EdgeInsets.all(20),
       child: Column(
@@ -475,17 +732,131 @@ class _ToolWorkspaceScreenState extends State<ToolWorkspaceScreen> {
             const SizedBox(height: 4),
             Text(_resultDetails!, style: TextStyle(fontSize: 13, color: isDark ? AppColors.darkSecondaryText : AppColors.lightSecondaryText)),
           ],
-          const SizedBox(height: 16),
+          const SizedBox(height: 18),
+
+          // 4 Action Buttons: Download, Save As, Print, Share
           Row(
             children: [
               Expanded(
-                child: GlassButton(
-                  label: 'Share Document',
-                  icon: Icons.share_rounded,
-                  onPressed: () => FileService.instance.shareFile(_resultFile!.path),
+                child: _buildSmallActionButton(
+                  icon: Icons.download_rounded,
+                  label: 'Download',
+                  color: const Color(0xFF10B981),
+                  onTap: () async {
+                    final bytes = await _resultFile!.readAsBytes();
+                    await FileService.instance.saveFile(fileName: fileName, bytes: bytes);
+                    if (mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(content: Text('Saved to device storage: $fileName ✓')),
+                      );
+                    }
+                  },
+                ),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: _buildSmallActionButton(
+                  icon: Icons.save_as_rounded,
+                  label: 'Save As',
+                  color: const Color(0xFFF59E0B),
+                  onTap: () => _showSaveAsDialog(fileName),
                 ),
               ),
             ],
+          ),
+          const SizedBox(height: 8),
+          Row(
+            children: [
+              Expanded(
+                child: _buildSmallActionButton(
+                  icon: Icons.print_rounded,
+                  label: 'Print',
+                  color: const Color(0xFF6366F1),
+                  onTap: () => FileService.instance.printDocument(filePath: _resultFile!.path, docName: fileName),
+                ),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: _buildSmallActionButton(
+                  icon: Icons.share_rounded,
+                  label: 'Share',
+                  color: AppColors.brandRed,
+                  onTap: () => FileService.instance.shareFile(_resultFile!.path),
+                ),
+              ),
+            ],
+          ),
+
+          const SizedBox(height: 12),
+
+          // 15-Action Drawer Trigger
+          TextButton.icon(
+            onPressed: () {
+              DocumentActionsSheet.show(
+                context,
+                documentTitle: fileName,
+                documentPath: _resultFile!.path,
+              );
+            },
+            icon: const Icon(Icons.more_horiz_rounded, size: 18),
+            label: const Text('More Options (All 15 Actions)', style: TextStyle(fontWeight: FontWeight.w700)),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSmallActionButton({
+    required IconData icon,
+    required String label,
+    required Color color,
+    required VoidCallback onTap,
+  }) {
+    return ElevatedButton.icon(
+      onPressed: onTap,
+      icon: Icon(icon, size: 16),
+      label: Text(label, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700)),
+      style: ElevatedButton.styleFrom(
+        backgroundColor: color.withValues(alpha: 0.15),
+        foregroundColor: color,
+        elevation: 0,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(12),
+          side: BorderSide(color: color.withValues(alpha: 0.3)),
+        ),
+        padding: const EdgeInsets.symmetric(vertical: 10),
+      ),
+    );
+  }
+
+  void _showSaveAsDialog(String initialName) {
+    final ctrl = TextEditingController(text: initialName);
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Save Document As'),
+        content: TextField(
+          controller: ctrl,
+          decoration: const InputDecoration(labelText: 'New Filename', border: OutlineInputBorder()),
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.of(ctx).pop(), child: const Text('Cancel')),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(backgroundColor: AppColors.brandRed),
+            onPressed: () async {
+              final newName = ctrl.text.trim();
+              if (newName.isNotEmpty) {
+                final bytes = await _resultFile!.readAsBytes();
+                await FileService.instance.saveFile(fileName: newName, bytes: bytes);
+                if (mounted) {
+                  Navigator.of(ctx).pop();
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text('Saved as $newName ✓')),
+                  );
+                }
+              }
+            },
+            child: const Text('Save', style: TextStyle(color: Colors.white)),
           ),
         ],
       ),

@@ -4,7 +4,7 @@ import '../../../shared/widgets/glass/glass_bottom_nav.dart';
 import '../../home/screens/home_screen.dart';
 import '../../all_tools/screens/all_tools_screen.dart';
 import '../../chat_ai/screens/chat_ai_screen.dart';
-import '../../history/screens/history_screen.dart';
+import '../../profile/screens/profile_screen.dart';
 
 /// OpenPDF Studio - Main Shell with Persistent 4-Tab Liquid Glass Navigation
 class MainShellScreen extends StatefulWidget {
@@ -40,7 +40,7 @@ class _MainShellScreenState extends State<MainShellScreen> {
             HomeScreen(onNavigateTab: _onTabSelected),
             const AllToolsScreen(),
             const ChatAiScreen(),
-            HistoryScreen(onNavigateTab: _onTabSelected),
+            ProfileScreen(onNavigateTab: _onTabSelected),
           ],
         ),
         bottomNavigationBar: ListenableBuilder(
