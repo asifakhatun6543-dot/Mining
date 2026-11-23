@@ -2,6 +2,7 @@
 import 'package:flutter/material.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/services/file_service.dart';
+import '../../../core/services/cloud_storage_service.dart';
 import '../../../core/services/pdf_processing_service.dart';
 import '../../../core/services/office_conversion_service.dart';
 import '../../../core/services/image_processing_service.dart';
@@ -340,13 +341,16 @@ class _ToolWorkspaceScreenState extends State<ToolWorkspaceScreen> {
   }
 
   Future<void> _pickFromCloud(String provider) async {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text('Opening $provider cloud picker...'),
-        duration: const Duration(seconds: 1),
-      ),
+    final doc = await CloudStorageService.instance.pickDocumentFromCloud(
+      context: context,
+      provider: provider,
     );
-    await _pickFiles();
+    if (doc != null && mounted) {
+      setState(() {
+        _selectedFile = File(doc.path);
+        _resultFile = null;
+      });
+    }
   }
 
   Future<void> _pickFiles() async {

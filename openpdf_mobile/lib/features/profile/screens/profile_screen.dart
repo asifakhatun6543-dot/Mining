@@ -1,16 +1,18 @@
 ﻿import 'package:flutter/material.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/services/history_service.dart';
+import '../../../core/services/theme_service.dart';
+import '../../../core/services/cloud_storage_service.dart';
 import '../../../shared/widgets/glass/glass_card.dart';
 import '../../../shared/widgets/glass/glass_container.dart';
 import '../../../shared/widgets/document_actions_sheet.dart';
 
-/// OpenPDF Studio - Executive Profile, Cloud & Settings Hub
+/// PDF 🫰 Studio - Executive Profile, Cloud & Settings Hub
 /// Replacing standalone history tab with unified all-in-one Profile Dashboard:
 /// - Profile Header & Pro Active Badge
 /// - History Section with 3-Dot Document Action Drawers
-/// - Dark / Light Mode Switcher
-/// - Cloud Integrations (Google Drive, Dropbox, OneDrive)
+/// - Real Dark / Light Mode Switcher
+/// - Real Cloud Storage Integrations (Google Drive, Dropbox, OneDrive)
 /// - Terms & Conditions, Privacy Policy
 /// - Help / Contact Us, About Us
 /// - Footer: Built with love 🫰 RS7 Private Limited
@@ -24,15 +26,12 @@ class ProfileScreen extends StatefulWidget {
 }
 
 class _ProfileScreenState extends State<ProfileScreen> {
-  bool _isDarkMode = true;
-  bool _gdriveConnected = true;
-  bool _dropboxConnected = false;
-  bool _oneDriveConnected = false;
-
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final primaryAccent = isDark ? const Color(0xFFFF2A55) : AppColors.brandRed;
+    final cloud = CloudStorageService.instance;
+    final theme = ThemeService.instance;
 
     return Scaffold(
       backgroundColor: Colors.transparent,
@@ -296,30 +295,33 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       _buildCloudRow(
                         icon: Icons.add_to_drive_rounded,
                         name: 'Google Drive',
-                        subtitle: _gdriveConnected ? 'Synced (My Drive)' : 'Connect account',
+                        subtitle: cloud.gdriveConnected ? 'Connected (${cloud.gdriveAccount})' : 'Connect cloud storage',
                         color: const Color(0xFF34A853),
-                        isConnected: _gdriveConnected,
-                        onToggle: () => setState(() => _gdriveConnected = !_gdriveConnected),
+                        isConnected: cloud.gdriveConnected,
+                        onToggle: () => cloud.toggleConnection('Google Drive'),
+                        onTapRow: () => cloud.pickDocumentFromCloud(context: context, provider: 'Google Drive'),
                         isDark: isDark,
                       ),
                       const Divider(height: 16),
                       _buildCloudRow(
                         icon: Icons.cloud_queue_rounded,
                         name: 'Dropbox',
-                        subtitle: _dropboxConnected ? 'Connected' : 'Sync PDF folders',
+                        subtitle: cloud.dropboxConnected ? 'Connected (${cloud.dropboxAccount})' : 'Sync PDF folders',
                         color: const Color(0xFF0061FE),
-                        isConnected: _dropboxConnected,
-                        onToggle: () => setState(() => _dropboxConnected = !_dropboxConnected),
+                        isConnected: cloud.dropboxConnected,
+                        onToggle: () => cloud.toggleConnection('Dropbox'),
+                        onTapRow: () => cloud.pickDocumentFromCloud(context: context, provider: 'Dropbox'),
                         isDark: isDark,
                       ),
                       const Divider(height: 16),
                       _buildCloudRow(
                         icon: Icons.cloud_done_rounded,
                         name: 'Microsoft OneDrive',
-                        subtitle: _oneDriveConnected ? 'Connected' : 'Office 365 cloud vault',
+                        subtitle: cloud.oneDriveConnected ? 'Connected (${cloud.oneDriveAccount})' : 'Office 365 cloud vault',
                         color: const Color(0xFF0078D4),
-                        isConnected: _oneDriveConnected,
-                        onToggle: () => setState(() => _oneDriveConnected = !_oneDriveConnected),
+                        isConnected: cloud.oneDriveConnected,
+                        onToggle: () => cloud.toggleConnection('OneDrive'),
+                        onTapRow: () => cloud.pickDocumentFromCloud(context: context, provider: 'OneDrive'),
                         isDark: isDark,
                       ),
                     ],
@@ -351,9 +353,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       Row(
                         children: [
                           Icon(
-                            _isDarkMode ? Icons.dark_mode_rounded : Icons.light_mode_rounded,
+                            theme.isDarkMode ? Icons.dark_mode_rounded : Icons.light_mode_rounded,
                             size: 22,
-                            color: _isDarkMode ? const Color(0xFFD4FF32) : const Color(0xFFF59E0B),
+                            color: theme.isDarkMode ? const Color(0xFFD4FF32) : const Color(0xFFF59E0B),
                           ),
                           const SizedBox(width: 14),
                           Column(
@@ -368,7 +370,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                 ),
                               ),
                               Text(
-                                _isDarkMode ? 'Liquid Glass Obsidian' : 'Classic Crisp Light',
+                                theme.isDarkMode ? 'Liquid Glass Obsidian' : 'Classic Crisp Light',
                                 style: TextStyle(
                                   fontSize: 11,
                                   color: isDark ? AppColors.darkSecondaryText : AppColors.lightSecondaryText,
@@ -379,9 +381,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         ],
                       ),
                       Switch(
-                        value: _isDarkMode,
+                        value: theme.isDarkMode,
                         activeColor: primaryAccent,
-                        onChanged: (val) => setState(() => _isDarkMode = val),
+                        onChanged: (val) => theme.setDarkMode(val),
                       ),
                     ],
                   ),
@@ -509,59 +511,67 @@ class _ProfileScreenState extends State<ProfileScreen> {
     required Color color,
     required bool isConnected,
     required VoidCallback onToggle,
+    VoidCallback? onTapRow,
     required bool isDark,
   }) {
-    return Row(
-      children: [
-        Container(
-          width: 36,
-          height: 36,
-          decoration: BoxDecoration(
-            color: color.withOpacity(0.15),
-            borderRadius: BorderRadius.circular(8),
-          ),
-          child: Icon(icon, color: color, size: 20),
-        ),
-        const SizedBox(width: 14),
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                name,
-                style: TextStyle(
-                  fontSize: 13.5,
-                  fontWeight: FontWeight.w600,
-                  color: isDark ? AppColors.darkPrimaryText : AppColors.lightPrimaryText,
-                ),
+    return InkWell(
+      onTap: onTapRow,
+      borderRadius: BorderRadius.circular(10),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 4),
+        child: Row(
+          children: [
+            Container(
+              width: 36,
+              height: 36,
+              decoration: BoxDecoration(
+                color: color.withOpacity(0.15),
+                borderRadius: BorderRadius.circular(8),
               ),
-              Text(
-                subtitle,
-                style: TextStyle(
-                  fontSize: 11,
-                  color: isDark ? AppColors.darkSecondaryText : AppColors.lightSecondaryText,
-                ),
-              ),
-            ],
-          ),
-        ),
-        TextButton(
-          onPressed: onToggle,
-          style: TextButton.styleFrom(
-            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-            minimumSize: Size.zero,
-            tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-          ),
-          child: Text(
-            isConnected ? 'Connected ✓' : 'Connect',
-            style: TextStyle(
-              fontSize: 12,
-              fontWeight: FontWeight.w700,
-              color: isConnected ? const Color(0xFF10B981) : (isDark ? const Color(0xFFFF2A55) : AppColors.brandRed),
+              child: Icon(icon, color: color, size: 20),
             ),
-          ),
+            const SizedBox(width: 14),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    name,
+                    style: TextStyle(
+                      fontSize: 13.5,
+                      fontWeight: FontWeight.w600,
+                      color: isDark ? AppColors.darkPrimaryText : AppColors.lightPrimaryText,
+                    ),
+                  ),
+                  Text(
+                    subtitle,
+                    style: TextStyle(
+                      fontSize: 11,
+                      color: isDark ? AppColors.darkSecondaryText : AppColors.lightSecondaryText,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            TextButton(
+              onPressed: onToggle,
+              style: TextButton.styleFrom(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                minimumSize: Size.zero,
+                tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+              ),
+              child: Text(
+                isConnected ? 'Connected ✓' : 'Connect',
+                style: TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w700,
+                  color: isConnected ? const Color(0xFF10B981) : (isDark ? const Color(0xFFFF2A55) : AppColors.brandRed),
+                ),
+              ),
+            ),
+          ],
         ),
-      ],
+      ),
     );
   }
 

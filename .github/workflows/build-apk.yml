@@ -83,40 +83,42 @@ jobs:
           else
             find openpdf_mobile/build -name "*release*.apk" -exec cp {} output_apk/OpenPDF-Studio-Release.apk \;
           fi
-          echo "Prepared APK file (Lightweight size optimized):"
+          cp output_apk/OpenPDF-Studio-Release.apk output_apk/PDF-Studio-Release.apk
+          echo "Prepared APK files (Lightweight size optimized):"
           ls -lh output_apk/
 
       - name: Upload Release APK as Workflow Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: OpenPDF-Studio-Release-APK
-          path: output_apk/OpenPDF-Studio-Release.apk
+          name: PDF-Studio-Release-APK
+          path: output_apk/*.apk
           retention-days: 30
 
       - name: Publish GitHub Release with Direct APK Download
         uses: softprops/action-gh-release@v2
         with:
           tag_name: v1.0.5
-          name: "OpenPDF Studio v1.0.5 — Production Android APK"
+          name: "PDF 🫰 Studio v1.0.5 — Production Android APK"
           allowUpdates: true
           generate_release_notes: false
           draft: false
           prerelease: false
           body: |
-            ## 📱 OpenPDF Studio — Production Android APK (Release v1.0.5)
+            ## 📱 PDF 🫰 Studio — Production Android APK (Release v1.0.5)
 
-            Direct APK Download:
+            Direct APK Downloads:
+            👉 **[PDF-Studio-Release.apk](https://github.com/${{ github.repository }}/releases/download/v1.0.5/PDF-Studio-Release.apk)**
             👉 **[OpenPDF-Studio-Release.apk](https://github.com/${{ github.repository }}/releases/download/v1.0.5/OpenPDF-Studio-Release.apk)**
 
             ---
-            ### ✨ Included Features & Architecture:
-            - **Liquid Glass Navigation**: Floating 4-tab mobile bottom bar (Home, All Tools, Chat AI, History).
-            - **23 Local Document Utilities**: PDF to Word (.docx), Excel (.xlsx), PowerPoint (.pptx), Compress, Merge, Split, Rotate, Sign, Redact, Watermark, etc.
-            - **In-Place Visual Canvas Editor**: Interactive multi-touch canvas, vector text, Bézier touch signature stamps, page navigation, and live annotations.
-            - **On-Device OCR & Scanner**: Google ML Kit text recognition for receipts and camera scans.
-            - **Document AI Assistant**: Local summarization, Hindi translation, fiscal number detection, and action item extraction.
-            - **100% Privacy Focused**: Runs completely on-device with 0 KB telemetry or backend dependency.
-          files: output_apk/OpenPDF-Studio-Release.apk
+            ### ✨ Features Included:
+            - **Real PDF Document Page Rendering**: Uses on-device native PDF engine to render your actual uploaded documents in high-res.
+            - **Global Dark & Light Theme**: Real reactive instant toggle with persistent storage across the entire application.
+            - **Real Cloud Storage Integration**: Direct Google Drive, Dropbox, and Microsoft OneDrive document importing.
+            - **15-Action Document Drawer**: Open, Download, Save As, Print, Email, Share, Sign, Merge, Split, Duplicate, Rename, Favourite, Move, Clear Fields, Move to Trash.
+            - **ChatGPT-Style Document & Universal AI**: Offline translation, summaries, metric extraction, and multi-turn chat.
+            - **Built with love 🫰 RS7 Private Limited**.
+          files: output_apk/*.apk
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
@@ -129,7 +131,7 @@ jobs:
           git checkout -B release-apk
           git rm -rf . || true
           mkdir -p apk_dist
-          cp output_apk/OpenPDF-Studio-Release.apk apk_dist/OpenPDF-Studio-Release.apk
-          git add apk_dist/OpenPDF-Studio-Release.apk
-          git commit -m "chore: publish standalone APK binary"
+          cp output_apk/*.apk apk_dist/
+          git add apk_dist/
+          git commit -m "chore: publish standalone APK binaries"
           git push -f origin release-apk

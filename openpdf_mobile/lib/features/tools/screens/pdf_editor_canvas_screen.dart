@@ -8,6 +8,7 @@ import '../../../core/services/file_service.dart';
 import '../../../core/services/history_service.dart';
 import '../../../shared/widgets/glass/glass_signature_pad.dart';
 import '../../../shared/widgets/document_actions_sheet.dart';
+import 'package:printing/printing.dart';
 
 enum EditorActiveTool {
   select,
@@ -168,6 +169,8 @@ class _PdfEditorCanvasScreenState extends State<PdfEditorCanvasScreen> {
   final List<CanvasAnnotationAction> _redoStack = [];
 
   bool _isSaving = false;
+  Uint8List? _pageImageBytes;
+  bool _isRenderingPage = true;
 
   @override
   void initState() {
@@ -201,7 +204,36 @@ class _PdfEditorCanvasScreenState extends State<PdfEditorCanvasScreen> {
         _totalPages = document.pages.count > 0 ? document.pages.count : 1;
       });
       document.dispose();
-    } catch (_) {}
+      await _renderPage(_currentPage);
+    } catch (_) {
+      await _renderPage(_currentPage);
+    }
+  }
+
+  /// Renders the real original PDF document page in high resolution using on-device PDF engine
+  Future<void> _renderPage(int pageNumber) async {
+    if (!mounted) return;
+    setState(() => _isRenderingPage = true);
+
+    try {
+      final bytes = await widget.pdfFile.readAsBytes();
+      final pageIndex = (pageNumber - 1).clamp(0, _totalPages > 0 ? _totalPages - 1 : 0);
+
+      await for (final page in Printing.raster(bytes, pages: [pageIndex], dpi: 150)) {
+        final pngData = await page.toPng();
+        if (mounted) {
+          setState(() {
+            _pageImageBytes = pngData;
+            _isRenderingPage = false;
+          });
+        }
+        break;
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() => _isRenderingPage = false);
+      }
+    }
   }
 
   void _pushAction(CanvasAnnotationAction action) {
@@ -518,6 +550,7 @@ class _PdfEditorCanvasScreenState extends State<PdfEditorCanvasScreen> {
                     return GestureDetector(
                       onTap: () {
                         setState(() => _currentPage = pageNum);
+                        _renderPage(pageNum);
                         Navigator.of(ctx).pop();
                       },
                       child: Container(
@@ -804,122 +837,55 @@ class _PdfEditorCanvasScreenState extends State<PdfEditorCanvasScreen> {
                     onTapUp: _handleCanvasTap,
                     child: Stack(
                       children: [
-                        // Rich, realistic PDF Document Content Layout (Prevents white void appearance)
+                        // 1. REAL ORIGINAL PDF DOCUMENT PAGE RENDERED IN HIGH RESOLUTION
                         Positioned.fill(
-                          child: Padding(
-                            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                // Document Header Bar
-                                Row(
-                                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                  children: [
-                                    Row(
-                                      children: [
-                                        Container(
-                                          width: 22,
-                                          height: 22,
-                                          decoration: BoxDecoration(
-                                            color: AppColors.brandRed.withOpacity(0.12),
-                                            borderRadius: BorderRadius.circular(5),
+                          child: ClipRRect(
+                            borderRadius: BorderRadius.circular(8),
+                            child: _isRenderingPage
+                                ? Container(
+                                    color: Colors.white,
+                                    child: Center(
+                                      child: Column(
+                                        mainAxisSize: MainAxisSize.min,
+                                        children: const [
+                                          SizedBox(
+                                            width: 28,
+                                            height: 28,
+                                            child: CircularProgressIndicator(
+                                              color: AppColors.brandRed,
+                                              strokeWidth: 2.5,
+                                            ),
                                           ),
-                                          child: const Icon(Icons.picture_as_pdf_rounded, size: 14, color: AppColors.brandRed),
+                                          SizedBox(height: 12),
+                                          Text(
+                                            'Rendering original document page...',
+                                            style: TextStyle(
+                                              fontSize: 12,
+                                              color: Colors.black54,
+                                              fontWeight: FontWeight.w600,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  )
+                                : (_pageImageBytes != null
+                                    ? Container(
+                                        color: Colors.white,
+                                        child: Image.memory(
+                                          _pageImageBytes!,
+                                          fit: BoxFit.contain,
                                         ),
-                                        const SizedBox(width: 8),
-                                        ConstrainedBox(
-                                          constraints: const BoxConstraints(maxWidth: 180),
+                                      )
+                                    : Container(
+                                        color: Colors.white,
+                                        child: Center(
                                           child: Text(
-                                            _titleController.text.isNotEmpty ? _titleController.text : 'OpenPDF Document',
-                                            style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Color(0xFF1E293B)),
-                                            overflow: TextOverflow.ellipsis,
+                                            _titleController.text,
+                                            style: const TextStyle(color: Colors.black54),
                                           ),
                                         ),
-                                      ],
-                                    ),
-                                    Container(
-                                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                                      decoration: BoxDecoration(
-                                        color: const Color(0xFFF1F5F9),
-                                        borderRadius: BorderRadius.circular(4),
-                                        border: Border.all(color: const Color(0xFFCBD5E1)),
-                                      ),
-                                      child: Text(
-                                        'Page $_currentPage of $_totalPages',
-                                        style: const TextStyle(fontSize: 9, fontWeight: FontWeight.bold, color: Color(0xFF64748B)),
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                                const SizedBox(height: 12),
-                                Container(height: 1, color: const Color(0xFFE2E8F0)),
-                                const SizedBox(height: 16),
-
-                                // Simulated High-Fidelity Paragraphs & Blocks
-                                Container(height: 14, width: 190, decoration: BoxDecoration(color: const Color(0xFF334155), borderRadius: BorderRadius.circular(3))),
-                                const SizedBox(height: 12),
-                                Container(height: 8, width: double.infinity, decoration: BoxDecoration(color: const Color(0xFF94A3B8), borderRadius: BorderRadius.circular(2))),
-                                const SizedBox(height: 6),
-                                Container(height: 8, width: double.infinity, decoration: BoxDecoration(color: const Color(0xFFCBD5E1), borderRadius: BorderRadius.circular(2))),
-                                const SizedBox(height: 6),
-                                Container(height: 8, width: 240, decoration: BoxDecoration(color: const Color(0xFFCBD5E1), borderRadius: BorderRadius.circular(2))),
-                                const SizedBox(height: 18),
-
-                                // Section 2
-                                Container(height: 12, width: 140, decoration: BoxDecoration(color: const Color(0xFF475569), borderRadius: BorderRadius.circular(3))),
-                                const SizedBox(height: 10),
-                                Container(height: 8, width: double.infinity, decoration: BoxDecoration(color: const Color(0xFFE2E8F0), borderRadius: BorderRadius.circular(2))),
-                                const SizedBox(height: 6),
-                                Container(height: 8, width: 220, decoration: BoxDecoration(color: const Color(0xFFE2E8F0), borderRadius: BorderRadius.circular(2))),
-                                const SizedBox(height: 16),
-
-                                // Simulated Data Matrix / Table Form
-                                Container(
-                                  padding: const EdgeInsets.all(8),
-                                  decoration: BoxDecoration(
-                                    border: Border.all(color: const Color(0xFFE2E8F0)),
-                                    borderRadius: BorderRadius.circular(4),
-                                    color: const Color(0xFFF8FAFC),
-                                  ),
-                                  child: Column(
-                                    children: [
-                                      Row(
-                                        children: [
-                                          Expanded(child: Container(height: 7, color: const Color(0xFFCBD5E1))),
-                                          const SizedBox(width: 8),
-                                          Expanded(child: Container(height: 7, color: const Color(0xFFCBD5E1))),
-                                          const SizedBox(width: 8),
-                                          Expanded(child: Container(height: 7, color: const Color(0xFFCBD5E1))),
-                                        ],
-                                      ),
-                                      const SizedBox(height: 6),
-                                      Row(
-                                        children: [
-                                          Expanded(child: Container(height: 6, color: const Color(0xFFE2E8F0))),
-                                          const SizedBox(width: 8),
-                                          Expanded(child: Container(height: 6, color: const Color(0xFFE2E8F0))),
-                                          const SizedBox(width: 8),
-                                          Expanded(child: Container(height: 6, color: const Color(0xFFE2E8F0))),
-                                        ],
-                                      ),
-                                    ],
-                                  ),
-                                ),
-
-                                const Spacer(),
-
-                                // Document Footer
-                                Container(height: 1, color: const Color(0xFFE2E8F0)),
-                                const SizedBox(height: 8),
-                                Row(
-                                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                  children: const [
-                                    Text('OpenPDF Studio Engine', style: TextStyle(fontSize: 8, color: Color(0xFF94A3B8), fontWeight: FontWeight.w600)),
-                                    Text('CONFIDENTIAL & CERTIFIED', style: TextStyle(fontSize: 8, color: Color(0xFF94A3B8), fontWeight: FontWeight.w600)),
-                                  ],
-                                ),
-                              ],
-                            ),
+                                      )),
                           ),
                         ),
 
@@ -1141,7 +1107,12 @@ class _PdfEditorCanvasScreenState extends State<PdfEditorCanvasScreen> {
                       visualDensity: VisualDensity.compact,
                       padding: EdgeInsets.zero,
                       constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
-                      onPressed: _currentPage > 1 ? () => setState(() => _currentPage--) : null,
+                      onPressed: _currentPage > 1
+                          ? () {
+                              setState(() => _currentPage--);
+                              _renderPage(_currentPage);
+                            }
+                          : null,
                     ),
                     Padding(
                       padding: const EdgeInsets.symmetric(horizontal: 6),
@@ -1156,7 +1127,12 @@ class _PdfEditorCanvasScreenState extends State<PdfEditorCanvasScreen> {
                       visualDensity: VisualDensity.compact,
                       padding: EdgeInsets.zero,
                       constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
-                      onPressed: _currentPage < _totalPages ? () => setState(() => _currentPage++) : null,
+                      onPressed: _currentPage < _totalPages
+                          ? () {
+                              setState(() => _currentPage++);
+                              _renderPage(_currentPage);
+                            }
+                          : null,
                     ),
                     Container(height: 18, width: 1, color: Colors.white30, margin: const EdgeInsets.symmetric(horizontal: 8)),
                     // Minus (Zoom Out)

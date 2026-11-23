@@ -1,14 +1,17 @@
-﻿import 'package:flutter/material.dart';
+﻿import 'dart:io';
+import 'package:flutter/material.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/app_strings.dart';
 import '../../../core/services/file_service.dart';
 import '../../../core/services/history_service.dart';
+import '../../../core/services/cloud_storage_service.dart';
 import '../../../data/datasources/tools_data.dart';
 import '../../../domain/entities/tool_entity.dart';
 import '../../../shared/widgets/glass/glass_card.dart';
 import '../../../shared/widgets/glass/glass_container.dart';
 import '../../../shared/widgets/document_actions_sheet.dart';
 import '../../tools/screens/tool_workspace_screen.dart';
+import '../../tools/screens/pdf_editor_canvas_screen.dart';
 
 /// OpenPDF Studio - Next-Gen Clean Mobile Dashboard
 /// High-end typography, rapid workflow shortcuts, category filtering,
@@ -90,7 +93,7 @@ class _HomeScreenState extends State<HomeScreen> {
                         Row(
                           children: [
                             Text(
-                              'OpenPDF',
+                              'PDF',
                               style: TextStyle(
                                 fontSize: 24,
                                 fontWeight: FontWeight.w900,
@@ -98,7 +101,9 @@ class _HomeScreenState extends State<HomeScreen> {
                                 letterSpacing: -0.6,
                               ),
                             ),
-                            const SizedBox(width: 4),
+                            const SizedBox(width: 5),
+                            const Text('🫰', style: TextStyle(fontSize: 20)),
+                            const SizedBox(width: 5),
                             Container(
                               padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                               decoration: BoxDecoration(
@@ -207,9 +212,16 @@ class _HomeScreenState extends State<HomeScreen> {
                       icon: Icons.edit_note_rounded,
                       color: const Color(0xFFFF2A55),
                       isDark: isDark,
-                      onTap: () {
-                        final tool = ToolsData.allTools.firstWhere((t) => t.id == 'edit_pdf');
-                        _openTool(tool);
+                      onTap: () async {
+                        final tool = ToolsData.allTools.firstWhere((t) => t.id == 'edit-pdf');
+                        final doc = await FileService.instance.pickPdfFile();
+                        if (doc != null && mounted) {
+                          Navigator.of(context).push(
+                            MaterialPageRoute(builder: (_) => PdfEditorCanvasScreen(pdfFile: File(doc.path))),
+                          );
+                        } else if (mounted) {
+                          _openTool(tool);
+                        }
                       },
                     ),
                     const SizedBox(width: 10),
@@ -220,7 +232,7 @@ class _HomeScreenState extends State<HomeScreen> {
                       color: const Color(0xFF3B82F6),
                       isDark: isDark,
                       onTap: () {
-                        final tool = ToolsData.allTools.firstWhere((t) => t.id == 'pdf_to_word');
+                        final tool = ToolsData.allTools.firstWhere((t) => t.id == 'pdf-to-word');
                         _openTool(tool);
                       },
                     ),
@@ -232,7 +244,7 @@ class _HomeScreenState extends State<HomeScreen> {
                       color: const Color(0xFF10B981),
                       isDark: isDark,
                       onTap: () {
-                        final tool = ToolsData.allTools.firstWhere((t) => t.id == 'compress_pdf');
+                        final tool = ToolsData.allTools.firstWhere((t) => t.id == 'compress-pdf');
                         _openTool(tool);
                       },
                     ),
@@ -244,7 +256,7 @@ class _HomeScreenState extends State<HomeScreen> {
                       color: const Color(0xFFF59E0B),
                       isDark: isDark,
                       onTap: () {
-                        final tool = ToolsData.allTools.firstWhere((t) => t.id == 'sign_pdf');
+                        final tool = ToolsData.allTools.firstWhere((t) => t.id == 'sign-pdf');
                         _openTool(tool);
                       },
                     ),
@@ -681,14 +693,16 @@ class _HomeScreenState extends State<HomeScreen> {
 
   Widget _buildCloudShortcut(IconData icon, String label, Color color, bool isDark) {
     return InkWell(
-      onTap: () {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Connecting to $label Storage...'),
-            duration: const Duration(seconds: 1),
-            behavior: SnackBarBehavior.floating,
-          ),
+      onTap: () async {
+        final doc = await CloudStorageService.instance.pickDocumentFromCloud(
+          context: context,
+          provider: label == 'Device' ? 'Device Storage' : label,
         );
+        if (doc != null && mounted) {
+          Navigator.of(context).push(
+            MaterialPageRoute(builder: (_) => PdfEditorCanvasScreen(pdfFile: File(doc.path))),
+          );
+        }
       },
       borderRadius: BorderRadius.circular(10),
       child: Padding(

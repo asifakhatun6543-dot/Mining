@@ -1,9 +1,9 @@
-/// OpenPDF Studio - Localized & Application Strings
+/// PDF 🫰 Studio - Localized & Application Strings
 class AppStrings {
   AppStrings._();
 
-  static const String appName = 'OpenPDF Studio';
-  static const String appTagline = 'Your Documents. Your Tools. Your AI.';
+  static const String appName = 'PDF 🫰 Studio';
+  static const String appTagline = 'Your Documents. Your Tools. Your AI. • Built with love 🫰 RS7';
   
   // Navigation Tabs
   static const String tabHome = 'Home';

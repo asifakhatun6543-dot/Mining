@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'app/app.dart';
 import 'core/services/history_service.dart';
+import 'core/services/theme_service.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -18,7 +19,9 @@ void main() async {
     ),
   );
 
-  // Initialize local persistent document history
+  // Initialize theme mode, cloud storage, and local persistent document history
+  await ThemeService.instance.init();
+  await CloudStorageService.instance.init();
   await HistoryService.instance.init();
 
   runApp(
