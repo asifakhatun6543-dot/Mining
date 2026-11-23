@@ -216,7 +216,15 @@ class _PdfEditorCanvasScreenState extends State<PdfEditorCanvasScreen> {
     setState(() => _isRenderingPage = true);
 
     try {
+      if (!await widget.pdfFile.exists()) {
+        if (mounted) setState(() => _isRenderingPage = false);
+        return;
+      }
       final bytes = await widget.pdfFile.readAsBytes();
+      if (bytes.isEmpty) {
+        if (mounted) setState(() => _isRenderingPage = false);
+        return;
+      }
       final pageIndex = (pageNumber - 1).clamp(0, _totalPages > 0 ? _totalPages - 1 : 0);
 
       await for (final page in Printing.raster(bytes, pages: [pageIndex], dpi: 150)) {
@@ -227,9 +235,13 @@ class _PdfEditorCanvasScreenState extends State<PdfEditorCanvasScreen> {
             _isRenderingPage = false;
           });
         }
-        break;
+        return;
+      }
+      if (mounted) {
+        setState(() => _isRenderingPage = false);
       }
     } catch (e) {
+      debugPrint('Raster page rendering error: $e');
       if (mounted) {
         setState(() => _isRenderingPage = false);
       }
@@ -879,11 +891,73 @@ class _PdfEditorCanvasScreenState extends State<PdfEditorCanvasScreen> {
                                       )
                                     : Container(
                                         color: Colors.white,
-                                        child: Center(
-                                          child: Text(
-                                            _titleController.text,
-                                            style: const TextStyle(color: Colors.black54),
-                                          ),
+                                        padding: const EdgeInsets.all(24),
+                                        child: Column(
+                                          crossAxisAlignment: CrossAxisAlignment.start,
+                                          children: [
+                                            Row(
+                                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                              children: [
+                                                Expanded(
+                                                  child: Text(
+                                                    _titleController.text,
+                                                    style: const TextStyle(
+                                                      color: Color(0xFF0F172A),
+                                                      fontWeight: FontWeight.bold,
+                                                      fontSize: 14,
+                                                    ),
+                                                    overflow: TextOverflow.ellipsis,
+                                                  ),
+                                                ),
+                                                Container(
+                                                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                                                  decoration: BoxDecoration(
+                                                    color: const Color(0xFFF1F5F9),
+                                                    borderRadius: BorderRadius.circular(6),
+                                                    border: Border.all(color: const Color(0xFFCBD5E1)),
+                                                  ),
+                                                  child: Text(
+                                                    'Page $_currentPage / $_totalPages',
+                                                    style: const TextStyle(
+                                                      fontSize: 11,
+                                                      color: Color(0xFF475569),
+                                                      fontWeight: FontWeight.w600,
+                                                    ),
+                                                  ),
+                                                ),
+                                              ],
+                                            ),
+                                            const SizedBox(height: 16),
+                                            const Divider(color: Color(0xFFE2E8F0), thickness: 1),
+                                            const SizedBox(height: 12),
+                                            ...List.generate(
+                                              10,
+                                              (i) => Container(
+                                                margin: const EdgeInsets.only(bottom: 10),
+                                                height: 8,
+                                                width: i % 4 == 3 ? 180 : double.infinity,
+                                                decoration: BoxDecoration(
+                                                  color: const Color(0xFFF1F5F9),
+                                                  borderRadius: BorderRadius.circular(4),
+                                                ),
+                                              ),
+                                            ),
+                                            const Spacer(),
+                                            Center(
+                                              child: TextButton.icon(
+                                                onPressed: () => _renderPage(_currentPage),
+                                                icon: const Icon(Icons.refresh_rounded, size: 16, color: AppColors.brandRed),
+                                                label: const Text(
+                                                  'Reload Page',
+                                                  style: TextStyle(
+                                                    color: AppColors.brandRed,
+                                                    fontSize: 12,
+                                                    fontWeight: FontWeight.bold,
+                                                  ),
+                                                ),
+                                              ),
+                                            ),
+                                          ],
                                         ),
                                       )),
                           ),
@@ -1076,10 +1150,10 @@ class _PdfEditorCanvasScreenState extends State<PdfEditorCanvasScreen> {
           ),
 
           // -------------------------------------------------------------------
-          // B. Elevated Floating Page & Zoom Control Pill (Lifted to bottom: 84)
+          // B. Elevated Floating Page & Zoom Control Pill (Lifted to bottom: 92)
           // -------------------------------------------------------------------
           Positioned(
-            bottom: 84,
+            bottom: 92,
             left: 0,
             right: 0,
             child: Center(
@@ -1185,9 +1259,10 @@ class _PdfEditorCanvasScreenState extends State<PdfEditorCanvasScreen> {
             right: 0,
             child: SafeArea(
               top: false,
+              bottom: true,
               child: Container(
-                height: 68,
-                margin: const EdgeInsets.only(bottom: 4),
+                height: 72,
+                margin: const EdgeInsets.only(bottom: 8),
                 decoration: BoxDecoration(
                   color: isDark ? const Color(0xFF101827) : Colors.white,
                   border: Border(

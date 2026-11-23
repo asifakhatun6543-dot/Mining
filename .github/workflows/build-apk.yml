@@ -97,7 +97,7 @@ jobs:
       - name: Publish GitHub Release with Direct APK Download
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: v1.0.5
+          tag_name: v1.0.6
           name: "PDF 🫰 Studio v1.0.5 — Production Android APK"
           allowUpdates: true
           generate_release_notes: false
@@ -107,8 +107,8 @@ jobs:
             ## 📱 PDF 🫰 Studio — Production Android APK (Release v1.0.5)
 
             Direct APK Downloads:
-            👉 **[PDF-Studio-Release.apk](https://github.com/${{ github.repository }}/releases/download/v1.0.5/PDF-Studio-Release.apk)**
-            👉 **[OpenPDF-Studio-Release.apk](https://github.com/${{ github.repository }}/releases/download/v1.0.5/OpenPDF-Studio-Release.apk)**
+            👉 **[PDF-Studio-Release.apk](https://github.com/${{ github.repository }}/releases/download/v1.0.6/PDF-Studio-Release.apk)**
+            👉 **[OpenPDF-Studio-Release.apk](https://github.com/${{ github.repository }}/releases/download/v1.0.6/OpenPDF-Studio-Release.apk)**
 
             ---
             ### ✨ Features Included:

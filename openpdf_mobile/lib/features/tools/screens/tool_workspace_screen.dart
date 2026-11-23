@@ -12,6 +12,7 @@ import '../../../shared/widgets/glass/glass_container.dart';
 import '../../../shared/widgets/glass/glass_button.dart';
 import '../../../shared/widgets/document_actions_sheet.dart';
 import 'pdf_editor_canvas_screen.dart';
+import 'pdf_editor_webview_screen.dart';
 import 'ocr_scanner_screen.dart';
 
 /// OpenPDF Studio - Universal Dedicated Mobile Tool Workspace
@@ -636,7 +637,7 @@ class _ToolWorkspaceScreenState extends State<ToolWorkspaceScreen> {
       if (mounted) {
         Navigator.of(context).pop(); // dismiss loading dialog
         Navigator.of(context).push(
-          MaterialPageRoute(builder: (_) => PdfEditorCanvasScreen(pdfFile: _selectedFile!)),
+          MaterialPageRoute(builder: (_) => PdfEditorWebViewScreen(pdfFile: _selectedFile!)),
         );
       }
       return;

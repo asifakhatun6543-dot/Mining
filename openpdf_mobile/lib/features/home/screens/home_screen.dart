@@ -12,6 +12,7 @@ import '../../../shared/widgets/glass/glass_container.dart';
 import '../../../shared/widgets/document_actions_sheet.dart';
 import '../../tools/screens/tool_workspace_screen.dart';
 import '../../tools/screens/pdf_editor_canvas_screen.dart';
+import '../../tools/screens/pdf_editor_webview_screen.dart';
 
 /// OpenPDF Studio - Next-Gen Clean Mobile Dashboard
 /// High-end typography, rapid workflow shortcuts, category filtering,
@@ -217,7 +218,7 @@ class _HomeScreenState extends State<HomeScreen> {
                         final doc = await FileService.instance.pickPdfFile();
                         if (doc != null && mounted) {
                           Navigator.of(context).push(
-                            MaterialPageRoute(builder: (_) => PdfEditorCanvasScreen(pdfFile: File(doc.path))),
+                            MaterialPageRoute(builder: (_) => PdfEditorWebViewScreen(pdfFile: File(doc.path))),
                           );
                         } else if (mounted) {
                           _openTool(tool);
@@ -700,7 +701,7 @@ class _HomeScreenState extends State<HomeScreen> {
         );
         if (doc != null && mounted) {
           Navigator.of(context).push(
-            MaterialPageRoute(builder: (_) => PdfEditorCanvasScreen(pdfFile: File(doc.path))),
+            MaterialPageRoute(builder: (_) => PdfEditorWebViewScreen(pdfFile: File(doc.path))),
           );
         }
       },
