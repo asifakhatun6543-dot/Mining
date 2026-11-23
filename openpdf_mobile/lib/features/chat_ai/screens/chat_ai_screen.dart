@@ -24,6 +24,7 @@ class _ChatAiScreenState extends State<ChatAiScreen> {
 
   File? _attachedFile;
   String? _attachedFileName;
+  String? get _attachedDocName => _attachedFileName;
   String _extractedDocText = '';
   bool _isAnalyzingDoc = false;
   bool _isGenerating = false;
@@ -107,7 +108,7 @@ class _ChatAiScreenState extends State<ChatAiScreen> {
       final chatMsg = DocumentAiService.instance.answerQuestion(
         documentText: _extractedDocText,
         query: query,
-        docName: _attachedDocName ?? 'Document.pdf',
+        docName: _attachedFileName ?? 'Document.pdf',
       );
       responseText = chatMsg.text;
     } else {
