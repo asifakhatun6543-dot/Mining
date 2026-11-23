@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import '../../core/constants/app_colors.dart';
 import '../../core/services/file_service.dart';
 import '../../domain/entities/history_entity.dart';
@@ -67,11 +67,11 @@ class DocumentActionsSheet extends StatelessWidget {
         color: isDark ? const Color(0xFF111726) : Colors.white,
         borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
         border: Border.all(
-          color: (isDark ? Colors.white : Colors.black).withValues(alpha: 0.1),
+          color: (isDark ? Colors.white : Colors.black).withOpacity(0.1),
         ),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.4),
+            color: Colors.black.withOpacity(0.4),
             blurRadius: 40,
             offset: const Offset(0, -10),
           ),
@@ -88,7 +88,7 @@ class DocumentActionsSheet extends StatelessWidget {
               width: 44,
               height: 4,
               decoration: BoxDecoration(
-                color: (isDark ? Colors.white : Colors.black).withValues(alpha: 0.2),
+                color: (isDark ? Colors.white : Colors.black).withOpacity(0.2),
                 borderRadius: BorderRadius.circular(10),
               ),
             ),
@@ -103,7 +103,7 @@ class DocumentActionsSheet extends StatelessWidget {
                     width: 44,
                     height: 44,
                     decoration: BoxDecoration(
-                      color: primaryColor.withValues(alpha: 0.15),
+                      color: primaryColor.withOpacity(0.15),
                       borderRadius: BorderRadius.circular(12),
                     ),
                     child: Icon(Icons.picture_as_pdf_rounded, color: primaryColor, size: 24),
@@ -148,7 +148,7 @@ class DocumentActionsSheet extends StatelessWidget {
             ),
 
             const SizedBox(height: 12),
-            Divider(height: 1, color: (isDark ? Colors.white : Colors.black).withValues(alpha: 0.08)),
+            Divider(height: 1, color: (isDark ? Colors.white : Colors.black).withOpacity(0.08)),
 
             // Action Items Grid / List
             Flexible(
@@ -361,10 +361,10 @@ class DocumentActionsSheet extends StatelessWidget {
         child: Container(
           padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
           decoration: BoxDecoration(
-            color: (isDark ? Colors.white : Colors.black).withValues(alpha: 0.03),
+            color: (isDark ? Colors.white : Colors.black).withOpacity(0.03),
             borderRadius: BorderRadius.circular(14),
             border: Border.all(
-              color: (isDark ? Colors.white : Colors.black).withValues(alpha: 0.05),
+              color: (isDark ? Colors.white : Colors.black).withOpacity(0.05),
             ),
           ),
           child: Row(
@@ -373,7 +373,7 @@ class DocumentActionsSheet extends StatelessWidget {
                 width: 38,
                 height: 38,
                 decoration: BoxDecoration(
-                  color: color.withValues(alpha: 0.14),
+                  color: color.withOpacity(0.14),
                   borderRadius: BorderRadius.circular(10),
                 ),
                 child: Icon(icon, color: color, size: 20),
@@ -404,7 +404,7 @@ class DocumentActionsSheet extends StatelessWidget {
               Icon(
                 Icons.chevron_right_rounded,
                 size: 20,
-                color: (isDark ? Colors.white : Colors.black).withValues(alpha: 0.3),
+                color: (isDark ? Colors.white : Colors.black).withOpacity(0.3),
               ),
             ],
           ),

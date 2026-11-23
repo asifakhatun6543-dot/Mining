@@ -1,4 +1,4 @@
-import 'dart:io';
+﻿import 'dart:io';
 import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
@@ -524,7 +524,7 @@ class _PdfEditorCanvasScreenState extends State<PdfEditorCanvasScreen> {
                         width: 80,
                         margin: const EdgeInsets.only(right: 12),
                         decoration: BoxDecoration(
-                          color: isCurrent ? AppColors.brandRed.withValues(alpha: 0.15) : const Color(0xFF1E293B),
+                          color: isCurrent ? AppColors.brandRed.withOpacity(0.15) : const Color(0xFF1E293B),
                           borderRadius: BorderRadius.circular(10),
                           border: Border.all(
                             color: isCurrent ? AppColors.brandRed : Colors.white24,
@@ -794,7 +794,7 @@ class _PdfEditorCanvasScreenState extends State<PdfEditorCanvasScreen> {
                     borderRadius: BorderRadius.circular(8),
                     boxShadow: [
                       BoxShadow(
-                        color: Colors.black.withValues(alpha: 0.22),
+                        color: Colors.black.withOpacity(0.22),
                         blurRadius: 28,
                         offset: const Offset(0, 10),
                       ),
@@ -821,7 +821,7 @@ class _PdfEditorCanvasScreenState extends State<PdfEditorCanvasScreen> {
                                           width: 22,
                                           height: 22,
                                           decoration: BoxDecoration(
-                                            color: AppColors.brandRed.withValues(alpha: 0.12),
+                                            color: AppColors.brandRed.withOpacity(0.12),
                                             borderRadius: BorderRadius.circular(5),
                                           ),
                                           child: const Icon(Icons.picture_as_pdf_rounded, size: 14, color: AppColors.brandRed),
@@ -938,7 +938,7 @@ class _PdfEditorCanvasScreenState extends State<PdfEditorCanvasScreen> {
                               },
                               child: Container(
                                 decoration: BoxDecoration(
-                                  color: hl.color.withValues(alpha: 0.38),
+                                  color: hl.color.withOpacity(0.38),
                                   borderRadius: BorderRadius.circular(3),
                                 ),
                               ),
@@ -986,7 +986,7 @@ class _PdfEditorCanvasScreenState extends State<PdfEditorCanvasScreen> {
                                 decoration: BoxDecoration(
                                   border: Border.all(color: st.color, width: 2),
                                   borderRadius: BorderRadius.circular(6),
-                                  color: st.color.withValues(alpha: 0.08),
+                                  color: st.color.withOpacity(0.08),
                                 ),
                                 child: Text(
                                   st.stampText,
@@ -1017,8 +1017,8 @@ class _PdfEditorCanvasScreenState extends State<PdfEditorCanvasScreen> {
                               child: Container(
                                 padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                                 decoration: BoxDecoration(
-                                  border: Border.all(color: Colors.blue.withValues(alpha: 0.5), width: 1),
-                                  color: Colors.blue.withValues(alpha: 0.06),
+                                  border: Border.all(color: Colors.blue.withOpacity(0.5), width: 1),
+                                  color: Colors.blue.withOpacity(0.06),
                                   borderRadius: BorderRadius.circular(4),
                                 ),
                                 child: Text(
@@ -1050,7 +1050,7 @@ class _PdfEditorCanvasScreenState extends State<PdfEditorCanvasScreen> {
                                 width: sig.width,
                                 height: sig.height,
                                 decoration: BoxDecoration(
-                                  border: Border.all(color: AppColors.brandRed.withValues(alpha: 0.5), width: 1),
+                                  border: Border.all(color: AppColors.brandRed.withOpacity(0.5), width: 1),
                                   borderRadius: BorderRadius.circular(6),
                                 ),
                                 child: Image.memory(sig.imageBytes, fit: BoxFit.contain),
@@ -1075,7 +1075,7 @@ class _PdfEditorCanvasScreenState extends State<PdfEditorCanvasScreen> {
                                 width: img.width,
                                 height: img.height,
                                 decoration: BoxDecoration(
-                                  border: Border.all(color: Colors.cyan.withValues(alpha: 0.5), width: 1),
+                                  border: Border.all(color: Colors.cyan.withOpacity(0.5), width: 1),
                                   borderRadius: BorderRadius.circular(6),
                                 ),
                                 child: Image.memory(img.imageBytes, fit: BoxFit.contain),
@@ -1126,7 +1126,7 @@ class _PdfEditorCanvasScreenState extends State<PdfEditorCanvasScreen> {
                   border: Border.all(color: Colors.white24, width: 0.8),
                   boxShadow: [
                     BoxShadow(
-                      color: Colors.black.withValues(alpha: 0.35),
+                      color: Colors.black.withOpacity(0.35),
                       blurRadius: 18,
                       offset: const Offset(0, 6),
                     ),
@@ -1221,7 +1221,7 @@ class _PdfEditorCanvasScreenState extends State<PdfEditorCanvasScreen> {
                     ),
                   ),
                   boxShadow: [
-                    BoxShadow(color: Colors.black.withValues(alpha: 0.12), blurRadius: 16, offset: const Offset(0, -4)),
+                    BoxShadow(color: Colors.black.withOpacity(0.12), blurRadius: 16, offset: const Offset(0, -4)),
                   ],
                 ),
                 child: ListView(
@@ -1276,7 +1276,7 @@ class _PdfEditorCanvasScreenState extends State<PdfEditorCanvasScreen> {
         margin: const EdgeInsets.symmetric(horizontal: 3, vertical: 8),
         decoration: BoxDecoration(
           color: isSelected
-              ? (isDark ? AppColors.brandRed.withValues(alpha: 0.22) : const Color(0xFFFEE2E2))
+              ? (isDark ? AppColors.brandRed.withOpacity(0.22) : const Color(0xFFFEE2E2))
               : Colors.transparent,
           borderRadius: BorderRadius.circular(8),
           border: Border.all(

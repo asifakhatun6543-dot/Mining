@@ -1,4 +1,4 @@
-import 'dart:io';
+﻿import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../../../core/constants/app_colors.dart';
@@ -104,10 +104,12 @@ class _ChatAiScreenState extends State<ChatAiScreen> {
     // Universal AI Response (Grounded in doc if present, or universal knowledge)
     String responseText;
     if (_extractedDocText.isNotEmpty) {
-      responseText = await DocumentAiService.instance.answerQuestion(
+      final chatMsg = DocumentAiService.instance.answerQuestion(
         documentText: _extractedDocText,
-        question: query,
+        query: query,
+        docName: _attachedDocName ?? 'Document.pdf',
       );
+      responseText = chatMsg.text;
     } else {
       // Universal ChatGPT-Style Intelligence
       responseText = await _generateUniversalAiReply(query);
@@ -175,10 +177,10 @@ class _ChatAiScreenState extends State<ChatAiScreen> {
         title: Container(
           padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
           decoration: BoxDecoration(
-            color: (isDark ? Colors.white : Colors.black).withValues(alpha: 0.05),
+            color: (isDark ? Colors.white : Colors.black).withOpacity(0.05),
             borderRadius: BorderRadius.circular(20),
             border: Border.all(
-              color: (isDark ? Colors.white : Colors.black).withValues(alpha: 0.08),
+              color: (isDark ? Colors.white : Colors.black).withOpacity(0.08),
             ),
           ),
           child: Row(
@@ -235,10 +237,10 @@ class _ChatAiScreenState extends State<ChatAiScreen> {
                 margin: const EdgeInsets.fromLTRB(16, 0, 16, 8),
                 padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                 decoration: BoxDecoration(
-                  color: (isDark ? Colors.white : Colors.black).withValues(alpha: 0.06),
+                  color: (isDark ? Colors.white : Colors.black).withOpacity(0.06),
                   borderRadius: BorderRadius.circular(12),
                   border: Border.all(
-                    color: primaryAccent.withValues(alpha: 0.3),
+                    color: primaryAccent.withOpacity(0.3),
                   ),
                 ),
                 child: Row(
@@ -274,11 +276,11 @@ class _ChatAiScreenState extends State<ChatAiScreen> {
                   color: isDark ? const Color(0xFF1E2638) : Colors.white,
                   borderRadius: BorderRadius.circular(28),
                   border: Border.all(
-                    color: (isDark ? Colors.white : Colors.black).withValues(alpha: 0.1),
+                    color: (isDark ? Colors.white : Colors.black).withOpacity(0.1),
                   ),
                   boxShadow: [
                     BoxShadow(
-                      color: Colors.black.withValues(alpha: isDark ? 0.3 : 0.06),
+                      color: Colors.black.withOpacity(isDark ? 0.3 : 0.06),
                       blurRadius: 16,
                       offset: const Offset(0, 4),
                     ),
@@ -292,7 +294,7 @@ class _ChatAiScreenState extends State<ChatAiScreen> {
                       icon: Container(
                         padding: const EdgeInsets.all(6),
                         decoration: BoxDecoration(
-                          color: (isDark ? Colors.white : Colors.black).withValues(alpha: 0.08),
+                          color: (isDark ? Colors.white : Colors.black).withOpacity(0.08),
                           shape: BoxShape.circle,
                         ),
                         child: Icon(
@@ -320,7 +322,7 @@ class _ChatAiScreenState extends State<ChatAiScreen> {
                             hintText: 'Message OpenPDF AI...',
                             hintStyle: TextStyle(
                               fontSize: 14,
-                              color: (isDark ? AppColors.darkSecondaryText : AppColors.lightSecondaryText).withValues(alpha: 0.6),
+                              color: (isDark ? AppColors.darkSecondaryText : AppColors.lightSecondaryText).withOpacity(0.6),
                             ),
                             border: InputBorder.none,
                             isDense: true,
@@ -386,7 +388,7 @@ class _ChatAiScreenState extends State<ChatAiScreen> {
                 ),
                 boxShadow: [
                   BoxShadow(
-                    color: const Color(0xFFFF1744).withValues(alpha: 0.35),
+                    color: const Color(0xFFFF1744).withOpacity(0.35),
                     blurRadius: 20,
                   ),
                 ],
@@ -461,10 +463,10 @@ class _ChatAiScreenState extends State<ChatAiScreen> {
         width: double.infinity,
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
         decoration: BoxDecoration(
-          color: (isDark ? Colors.white : Colors.black).withValues(alpha: 0.04),
+          color: (isDark ? Colors.white : Colors.black).withOpacity(0.04),
           borderRadius: BorderRadius.circular(16),
           border: Border.all(
-            color: (isDark ? Colors.white : Colors.black).withValues(alpha: 0.07),
+            color: (isDark ? Colors.white : Colors.black).withOpacity(0.07),
           ),
         ),
         child: Row(
@@ -484,7 +486,7 @@ class _ChatAiScreenState extends State<ChatAiScreen> {
             Icon(
               Icons.arrow_forward_ios_rounded,
               size: 13,
-              color: (isDark ? Colors.white : Colors.black).withValues(alpha: 0.3),
+              color: (isDark ? Colors.white : Colors.black).withOpacity(0.3),
             ),
           ],
         ),
@@ -532,7 +534,7 @@ class _ChatAiScreenState extends State<ChatAiScreen> {
                         : (isDark ? const Color(0xFF182030) : Colors.white),
                     borderRadius: BorderRadius.circular(18),
                     border: Border.all(
-                      color: (isDark ? Colors.white : Colors.black).withValues(alpha: 0.06),
+                      color: (isDark ? Colors.white : Colors.black).withOpacity(0.06),
                     ),
                   ),
                   child: Column(

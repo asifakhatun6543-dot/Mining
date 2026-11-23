@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/services/history_service.dart';
 import '../../../shared/widgets/glass/glass_card.dart';
@@ -60,9 +60,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     Container(
                       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
                       decoration: BoxDecoration(
-                        color: primaryAccent.withValues(alpha: 0.15),
+                        color: primaryAccent.withOpacity(0.15),
                         borderRadius: BorderRadius.circular(12),
-                        border: Border.all(color: primaryAccent.withValues(alpha: 0.3)),
+                        border: Border.all(color: primaryAccent.withOpacity(0.3)),
                       ),
                       child: Row(
                         children: [
@@ -103,7 +103,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                           ),
                           boxShadow: [
                             BoxShadow(
-                              color: const Color(0xFFFF1744).withValues(alpha: 0.35),
+                              color: const Color(0xFFFF1744).withOpacity(0.35),
                               blurRadius: 16,
                             ),
                           ],
@@ -218,7 +218,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                   width: 36,
                                   height: 36,
                                   decoration: BoxDecoration(
-                                    color: primaryAccent.withValues(alpha: 0.15),
+                                    color: primaryAccent.withOpacity(0.15),
                                     borderRadius: BorderRadius.circular(8),
                                   ),
                                   child: Icon(Icons.picture_as_pdf_rounded, color: primaryAccent, size: 20),
@@ -449,10 +449,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   child: Container(
                     padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
                     decoration: BoxDecoration(
-                      color: (isDark ? Colors.white : Colors.black).withValues(alpha: 0.04),
+                      color: (isDark ? Colors.white : Colors.black).withOpacity(0.04),
                       borderRadius: BorderRadius.circular(24),
                       border: Border.all(
-                        color: (isDark ? Colors.white : Colors.black).withValues(alpha: 0.08),
+                        color: (isDark ? Colors.white : Colors.black).withOpacity(0.08),
                       ),
                     ),
                     child: Row(
@@ -517,7 +517,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
           width: 36,
           height: 36,
           decoration: BoxDecoration(
-            color: color.withValues(alpha: 0.15),
+            color: color.withOpacity(0.15),
             borderRadius: BorderRadius.circular(8),
           ),
           child: Icon(icon, color: color, size: 20),
@@ -593,7 +593,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
             Icon(
               Icons.chevron_right_rounded,
               size: 18,
-              color: (isDark ? Colors.white : Colors.black).withValues(alpha: 0.25),
+              color: (isDark ? Colors.white : Colors.black).withOpacity(0.25),
             ),
           ],
         ),

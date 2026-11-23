@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/app_strings.dart';
 import '../../../core/services/file_service.dart';
@@ -53,7 +53,7 @@ class _HomeScreenState extends State<HomeScreen> {
           tool.description.toLowerCase().contains(_searchQuery.toLowerCase());
       if (_selectedCategory == 'All') return matchesSearch;
       if (_selectedCategory == 'Convert') {
-        return matchesSearch && (tool.category.contains('Convert') || tool.id.contains('convert') || tool.id.contains('to_'));
+        return matchesSearch && (tool.category.name.toLowerCase().contains('convert') || tool.id.contains('convert') || tool.id.contains('to_'));
       }
       if (_selectedCategory == 'Edit & Sign') {
         return matchesSearch && (tool.id.contains('edit') || tool.id.contains('sign') || tool.id.contains('watermark') || tool.id.contains('redact'));
@@ -150,9 +150,9 @@ class _HomeScreenState extends State<HomeScreen> {
                         height: 42,
                         decoration: BoxDecoration(
                           shape: BoxShape.circle,
-                          color: (isDark ? Colors.white : Colors.black).withValues(alpha: 0.08),
+                          color: (isDark ? Colors.white : Colors.black).withOpacity(0.08),
                           border: Border.all(
-                            color: primaryAccent.withValues(alpha: 0.4),
+                            color: primaryAccent.withOpacity(0.4),
                             width: 1.5,
                           ),
                         ),
@@ -185,7 +185,7 @@ class _HomeScreenState extends State<HomeScreen> {
                       hintText: 'Search tools, convert, compress, sign...',
                       hintStyle: TextStyle(
                         fontSize: 13,
-                        color: (isDark ? AppColors.darkSecondaryText : AppColors.lightSecondaryText).withValues(alpha: 0.6),
+                        color: (isDark ? AppColors.darkSecondaryText : AppColors.lightSecondaryText).withOpacity(0.6),
                       ),
                       border: InputBorder.none,
                       isDense: true,
@@ -260,10 +260,10 @@ class _HomeScreenState extends State<HomeScreen> {
                 child: Container(
                   padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
                   decoration: BoxDecoration(
-                    color: (isDark ? Colors.white : Colors.black).withValues(alpha: 0.03),
+                    color: (isDark ? Colors.white : Colors.black).withOpacity(0.03),
                     borderRadius: BorderRadius.circular(16),
                     border: Border.all(
-                      color: (isDark ? Colors.white : Colors.black).withValues(alpha: 0.06),
+                      color: (isDark ? Colors.white : Colors.black).withOpacity(0.06),
                     ),
                   ),
                   child: Row(
@@ -298,7 +298,7 @@ class _HomeScreenState extends State<HomeScreen> {
                         selected: isSelected,
                         onSelected: (_) => setState(() => _selectedCategory = cat),
                         selectedColor: primaryAccent,
-                        backgroundColor: (isDark ? Colors.white : Colors.black).withValues(alpha: 0.04),
+                        backgroundColor: (isDark ? Colors.white : Colors.black).withOpacity(0.04),
                         labelStyle: TextStyle(
                           fontSize: 12,
                           fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
@@ -381,20 +381,20 @@ class _HomeScreenState extends State<HomeScreen> {
                                   width: 32,
                                   height: 32,
                                   decoration: BoxDecoration(
-                                    color: (tool.categoryColor ?? primaryAccent).withValues(alpha: 0.15),
+                                    color: tool.accentColor.withOpacity(0.15),
                                     borderRadius: BorderRadius.circular(8),
                                   ),
                                   child: Icon(
                                     tool.icon,
                                     size: 18,
-                                    color: tool.categoryColor ?? primaryAccent,
+                                    color: tool.accentColor,
                                   ),
                                 ),
                                 if (tool.isPopular)
                                   Container(
                                     padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                                     decoration: BoxDecoration(
-                                      color: const Color(0xFF10B981).withValues(alpha: 0.15),
+                                      color: const Color(0xFF10B981).withOpacity(0.15),
                                       borderRadius: BorderRadius.circular(6),
                                     ),
                                     child: const Text(
@@ -572,10 +572,10 @@ class _HomeScreenState extends State<HomeScreen> {
                   child: Container(
                     padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
                     decoration: BoxDecoration(
-                      color: (isDark ? Colors.white : Colors.black).withValues(alpha: 0.04),
+                      color: (isDark ? Colors.white : Colors.black).withOpacity(0.04),
                       borderRadius: BorderRadius.circular(20),
                       border: Border.all(
-                        color: (isDark ? Colors.white : Colors.black).withValues(alpha: 0.08),
+                        color: (isDark ? Colors.white : Colors.black).withOpacity(0.08),
                       ),
                     ),
                     child: Row(
@@ -628,10 +628,10 @@ class _HomeScreenState extends State<HomeScreen> {
         child: Container(
           padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 8),
           decoration: BoxDecoration(
-            color: color.withValues(alpha: isDark ? 0.16 : 0.08),
+            color: color.withOpacity(isDark ? 0.16 : 0.08),
             borderRadius: BorderRadius.circular(16),
             border: Border.all(
-              color: color.withValues(alpha: isDark ? 0.35 : 0.2),
+              color: color.withOpacity(isDark ? 0.35 : 0.2),
             ),
           ),
           child: Column(
@@ -644,7 +644,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   shape: BoxShape.circle,
                   boxShadow: [
                     BoxShadow(
-                      color: color.withValues(alpha: 0.35),
+                      color: color.withOpacity(0.35),
                       blurRadius: 8,
                       offset: const Offset(0, 3),
                     ),

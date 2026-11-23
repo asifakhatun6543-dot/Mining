@@ -1,4 +1,4 @@
-import 'dart:async';
+﻿import 'dart:async';
 import 'package:flutter/material.dart';
 import '../../../core/constants/app_strings.dart';
 import '../../shell/screens/main_shell_screen.dart';
@@ -83,8 +83,8 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
                   shape: BoxShape.circle,
                   gradient: RadialGradient(
                     colors: [
-                      const Color(0xFFFF1744).withValues(alpha: 0.16),
-                      const Color(0xFFE11D48).withValues(alpha: 0.05),
+                      const Color(0xFFFF1744).withOpacity(0.16),
+                      const Color(0xFFE11D48).withOpacity(0.05),
                       Colors.transparent,
                     ],
                   ),
@@ -109,12 +109,12 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
                         borderRadius: BorderRadius.circular(26),
                         boxShadow: [
                           BoxShadow(
-                            color: const Color(0xFFFF1744).withValues(alpha: 0.4),
+                            color: const Color(0xFFFF1744).withOpacity(0.4),
                             blurRadius: 36,
                             offset: const Offset(0, 16),
                           ),
                           BoxShadow(
-                            color: Colors.white.withValues(alpha: 0.2),
+                            color: Colors.white.withOpacity(0.2),
                             blurRadius: 1,
                             offset: const Offset(0, 1),
                           ),
@@ -130,7 +130,7 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
                               width: 24,
                               height: 24,
                               decoration: BoxDecoration(
-                                color: Colors.white.withValues(alpha: 0.28),
+                                color: Colors.white.withOpacity(0.28),
                                 borderRadius: const BorderRadius.only(
                                   topRight: Radius.circular(26),
                                   bottomLeft: Radius.circular(12),
@@ -169,7 +169,7 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
                           style: TextStyle(
                             fontSize: 13,
                             fontWeight: FontWeight.w500,
-                            color: Colors.white.withValues(alpha: 0.55),
+                            color: Colors.white.withOpacity(0.55),
                             letterSpacing: 0.2,
                           ),
                         ),
@@ -187,10 +187,10 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
                   child: Container(
                     padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                     decoration: BoxDecoration(
-                      color: Colors.white.withValues(alpha: 0.04),
+                      color: Colors.white.withOpacity(0.04),
                       borderRadius: BorderRadius.circular(24),
                       border: Border.all(
-                        color: Colors.white.withValues(alpha: 0.08),
+                        color: Colors.white.withOpacity(0.08),
                       ),
                     ),
                     child: Row(
@@ -201,7 +201,7 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
                           style: TextStyle(
                             fontSize: 11.5,
                             fontWeight: FontWeight.w500,
-                            color: Colors.white.withValues(alpha: 0.7),
+                            color: Colors.white.withOpacity(0.7),
                           ),
                         ),
                         const SizedBox(width: 5),
@@ -216,7 +216,7 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
                           style: TextStyle(
                             fontSize: 11.5,
                             fontWeight: FontWeight.w700,
-                            color: Colors.white.withValues(alpha: 0.9),
+                            color: Colors.white.withOpacity(0.9),
                             letterSpacing: 0.2,
                           ),
                         ),

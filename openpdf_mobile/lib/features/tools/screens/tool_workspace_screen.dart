@@ -1,4 +1,4 @@
-import 'dart:io';
+﻿import 'dart:io';
 import 'package:flutter/material.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/services/file_service.dart';
@@ -140,9 +140,9 @@ class _ToolWorkspaceScreenState extends State<ToolWorkspaceScreen> {
             width: 48,
             height: 48,
             decoration: BoxDecoration(
-              color: widget.tool.accentColor.withValues(alpha: isDark ? 0.22 : 0.12),
+              color: widget.tool.accentColor.withOpacity(isDark ? 0.22 : 0.12),
               borderRadius: BorderRadius.circular(14),
-              border: Border.all(color: widget.tool.accentColor.withValues(alpha: 0.35)),
+              border: Border.all(color: widget.tool.accentColor.withOpacity(0.35)),
             ),
             child: Icon(widget.tool.icon, size: 24, color: widget.tool.accentColor),
           ),
@@ -166,7 +166,7 @@ class _ToolWorkspaceScreenState extends State<ToolWorkspaceScreen> {
                       Container(
                         padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                         decoration: BoxDecoration(
-                          color: widget.tool.accentColor.withValues(alpha: 0.18),
+                          color: widget.tool.accentColor.withOpacity(0.18),
                           borderRadius: BorderRadius.circular(6),
                         ),
                         child: Text(
@@ -251,7 +251,7 @@ class _ToolWorkspaceScreenState extends State<ToolWorkspaceScreen> {
           // Cloud Storage Upload Bar (Google Drive, Dropbox, OneDrive)
           Row(
             children: [
-              Expanded(child: Divider(color: (isDark ? Colors.white : Colors.black).withValues(alpha: 0.1))),
+              Expanded(child: Divider(color: (isDark ? Colors.white : Colors.black).withOpacity(0.1))),
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 10),
                 child: Text(
@@ -264,7 +264,7 @@ class _ToolWorkspaceScreenState extends State<ToolWorkspaceScreen> {
                   ),
                 ),
               ),
-              Expanded(child: Divider(color: (isDark ? Colors.white : Colors.black).withValues(alpha: 0.1))),
+              Expanded(child: Divider(color: (isDark ? Colors.white : Colors.black).withOpacity(0.1))),
             ],
           ),
 
@@ -316,9 +316,9 @@ class _ToolWorkspaceScreenState extends State<ToolWorkspaceScreen> {
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
         decoration: BoxDecoration(
-          color: color.withValues(alpha: isDark ? 0.15 : 0.08),
+          color: color.withOpacity(isDark ? 0.15 : 0.08),
           borderRadius: BorderRadius.circular(10),
-          border: Border.all(color: color.withValues(alpha: 0.25)),
+          border: Border.all(color: color.withOpacity(0.25)),
         ),
         child: Row(
           mainAxisSize: MainAxisSize.min,
@@ -391,7 +391,7 @@ class _ToolWorkspaceScreenState extends State<ToolWorkspaceScreen> {
                 width: 40,
                 height: 40,
                 decoration: BoxDecoration(
-                  color: AppColors.brandRed.withValues(alpha: 0.14),
+                  color: AppColors.brandRed.withOpacity(0.14),
                   borderRadius: BorderRadius.circular(10),
                 ),
                 child: const Icon(Icons.touch_app_rounded, color: AppColors.brandRed, size: 22),
@@ -817,12 +817,12 @@ class _ToolWorkspaceScreenState extends State<ToolWorkspaceScreen> {
       icon: Icon(icon, size: 16),
       label: Text(label, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700)),
       style: ElevatedButton.styleFrom(
-        backgroundColor: color.withValues(alpha: 0.15),
+        backgroundColor: color.withOpacity(0.15),
         foregroundColor: color,
         elevation: 0,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(12),
-          side: BorderSide(color: color.withValues(alpha: 0.3)),
+          side: BorderSide(color: color.withOpacity(0.3)),
         ),
         padding: const EdgeInsets.symmetric(vertical: 10),
       ),
