@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'app/app.dart';
 import 'core/services/history_service.dart';
 import 'core/services/theme_service.dart';
+import 'core/services/cloud_storage_service.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
