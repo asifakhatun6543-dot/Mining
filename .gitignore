@@ -14,4 +14,5 @@ openpdf_mobile/android/local.properties
 openpdf_mobile/build/
 .idea/
 *.iml
+.tmp_localappdata/
 openpdf_mobile/android/app/src/main/java/

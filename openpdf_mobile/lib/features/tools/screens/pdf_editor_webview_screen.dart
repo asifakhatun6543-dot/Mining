@@ -32,6 +32,7 @@ class _PdfEditorWebViewScreenState extends State<PdfEditorWebViewScreen> {
   bool _isLoading = true;
   bool _hasError = false;
   bool _isUsingFallback = false;
+  bool _documentInjected = false;
   int _loadingProgress = 0;
   bool _isSaving = false;
 
@@ -54,11 +55,17 @@ class _PdfEditorWebViewScreenState extends State<PdfEditorWebViewScreen> {
         onExport: (filename, bytes) => _handleExportData(filename, bytes),
       );
 
-      final docName = widget.pdfFile.path.split(Platform.isWindows ? r'\' : '/').last;
+      final docName =
+          widget.pdfFile.path.split(Platform.isWindows ? r'\' : '/').last;
       final encodedName = Uri.encodeComponent(docName);
-      final initialUrl = 'http://127.0.0.1:$port/index.html?mode=editor&autoload=1&docName=$encodedName';
+      final initialUrl =
+          'http://127.0.0.1:$port/index.html?mode=editor&autoload=1&docName=$encodedName';
 
-      final controller = WebViewController()
+      // 1. Instantiate the controller first so the variable is declared and defined
+      final controller = WebViewController();
+
+      // 2. Configure the controller using cascaded calls
+      controller
         ..setJavaScriptMode(JavaScriptMode.unrestricted)
         ..setBackgroundColor(const Color(0xFF0F172A))
         ..addJavaScriptChannel(
@@ -81,13 +88,26 @@ class _PdfEditorWebViewScreenState extends State<PdfEditorWebViewScreen> {
               _injectPendingDocument(controller);
             },
             onWebResourceError: (error) {
-              debugPrint('Web resource warning: ${error.errorCode} - ${error.description}');
+              debugPrint(
+                  'Web resource warning: ${error.errorCode} - ${error.description}');
               // Only trigger fallback if the main page completely fails to load
               if (error.isForMainFrame ?? false) {
                 if (error.errorCode < 0 && !_isUsingFallback) {
                   _attemptAssetFallback(controller);
                 }
               }
+            },
+            onNavigationRequest: (NavigationRequest request) {
+              final uri = Uri.tryParse(request.url);
+              if (uri != null &&
+                  (uri.host == '127.0.0.1' ||
+                      uri.host == 'localhost' ||
+                      uri.scheme == 'file' ||
+                      uri.scheme == 'data' ||
+                      uri.scheme == 'about')) {
+                return NavigationDecision.navigate;
+              }
+              return NavigationDecision.prevent;
             },
           ),
         );
@@ -108,11 +128,14 @@ class _PdfEditorWebViewScreenState extends State<PdfEditorWebViewScreen> {
   }
 
   Future<void> _injectPendingDocument(WebViewController controller) async {
+    if (_documentInjected) return;
     try {
       if (await widget.pdfFile.exists()) {
         final bytes = await widget.pdfFile.readAsBytes();
         final base64Data = base64Encode(bytes);
-        final docName = widget.pdfFile.path.split(Platform.isWindows ? r'\' : '/').last;
+        final docName =
+            widget.pdfFile.path.split(Platform.isWindows ? r'\' : '/').last;
+        _documentInjected = true;
         final js = '''
           if (window.loadPdfFromBase64 && (!window.State || !window.State.pdfDoc)) {
             window.loadPdfFromBase64("$base64Data", "$docName");
@@ -125,33 +148,51 @@ class _PdfEditorWebViewScreenState extends State<PdfEditorWebViewScreen> {
     }
   }
 
-  Future<void> _attemptAssetFallback(WebViewController? existingController) async {
+  Future<void> _attemptAssetFallback(
+      WebViewController? existingController) async {
     if (_isUsingFallback) return;
     _isUsingFallback = true;
 
     try {
-      final controller = existingController ??
-          (WebViewController()
-            ..setJavaScriptMode(JavaScriptMode.unrestricted)
-            ..setBackgroundColor(const Color(0xFF0F172A))
-            ..addJavaScriptChannel(
-              'FlutterBridge',
-              onMessageReceived: (JavaScriptMessage message) {
-                _handleBridgeMessage(message.message);
-              },
-            ));
+      final controller = existingController ?? WebViewController();
 
-      controller.setNavigationDelegate(
-        NavigationDelegate(
-          onPageFinished: (_) {
-            if (mounted) setState(() => _isLoading = false);
-            _injectPendingDocument(controller);
+      controller
+        ..setJavaScriptMode(JavaScriptMode.unrestricted)
+        ..setBackgroundColor(const Color(0xFF0F172A))
+        ..addJavaScriptChannel(
+          'FlutterBridge',
+          onMessageReceived: (JavaScriptMessage message) {
+            _handleBridgeMessage(message.message);
           },
-          onWebResourceError: (_) {
-            if (mounted) setState(() => _hasError = true);
-          },
-        ),
-      );
+        )
+        ..setNavigationDelegate(
+          NavigationDelegate(
+            onProgress: (progress) {
+              if (mounted) {
+                setState(() => _loadingProgress = progress);
+              }
+            },
+            onPageFinished: (_) {
+              if (mounted) setState(() => _isLoading = false);
+              _injectPendingDocument(controller);
+            },
+            onWebResourceError: (_) {
+              if (mounted) setState(() => _hasError = true);
+            },
+            onNavigationRequest: (NavigationRequest request) {
+              final uri = Uri.tryParse(request.url);
+              if (uri != null &&
+                  (uri.host == '127.0.0.1' ||
+                      uri.host == 'localhost' ||
+                      uri.scheme == 'file' ||
+                      uri.scheme == 'data' ||
+                      uri.scheme == 'about')) {
+                return NavigationDecision.navigate;
+              }
+              return NavigationDecision.prevent;
+            },
+          ),
+        );
 
       await controller.loadFlutterAsset('assets/web/index.html');
 
@@ -237,7 +278,10 @@ class _PdfEditorWebViewScreenState extends State<PdfEditorWebViewScreen> {
               SizedBox(width: 20),
               Text(
                 'Please wait...\nSaving changes',
-                style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600, fontSize: 14),
+                style: TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.w600,
+                    fontSize: 14),
               ),
             ],
           ),
@@ -252,7 +296,8 @@ class _PdfEditorWebViewScreenState extends State<PdfEditorWebViewScreen> {
         bytes: bytes,
       );
 
-      final sizeFormatted = '${(bytes.length / (1024 * 1024)).toStringAsFixed(1)} MB';
+      final sizeFormatted =
+          '${(bytes.length / (1024 * 1024)).toStringAsFixed(1)} MB';
       await HistoryService.instance.addRecord(
         fileName: outName,
         filePath: savedFile.path,
@@ -276,7 +321,9 @@ class _PdfEditorWebViewScreenState extends State<PdfEditorWebViewScreen> {
         Navigator.of(context).pop();
         setState(() => _isSaving = false);
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Failed to save PDF: $e'), backgroundColor: AppColors.error),
+          SnackBar(
+              content: Text('Failed to save PDF: $e'),
+              backgroundColor: AppColors.error),
         );
       }
     }
@@ -285,12 +332,14 @@ class _PdfEditorWebViewScreenState extends State<PdfEditorWebViewScreen> {
   Future<void> _pickAndLoadAnotherFile() async {
     final doc = await FileService.instance.pickPdfFile();
     if (doc != null && mounted) {
+      _documentInjected = false;
       final newFile = File(doc.path);
       _server.updatePdfFile(newFile);
       final docName = doc.name;
       final encodedName = Uri.encodeComponent(docName);
       final port = _server.port;
-      final newUrl = 'http://127.0.0.1:$port/index.html?mode=editor&autoload=1&docName=$encodedName';
+      final newUrl =
+          'http://127.0.0.1:$port/index.html?mode=editor&autoload=1&docName=$encodedName';
       _webViewController?.loadRequest(Uri.parse(newUrl));
     }
   }
@@ -310,7 +359,6 @@ class _PdfEditorWebViewScreenState extends State<PdfEditorWebViewScreen> {
             children: [
               if (_webViewController != null)
                 WebViewWidget(controller: _webViewController!),
-
               if (_isLoading)
                 Container(
                   color: const Color(0xFF0F172A),
