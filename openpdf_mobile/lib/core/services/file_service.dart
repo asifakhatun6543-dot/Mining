@@ -72,7 +72,8 @@ class FileService {
   Future<List<File>> pickImages() async {
     try {
       final result = await FilePicker.platform.pickFiles(
-        type: FileType.image,
+        type: FileType.custom,
+        allowedExtensions: ['jpg', 'jpeg', 'png', 'webp', 'bmp'],
         allowMultiple: true,
       );
       if (result != null) {
@@ -80,6 +81,78 @@ class FileService {
       }
     } catch (_) {}
     return [];
+  }
+
+  /// Picks a Microsoft Word document (.docx, .doc, .rtf)
+  Future<DocumentEntity?> pickWordFile() async {
+    try {
+      final result = await FilePicker.platform.pickFiles(
+        type: FileType.custom,
+        allowedExtensions: ['docx', 'doc', 'rtf'],
+        withData: true,
+      );
+
+      if (result != null && result.files.isNotEmpty) {
+        final file = result.files.first;
+        final path = file.path ?? await _cacheFile(file.name, file.bytes!);
+        return DocumentEntity(
+          id: 'doc_${DateTime.now().millisecondsSinceEpoch}',
+          name: file.name,
+          path: path,
+          sizeInBytes: file.size,
+          lastModified: DateTime.now(),
+        );
+      }
+    } catch (_) {}
+    return null;
+  }
+
+  /// Picks a Microsoft Excel spreadsheet (.xlsx, .xls, .csv)
+  Future<DocumentEntity?> pickExcelFile() async {
+    try {
+      final result = await FilePicker.platform.pickFiles(
+        type: FileType.custom,
+        allowedExtensions: ['xlsx', 'xls', 'csv'],
+        withData: true,
+      );
+
+      if (result != null && result.files.isNotEmpty) {
+        final file = result.files.first;
+        final path = file.path ?? await _cacheFile(file.name, file.bytes!);
+        return DocumentEntity(
+          id: 'doc_${DateTime.now().millisecondsSinceEpoch}',
+          name: file.name,
+          path: path,
+          sizeInBytes: file.size,
+          lastModified: DateTime.now(),
+        );
+      }
+    } catch (_) {}
+    return null;
+  }
+
+  /// Picks a PowerPoint presentation (.pptx, .ppt)
+  Future<DocumentEntity?> pickPowerPointFile() async {
+    try {
+      final result = await FilePicker.platform.pickFiles(
+        type: FileType.custom,
+        allowedExtensions: ['pptx', 'ppt'],
+        withData: true,
+      );
+
+      if (result != null && result.files.isNotEmpty) {
+        final file = result.files.first;
+        final path = file.path ?? await _cacheFile(file.name, file.bytes!);
+        return DocumentEntity(
+          id: 'doc_${DateTime.now().millisecondsSinceEpoch}',
+          name: file.name,
+          path: path,
+          sizeInBytes: file.size,
+          lastModified: DateTime.now(),
+        );
+      }
+    } catch (_) {}
+    return null;
   }
 
   /// Saves processed bytes to the application documents or cache directory
@@ -94,7 +167,76 @@ class FileService {
 
     final file = File('${dir.path}/$fileName');
     await file.writeAsBytes(bytes, flush: true);
+
+    // If saving non-temporary file on Android, also attempt to export to public Downloads folder
+    if (!isTemporary && Platform.isAndroid) {
+      try {
+        final publicDownloadDir = Directory('/storage/emulated/0/Download');
+        if (publicDownloadDir.existsSync()) {
+          final publicFile = File('${publicDownloadDir.path}/$fileName');
+          await publicFile.writeAsBytes(bytes, flush: true);
+          return publicFile;
+        }
+      } catch (_) {
+        // Scoped storage fallback to app directory
+      }
+    }
+
     return file;
+  }
+
+  /// Explicitly exports file bytes to public Downloads folder (/storage/emulated/0/Download)
+  Future<File> exportToPublicDownloads({
+    required String fileName,
+    required Uint8List bytes,
+  }) async {
+    if (Platform.isAndroid) {
+      try {
+        final publicDownloadDir = Directory('/storage/emulated/0/Download');
+        if (!publicDownloadDir.existsSync()) {
+          publicDownloadDir.createSync(recursive: true);
+        }
+        final publicFile = File('${publicDownloadDir.path}/$fileName');
+        await publicFile.writeAsBytes(bytes, flush: true);
+        if (await publicFile.exists() && await publicFile.length() > 0) {
+          return publicFile;
+        }
+      } catch (_) {}
+    }
+
+    // Secondary fallback using path_provider getDownloadsDirectory or getExternalStorageDirectory
+    try {
+      final extDir = await getExternalStorageDirectory();
+      if (extDir != null) {
+        final extFile = File('${extDir.path}/$fileName');
+        await extFile.writeAsBytes(bytes, flush: true);
+        return extFile;
+      }
+    } catch (_) {}
+
+    return saveFile(fileName: fileName, bytes: bytes);
+  }
+
+  /// Allows user to choose a custom save location via Android Storage Access Framework
+  Future<String?> saveFileWithPicker({
+    required String fileName,
+    required Uint8List bytes,
+  }) async {
+    try {
+      final String? path = await FilePicker.platform.saveFile(
+        dialogTitle: 'Save Processed Document',
+        fileName: fileName,
+        bytes: bytes,
+      );
+      if (path != null) {
+        final f = File(path);
+        if (!await f.exists()) {
+          await f.writeAsBytes(bytes, flush: true);
+        }
+        return path;
+      }
+    } catch (_) {}
+    return null;
   }
 
   /// Shares a document file via Android native share sheet intent

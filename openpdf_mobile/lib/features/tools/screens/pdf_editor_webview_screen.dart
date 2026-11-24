@@ -18,9 +18,9 @@ import 'pdf_editor_canvas_screen.dart';
 /// - Tier 2: Direct Flutter asset loading (loadFlutterAsset) with Base64 bridge
 /// - Tier 3: Enhanced Native PDF Canvas Editor fallback
 class PdfEditorWebViewScreen extends StatefulWidget {
-  final File pdfFile;
+  final File? pdfFile;
 
-  const PdfEditorWebViewScreen({super.key, required this.pdfFile});
+  const PdfEditorWebViewScreen({super.key, this.pdfFile});
 
   @override
   State<PdfEditorWebViewScreen> createState() => _PdfEditorWebViewScreenState();
@@ -55,11 +55,16 @@ class _PdfEditorWebViewScreenState extends State<PdfEditorWebViewScreen> {
         onExport: (filename, bytes) => _handleExportData(filename, bytes),
       );
 
-      final docName =
-          widget.pdfFile.path.split(Platform.isWindows ? r'\' : '/').last;
-      final encodedName = Uri.encodeComponent(docName);
-      final initialUrl =
-          'http://127.0.0.1:$port/index.html?mode=editor&autoload=1&docName=$encodedName';
+      final String initialUrl;
+      if (widget.pdfFile != null) {
+        final docName =
+            widget.pdfFile!.path.split(Platform.isWindows ? r'\' : '/').last;
+        final encodedName = Uri.encodeComponent(docName);
+        initialUrl =
+            'http://127.0.0.1:$port/index.html?mode=editor&autoload=1&docName=$encodedName';
+      } else {
+        initialUrl = 'http://127.0.0.1:$port/index.html?mode=editor';
+      }
 
       // 1. Instantiate the controller first so the variable is declared and defined
       final controller = WebViewController();
@@ -128,13 +133,13 @@ class _PdfEditorWebViewScreenState extends State<PdfEditorWebViewScreen> {
   }
 
   Future<void> _injectPendingDocument(WebViewController controller) async {
-    if (_documentInjected) return;
+    if (_documentInjected || widget.pdfFile == null) return;
     try {
-      if (await widget.pdfFile.exists()) {
-        final bytes = await widget.pdfFile.readAsBytes();
+      if (await widget.pdfFile!.exists()) {
+        final bytes = await widget.pdfFile!.readAsBytes();
         final base64Data = base64Encode(bytes);
         final docName =
-            widget.pdfFile.path.split(Platform.isWindows ? r'\' : '/').last;
+            widget.pdfFile!.path.split(Platform.isWindows ? r'\' : '/').last;
         _documentInjected = true;
         final js = '''
           if (window.loadPdfFromBase64 && (!window.State || !window.State.pdfDoc)) {
@@ -241,6 +246,7 @@ class _PdfEditorWebViewScreenState extends State<PdfEditorWebViewScreen> {
           );
           break;
 
+        case 'pick_file':
         case 'open_file':
           _pickAndLoadAnotherFile();
           break;
@@ -347,7 +353,31 @@ class _PdfEditorWebViewScreenState extends State<PdfEditorWebViewScreen> {
   @override
   Widget build(BuildContext context) {
     if (_hasError) {
-      return PdfEditorCanvasScreen(pdfFile: widget.pdfFile);
+      if (widget.pdfFile != null) {
+        return PdfEditorCanvasScreen(pdfFile: widget.pdfFile!);
+      }
+      return Scaffold(
+        backgroundColor: const Color(0xFF0F172A),
+        appBar: AppBar(
+          backgroundColor: const Color(0xFF0F172A),
+          title: const Text('PDF Editor', style: TextStyle(color: Colors.white)),
+        ),
+        body: Center(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Icon(Icons.error_outline_rounded, color: Colors.white54, size: 48),
+              const SizedBox(height: 12),
+              const Text('Could not load editor', style: TextStyle(color: Colors.white70)),
+              const SizedBox(height: 16),
+              ElevatedButton(
+                onPressed: () => _initWebEditor(),
+                child: const Text('Retry'),
+              ),
+            ],
+          ),
+        ),
+      );
     }
 
     return PopScope(

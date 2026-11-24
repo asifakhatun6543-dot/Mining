@@ -88,12 +88,19 @@ class OpenPDFStudioApp {
 
     // Autoload from local Flutter server if requested
     const urlParams = new URLSearchParams(window.location.search);
-    if (urlParams.get("autoload") === "1" || urlParams.get("mode") === "editor") {
+    if (urlParams.get("autoload") === "1") {
       const docUrl = urlParams.get("docUrl") || "/api/document";
       const docName = urlParams.get("docName") || "document.pdf";
       setTimeout(() => {
         this.loadFromUrl(docUrl, docName);
       }, 60);
+    } else if (urlParams.get("mode") === "editor" || window.DIRECT_EDITOR_MODE) {
+      setTimeout(() => {
+        if (!State.documentId && !State.pdfDoc) {
+          const welcomeModal = document.getElementById("welcome-modal");
+          if (welcomeModal) welcomeModal.style.display = "flex";
+        }
+      }, 80);
     }
   }
 
@@ -568,7 +575,11 @@ class OpenPDFStudioApp {
     });
 
     dropzone?.addEventListener("click", () => {
-      document.getElementById("pdf-file-picker")?.click();
+      if (window.FlutterBridge) {
+        window.FlutterBridge.postMessage(JSON.stringify({ action: "pick_file" }));
+      } else {
+        document.getElementById("pdf-file-picker")?.click();
+      }
     });
 
     // Sample document cards

@@ -1,7 +1,6 @@
 ﻿import 'dart:io';
 import 'package:flutter/material.dart';
 import '../../../core/constants/app_colors.dart';
-import '../../../core/services/file_service.dart';
 import '../../../core/services/history_service.dart';
 import '../../../core/services/cloud_storage_service.dart';
 import '../../../data/datasources/tools_data.dart';
@@ -10,6 +9,7 @@ import '../../../shared/widgets/glass/glass_container.dart';
 import '../../../shared/widgets/document_actions_sheet.dart';
 import '../../tools/screens/tool_workspace_screen.dart';
 import '../../tools/screens/pdf_editor_webview_screen.dart';
+import '../../history/screens/history_screen.dart';
 
 /// PDF 🫰 Studio - Executive Modern Dashboard
 /// Clean, stable layout with ClampingScrollPhysics (no bouncy overscroll or accidental swipe).
@@ -24,21 +24,16 @@ class HomeScreen extends StatefulWidget {
 }
 
 class _HomeScreenState extends State<HomeScreen> {
-  String _searchQuery = '';
-
   void _openTool(ToolEntity tool) {
     Navigator.of(context).push(
       MaterialPageRoute(builder: (_) => ToolWorkspaceScreen(tool: tool)),
     );
   }
 
-  Future<void> _launchPdfEditor() async {
-    final doc = await FileService.instance.pickPdfFile();
-    if (doc != null && mounted) {
-      Navigator.of(context).push(
-        MaterialPageRoute(builder: (_) => PdfEditorWebViewScreen(pdfFile: File(doc.path))),
-      );
-    }
+  void _launchPdfEditor() {
+    Navigator.of(context).push(
+      MaterialPageRoute(builder: (_) => const PdfEditorWebViewScreen(pdfFile: null)),
+    );
   }
 
   @override
@@ -66,33 +61,38 @@ class _HomeScreenState extends State<HomeScreen> {
                       Row(
                         children: [
                           Text(
-                            'PDF',
+                            'PDF WITH',
                             style: TextStyle(
-                              fontSize: 25,
+                              fontSize: 22,
                               fontWeight: FontWeight.w900,
                               color: isDark ? AppColors.darkPrimaryText : AppColors.lightPrimaryText,
-                              letterSpacing: -0.5,
+                              letterSpacing: -0.4,
                             ),
                           ),
-                          const SizedBox(width: 4),
-                          const Text('🫰', style: TextStyle(fontSize: 22)),
                           const SizedBox(width: 6),
                           Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                             decoration: BoxDecoration(
                               gradient: const LinearGradient(
                                 colors: [Color(0xFFFF1744), Color(0xFFBE123C)],
                               ),
-                              borderRadius: BorderRadius.circular(6),
+                              borderRadius: BorderRadius.circular(8),
                             ),
-                            child: const Text(
-                              'STUDIO',
-                              style: TextStyle(
-                                color: Colors.white,
-                                fontSize: 10,
-                                fontWeight: FontWeight.w800,
-                                letterSpacing: 0.6,
-                              ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: const [
+                                Text('❤️', style: TextStyle(fontSize: 11)),
+                                SizedBox(width: 4),
+                                Text(
+                                  'LOVE',
+                                  style: TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 11,
+                                    fontWeight: FontWeight.w900,
+                                    letterSpacing: 0.8,
+                                  ),
+                                ),
+                              ],
                             ),
                           ),
                         ],
@@ -122,22 +122,37 @@ class _HomeScreenState extends State<HomeScreen> {
                     ],
                   ),
 
-                  // Profile Avatar Button (Jumps to Profile Tab)
-                  InkWell(
-                    onTap: () => widget.onNavigateTab(3),
-                    borderRadius: BorderRadius.circular(50),
-                    child: Container(
-                      width: 42,
-                      height: 42,
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        color: (isDark ? Colors.white : Colors.black).withOpacity(0.06),
-                        border: Border.all(
-                          color: primaryAccent.withOpacity(0.4),
-                          width: 1.5,
-                        ),
+                  // Offline Pro Status Pill (Replaces redundant profile avatar)
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                    decoration: BoxDecoration(
+                      color: (isDark ? Colors.white : Colors.black).withOpacity(0.05),
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(
+                        color: (isDark ? Colors.white : Colors.black).withOpacity(0.08),
                       ),
-                      child: Icon(Icons.person_rounded, size: 22, color: primaryAccent),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Container(
+                          width: 7,
+                          height: 7,
+                          decoration: const BoxDecoration(
+                            color: Color(0xFF10B981),
+                            shape: BoxShape.circle,
+                          ),
+                        ),
+                        const SizedBox(width: 6),
+                        Text(
+                          'Offline Pro',
+                          style: TextStyle(
+                            fontSize: 11,
+                            fontWeight: FontWeight.w700,
+                            color: isDark ? AppColors.darkSecondaryText : AppColors.lightSecondaryText,
+                          ),
+                        ),
+                      ],
                     ),
                   ),
                 ],
@@ -409,7 +424,16 @@ class _HomeScreenState extends State<HomeScreen> {
                     ),
                   ),
                   TextButton(
-                    onPressed: () => widget.onNavigateTab(3), // View History in Profile
+                    onPressed: () {
+                      Navigator.of(context).push(
+                        MaterialPageRoute(
+                          builder: (_) => HistoryScreen(
+                            onNavigateTab: widget.onNavigateTab,
+                            isSubpage: true,
+                          ),
+                        ),
+                      );
+                    },
                     child: Text(
                       'View All',
                       style: TextStyle(

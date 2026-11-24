@@ -8,6 +8,7 @@ class HistoryEntity {
   final String sizeFormatted;
   final DateTime timestamp;
   final String status; // 'completed', 'in_progress', 'failed'
+  final bool isFavorite;
 
   const HistoryEntity({
     required this.id,
@@ -18,7 +19,32 @@ class HistoryEntity {
     required this.sizeFormatted,
     required this.timestamp,
     this.status = 'completed',
+    this.isFavorite = false,
   });
+
+  HistoryEntity copyWith({
+    String? id,
+    String? fileName,
+    String? filePath,
+    String? toolUsed,
+    String? fileType,
+    String? sizeFormatted,
+    DateTime? timestamp,
+    String? status,
+    bool? isFavorite,
+  }) {
+    return HistoryEntity(
+      id: id ?? this.id,
+      fileName: fileName ?? this.fileName,
+      filePath: filePath ?? this.filePath,
+      toolUsed: toolUsed ?? this.toolUsed,
+      fileType: fileType ?? this.fileType,
+      sizeFormatted: sizeFormatted ?? this.sizeFormatted,
+      timestamp: timestamp ?? this.timestamp,
+      status: status ?? this.status,
+      isFavorite: isFavorite ?? this.isFavorite,
+    );
+  }
 
   Map<String, dynamic> toJson() {
     return {
@@ -30,6 +56,7 @@ class HistoryEntity {
       'sizeFormatted': sizeFormatted,
       'timestamp': timestamp.millisecondsSinceEpoch,
       'status': status,
+      'isFavorite': isFavorite,
     };
   }
 
@@ -45,6 +72,7 @@ class HistoryEntity {
         map['timestamp'] as int? ?? DateTime.now().millisecondsSinceEpoch,
       ),
       status: map['status'] as String? ?? 'completed',
+      isFavorite: map['isFavorite'] as bool? ?? false,
     );
   }
 

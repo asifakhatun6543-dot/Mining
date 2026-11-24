@@ -2,8 +2,8 @@
 class AppStrings {
   AppStrings._();
 
-  static const String appName = 'PDF 🫰 Studio';
-  static const String appTagline = 'Your Documents. Your Tools. Your AI. • Built with love 🫰 RS7';
+  static const String appName = 'PDF WITH LOVE';
+  static const String appTagline = 'Your Documents. Your Tools. Your AI. • Built with Love ❤️ RS7';
   
   // Navigation Tabs
   static const String tabHome = 'Home';
@@ -62,6 +62,6 @@ class AppStrings {
   static const String privacyPledgeDesc = 'Your documents are processed securely on your device. No telemetry or hidden cloud collection.';
 
   // Company & Developer Branding
-  static const String builtBy = 'Built by RS7 Private Limited';
+  static const String builtBy = 'Built with Love ❤️ by RS7 Private Limited';
   static const String companyName = 'RS7 Private Limited';
 }

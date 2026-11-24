@@ -503,7 +503,11 @@ class OpenPDFStudioApp {
     });
 
     dropzone?.addEventListener("click", () => {
-      document.getElementById("pdf-file-picker")?.click();
+      if (window.FlutterBridge) {
+        window.FlutterBridge.postMessage(JSON.stringify({ action: "pick_file" }));
+      } else {
+        document.getElementById("pdf-file-picker")?.click();
+      }
     });
 
     // Sample document cards

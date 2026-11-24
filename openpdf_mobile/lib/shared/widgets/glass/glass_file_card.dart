@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../../core/constants/app_colors.dart';
+import '../../../core/services/history_service.dart';
 import '../../../domain/entities/history_entity.dart';
 import '../document_actions_sheet.dart';
 import 'glass_card.dart';
@@ -140,6 +141,18 @@ class GlassFileCard extends StatelessWidget {
                 ),
               ],
             ),
+          ),
+
+          // Favorite Star Toggle
+          IconButton(
+            icon: Icon(
+              item.isFavorite ? Icons.star_rounded : Icons.star_border_rounded,
+              size: 20,
+              color: item.isFavorite ? const Color(0xFFF59E0B) : (isDark ? Colors.white38 : Colors.black38),
+            ),
+            tooltip: item.isFavorite ? 'Remove Favorite' : 'Add to Favorites',
+            onPressed: () => HistoryService.instance.toggleFavorite(item.id),
+            visualDensity: VisualDensity.compact,
           ),
 
           // 3-Dot Actions Drawer Button (All 15 Actions)

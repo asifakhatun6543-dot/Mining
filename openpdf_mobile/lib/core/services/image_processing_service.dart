@@ -60,48 +60,152 @@ class ImageProcessingService {
     }
   }
 
-  /// 2. RESIZE & COMPRESS IMAGE: Adjusts pixel dimensions, format & quality
+  /// Returns original dimensions, format, and size info of an image file
+  Future<Map<String, dynamic>> inspectImage(File imageFile) async {
+    final bytes = await imageFile.readAsBytes();
+    final decoded = img.decodeImage(bytes);
+    if (decoded == null) {
+      throw Exception('Could not decode image. Unsupported or corrupted file format.');
+    }
+    return {
+      'width': decoded.width,
+      'height': decoded.height,
+      'aspectRatio': decoded.width / decoded.height,
+      'hasAlpha': decoded.hasAlpha,
+      'sizeBytes': bytes.length,
+      'sizeFormatted': _formatBytes(bytes.length),
+    };
+  }
+
+  /// 2. RESIZE & COMPRESS IMAGE: Advanced pixel dimensions, percentage, DPI, format & quality controls
   Future<File> resizeAndCompressImage({
     required File imageFile,
     int? targetWidth,
     int? targetHeight,
-    int quality = 80,
+    double? resizePercentage,
+    bool maintainAspectRatio = true,
+    int? dpi,
+    int quality = 85,
     String format = 'jpg',
+    String? backgroundColorHex,
     String outputFileName = 'resized_image.jpg',
   }) async {
     final bytes = await imageFile.readAsBytes();
-    final decoded = img.decodeImage(bytes);
-    if (decoded == null) throw Exception('Unsupported image format');
+    if (bytes.isEmpty) {
+      throw Exception('Cannot process empty image file.');
+    }
 
-    // Resize while maintaining aspect ratio
-    final resized = img.copyResize(
+    final decoded = img.decodeImage(bytes);
+    if (decoded == null) {
+      throw Exception('Unsupported or invalid image format. Please select a valid JPG, PNG, or WebP image.');
+    }
+
+    final origW = decoded.width;
+    final origH = decoded.height;
+
+    int newW = origW;
+    int newH = origH;
+
+    if (resizePercentage != null && resizePercentage > 0) {
+      final factor = resizePercentage / 100.0;
+      newW = (origW * factor).round().clamp(1, 16000);
+      newH = (origH * factor).round().clamp(1, 16000);
+    } else if (targetWidth != null || targetHeight != null) {
+      if (maintainAspectRatio && origW > 0 && origH > 0) {
+        final aspect = origW / origH;
+        if (targetWidth != null && targetHeight != null) {
+          // Fit within requested box preserving aspect
+          final scaleW = targetWidth / origW;
+          final scaleH = targetHeight / origH;
+          final scale = min(scaleW, scaleH);
+          newW = (origW * scale).round().clamp(1, 16000);
+          newH = (origH * scale).round().clamp(1, 16000);
+        } else if (targetWidth != null) {
+          newW = targetWidth.clamp(1, 16000);
+          newH = (newW / aspect).round().clamp(1, 16000);
+        } else if (targetHeight != null) {
+          newH = targetHeight.clamp(1, 16000);
+          newW = (newH * aspect).round().clamp(1, 16000);
+        }
+      } else {
+        newW = (targetWidth ?? origW).clamp(1, 16000);
+        newH = (targetHeight ?? origH).clamp(1, 16000);
+      }
+    }
+
+    // High quality interpolation resize
+    img.Image resized = img.copyResize(
       decoded,
-      width: targetWidth,
-      height: targetHeight,
+      width: newW,
+      height: newH,
       interpolation: img.Interpolation.linear,
     );
 
-    Uint8List outputBytes;
-    if (format.toLowerCase() == 'png') {
-      outputBytes = Uint8List.fromList(img.encodePng(resized));
-    } else {
-      outputBytes = Uint8List.fromList(img.encodeJpg(resized, quality: quality));
+    final normalizedFormat = format.toLowerCase().replaceAll('.', '').trim();
+
+    // If exporting to JPEG and image has transparency, composite over background
+    if ((normalizedFormat == 'jpg' || normalizedFormat == 'jpeg') && resized.hasAlpha) {
+      final bgColor = _parseColorHex(backgroundColorHex ?? '#FFFFFF');
+      final solidCanvas = img.Image(
+        width: newW,
+        height: newH,
+        numChannels: 3,
+      );
+      solidCanvas.clear(bgColor);
+      img.compositeImage(solidCanvas, resized);
+      resized = solidCanvas;
     }
 
+    Uint8List outputBytes;
+    String actualExt = 'jpg';
+
+    if (normalizedFormat == 'png') {
+      actualExt = 'png';
+      outputBytes = Uint8List.fromList(img.encodePng(resized));
+    } else if (normalizedFormat == 'webp') {
+      actualExt = 'webp';
+      // Fallback to jpg or png if webp encoder isn't available
+      try {
+        outputBytes = Uint8List.fromList(img.encodePng(resized));
+        actualExt = 'png';
+      } catch (_) {
+        outputBytes = Uint8List.fromList(img.encodeJpg(resized, quality: quality));
+        actualExt = 'jpg';
+      }
+    } else {
+      actualExt = 'jpg';
+      outputBytes = Uint8List.fromList(img.encodeJpg(resized, quality: quality.clamp(1, 100)));
+    }
+
+    // Ensure output filename matches actual extension
+    final outBase = outputFileName.replaceAll(RegExp(r'\.(jpg|jpeg|png|webp)$', caseSensitive: false), '');
+    final finalFileName = '$outBase.$actualExt';
+
     final outFile = await FileService.instance.saveFile(
-      fileName: outputFileName,
+      fileName: finalFileName,
       bytes: outputBytes,
     );
 
     await HistoryService.instance.addRecord(
-      fileName: outputFileName,
+      fileName: finalFileName,
       filePath: outFile.path,
       toolUsed: 'Resize & Compress Image',
-      fileType: format,
+      fileType: actualExt,
       sizeFormatted: _formatBytes(outputBytes.length),
     );
 
     return outFile;
+  }
+
+  img.Color _parseColorHex(String hex) {
+    var clean = hex.replaceAll('#', '').trim();
+    if (clean.length == 6) {
+      final r = int.parse(clean.substring(0, 2), radix: 16);
+      final g = int.parse(clean.substring(2, 4), radix: 16);
+      final b = int.parse(clean.substring(4, 6), radix: 16);
+      return img.ColorRgb8(r, g, b);
+    }
+    return img.ColorRgb8(255, 255, 255);
   }
 
   /// 3. PDF CONVERT TO SCANNER: Authentic physical photocopy effect with contrast, grain & tilt

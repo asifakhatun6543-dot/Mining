@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../core/constants/app_colors.dart';
-import 'glass_theme.dart';
 
 /// OpenPDF Studio - Theme Provider & System Setup
 class AppTheme {

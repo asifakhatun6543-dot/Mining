@@ -14,6 +14,7 @@ class HistoryService extends ChangeNotifier {
   HistoryService._();
 
   List<HistoryEntity> get items => List.unmodifiable(_items);
+  List<HistoryEntity> get favorites => _items.where((i) => i.isFavorite).toList();
   int get count => _items.length;
 
   Future<void> init() async {
@@ -72,6 +73,16 @@ class HistoryService extends ChangeNotifier {
     _items.removeWhere((item) => item.id == id);
     await _persist();
     notifyListeners();
+  }
+
+  Future<void> toggleFavorite(String id) async {
+    await init();
+    final idx = _items.indexWhere((item) => item.id == id);
+    if (idx != -1) {
+      _items[idx] = _items[idx].copyWith(isFavorite: !_items[idx].isFavorite);
+      await _persist();
+      notifyListeners();
+    }
   }
 
   Future<void> clearAll() async {

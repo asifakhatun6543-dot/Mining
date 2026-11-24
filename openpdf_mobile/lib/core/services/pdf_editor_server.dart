@@ -13,7 +13,7 @@ class PdfEditorServer {
   String get baseUrl => 'http://127.0.0.1:$port';
 
   Future<int> start({
-    required File pdfFile,
+    File? pdfFile,
     Function(String filename, Uint8List bytes)? onExport,
   }) async {
     _activePdfFile = pdfFile;

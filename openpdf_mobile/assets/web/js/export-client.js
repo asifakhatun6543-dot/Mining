@@ -963,14 +963,18 @@ export class ExportClient {
       console.warn("Auto-commit active text edit warning:", e);
     }
 
-    const headingEl = this.modalEl.querySelector("#export-modal-heading");
-    if (headingEl) headingEl.textContent = saveAs ? "Save As PDF" : "Export & Download PDF";
+    if (!autoDownload) {
+      const headingEl = this.modalEl.querySelector("#export-modal-heading");
+      if (headingEl) headingEl.textContent = saveAs ? "Save As PDF" : "Export & Download PDF";
 
-    this.modalEl.querySelector("#export-loading-state").style.display = "flex";
-    this.modalEl.querySelector("#export-result-state").style.display = "none";
-    this.modalEl.querySelector("#export-download-btn").style.display = "none";
-    this.modalEl.querySelector("#export-save-as-btn").style.display = "none";
-    this.modalEl.style.display = "flex";
+      this.modalEl.querySelector("#export-loading-state").style.display = "flex";
+      this.modalEl.querySelector("#export-result-state").style.display = "none";
+      this.modalEl.querySelector("#export-download-btn").style.display = "none";
+      this.modalEl.querySelector("#export-save-as-btn").style.display = "none";
+      this.modalEl.style.display = "flex";
+    } else {
+      State.emit("toast", { type: "info", message: "Exporting modified PDF..." });
+    }
 
     // Pre-fill filename input cleanly
     const baseName = (State.filename || "document.pdf").replace(/\.pdf$/i, "");
@@ -999,6 +1003,14 @@ export class ExportClient {
     }
 
     this.lastExportBytes = exportResult.bytes;
+
+    // Auto-trigger direct download for Done / Auto-download button without modal popup
+    if (autoDownload) {
+      this.hide();
+      await this._downloadPreparedBytes(false);
+      State.emit("toast", { type: "success", message: "PDF successfully exported!" });
+      return;
+    }
 
     // Populate modal stats
     this.modalEl.querySelector("#export-val-pagecount").textContent = `${exportResult.pageCount} ${exportResult.pageCount === 1 ? "Page" : "Pages"}`;

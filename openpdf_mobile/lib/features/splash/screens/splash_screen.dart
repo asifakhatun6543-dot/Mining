@@ -207,7 +207,7 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
                         const SizedBox(width: 5),
                         // Korean Finger Heart Icon 🫰
                         const Text(
-                          '🫰',
+                          '❤️',
                           style: TextStyle(fontSize: 13),
                         ),
                         const SizedBox(width: 5),

@@ -1,8 +1,6 @@
-import 'dart:io';
 import 'package:flutter/material.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/app_strings.dart';
-import '../../../core/services/file_service.dart';
 import '../../../data/datasources/tools_data.dart';
 import '../../../domain/entities/tool_entity.dart';
 import '../../../shared/widgets/glass/glass_search_bar.dart';
@@ -37,15 +35,12 @@ class _AllToolsScreenState extends State<AllToolsScreen> {
     }).toList();
   }
 
-  void _openTool(ToolEntity tool) async {
+  void _openTool(ToolEntity tool) {
     if (tool.id == 'edit-pdf') {
-      final doc = await FileService.instance.pickPdfFile();
-      if (doc != null && mounted) {
-        Navigator.of(context).push(
-          MaterialPageRoute(builder: (_) => PdfEditorWebViewScreen(pdfFile: File(doc.path))),
-        );
-        return;
-      }
+      Navigator.of(context).push(
+        MaterialPageRoute(builder: (_) => const PdfEditorWebViewScreen(pdfFile: null)),
+      );
+      return;
     }
     Navigator.of(context).push(
       MaterialPageRoute(builder: (_) => ToolWorkspaceScreen(tool: tool)),
