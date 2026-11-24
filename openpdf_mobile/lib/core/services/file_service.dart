@@ -5,6 +5,7 @@ import 'package:path_provider/path_provider.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:printing/printing.dart';
 import '../../domain/entities/document_entity.dart';
+import 'file_export_service.dart';
 
 /// OpenPDF Studio - Centralized File Management Service
 /// Android Storage Access Framework (SAF) & Scoped Storage Compliant.
@@ -168,49 +169,34 @@ class FileService {
     final file = File('${dir.path}/$fileName');
     await file.writeAsBytes(bytes, flush: true);
 
-    // If saving non-temporary file on Android, also attempt to export to public Downloads folder
-    if (!isTemporary && Platform.isAndroid) {
+    // If saving non-temporary file, also export to public Downloads via MediaStore
+    if (!isTemporary) {
       try {
-        final publicDownloadDir = Directory('/storage/emulated/0/Download');
-        if (publicDownloadDir.existsSync()) {
-          final publicFile = File('${publicDownloadDir.path}/$fileName');
-          await publicFile.writeAsBytes(bytes, flush: true);
-          return publicFile;
+        final result = await FileExportService.instance.exportDocument(
+          fileName: fileName,
+          bytes: bytes,
+        );
+        if (result.localFilePath != null) {
+          return File(result.localFilePath!);
         }
-      } catch (_) {
-        // Scoped storage fallback to app directory
-      }
+      } catch (_) {}
     }
 
     return file;
   }
 
-  /// Explicitly exports file bytes to public Downloads folder (/storage/emulated/0/Download)
+  /// Explicitly exports file bytes to public Downloads folder (Download/PDF WITH LOVE/)
   Future<File> exportToPublicDownloads({
     required String fileName,
     required Uint8List bytes,
   }) async {
-    if (Platform.isAndroid) {
-      try {
-        final publicDownloadDir = Directory('/storage/emulated/0/Download');
-        if (!publicDownloadDir.existsSync()) {
-          publicDownloadDir.createSync(recursive: true);
-        }
-        final publicFile = File('${publicDownloadDir.path}/$fileName');
-        await publicFile.writeAsBytes(bytes, flush: true);
-        if (await publicFile.exists() && await publicFile.length() > 0) {
-          return publicFile;
-        }
-      } catch (_) {}
-    }
-
-    // Secondary fallback using path_provider getDownloadsDirectory or getExternalStorageDirectory
     try {
-      final extDir = await getExternalStorageDirectory();
-      if (extDir != null) {
-        final extFile = File('${extDir.path}/$fileName');
-        await extFile.writeAsBytes(bytes, flush: true);
-        return extFile;
+      final result = await FileExportService.instance.exportDocument(
+        fileName: fileName,
+        bytes: bytes,
+      );
+      if (result.localFilePath != null) {
+        return File(result.localFilePath!);
       }
     } catch (_) {}
 
@@ -223,17 +209,12 @@ class FileService {
     required Uint8List bytes,
   }) async {
     try {
-      final String? path = await FilePicker.platform.saveFile(
-        dialogTitle: 'Save Processed Document',
+      final result = await FileExportService.instance.saveAsWithPicker(
         fileName: fileName,
         bytes: bytes,
       );
-      if (path != null) {
-        final f = File(path);
-        if (!await f.exists()) {
-          await f.writeAsBytes(bytes, flush: true);
-        }
-        return path;
+      if (result.success) {
+        return result.localFilePath ?? result.displayPath;
       }
     } catch (_) {}
     return null;

@@ -5,9 +5,9 @@ import 'package:flutter/material.dart';
 import 'package:webview_flutter/webview_flutter.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/services/file_service.dart';
-import '../../../core/services/history_service.dart';
+import '../../../core/services/file_export_service.dart';
 import '../../../core/services/pdf_editor_server.dart';
-import '../../../shared/widgets/document_actions_sheet.dart';
+import '../../../shared/widgets/glass/glass_download_success_dialog.dart';
 import '../../chat_ai/screens/chat_ai_screen.dart';
 import '../../profile/screens/profile_screen.dart';
 import 'pdf_editor_canvas_screen.dart';
@@ -297,30 +297,26 @@ class _PdfEditorWebViewScreenState extends State<PdfEditorWebViewScreen> {
 
     try {
       final outName = filename.endsWith('.pdf') ? filename : '$filename.pdf';
-      final savedFile = await FileService.instance.saveFile(
+      final exportResult = await FileExportService.instance.exportDocument(
         fileName: outName,
         bytes: bytes,
-      );
-
-      final sizeFormatted =
-          '${(bytes.length / (1024 * 1024)).toStringAsFixed(1)} MB';
-      await HistoryService.instance.addRecord(
-        fileName: outName,
-        filePath: savedFile.path,
         toolUsed: 'PDF Editor',
-        fileType: 'pdf',
-        sizeFormatted: sizeFormatted,
       );
 
       if (mounted) {
         Navigator.of(context).pop(); // dismiss loading dialog
         setState(() => _isSaving = false);
 
-        DocumentActionsSheet.show(
-          context,
-          documentTitle: outName,
-          documentPath: savedFile.path,
-        );
+        if (exportResult.success) {
+          GlassDownloadSuccessDialog.show(context, exportResult);
+        } else {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(exportResult.errorMessage ?? 'Failed to export PDF'),
+              backgroundColor: AppColors.error,
+            ),
+          );
+        }
       }
     } catch (e) {
       if (mounted) {

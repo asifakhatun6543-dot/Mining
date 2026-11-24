@@ -15,4 +15,5 @@ openpdf_mobile/build/
 .idea/
 *.iml
 .tmp_localappdata/
+.sandboxed_cache/
 openpdf_mobile/android/app/src/main/java/

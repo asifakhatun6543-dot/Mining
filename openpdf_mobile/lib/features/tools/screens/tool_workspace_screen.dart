@@ -7,9 +7,11 @@ import '../../../core/services/pdf_processing_service.dart';
 import '../../../core/services/office_conversion_service.dart';
 import '../../../core/services/image_processing_service.dart';
 import '../../../core/services/ocr_scanning_service.dart';
+import '../../../core/services/file_export_service.dart';
 import '../../../domain/entities/tool_entity.dart';
 import '../../../shared/widgets/glass/glass_container.dart';
 import '../../../shared/widgets/glass/glass_button.dart';
+import '../../../shared/widgets/glass/glass_download_success_dialog.dart';
 import '../../../shared/widgets/document_actions_sheet.dart';
 import 'pdf_editor_webview_screen.dart';
 import 'ocr_scanner_screen.dart';
@@ -1096,19 +1098,22 @@ class _ToolWorkspaceScreenState extends State<ToolWorkspaceScreen> {
                   color: const Color(0xFF10B981),
                   onTap: () async {
                     final bytes = await _resultFile!.readAsBytes();
-                    final publicFile = await FileService.instance.exportToPublicDownloads(fileName: fileName, bytes: bytes);
+                    final exportResult = await FileExportService.instance.exportDocument(
+                      fileName: fileName,
+                      bytes: bytes,
+                      toolUsed: widget.tool.title,
+                    );
                     if (mounted) {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(
-                          content: Text('Downloaded to phone Downloads: ${publicFile.path.split(Platform.isWindows ? r'\' : '/').last} ✓'),
-                          backgroundColor: const Color(0xFF10B981),
-                          action: SnackBarAction(
-                            label: 'Share',
-                            textColor: Colors.white,
-                            onPressed: () => FileService.instance.shareFile(publicFile.path),
+                      if (exportResult.success) {
+                        GlassDownloadSuccessDialog.show(context, exportResult);
+                      } else {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: Text(exportResult.errorMessage ?? 'Download failed'),
+                            backgroundColor: AppColors.error,
                           ),
-                        ),
-                      );
+                        );
+                      }
                     }
                   },
                 ),
@@ -1119,7 +1124,17 @@ class _ToolWorkspaceScreenState extends State<ToolWorkspaceScreen> {
                   icon: Icons.save_as_rounded,
                   label: 'Save As',
                   color: const Color(0xFFF59E0B),
-                  onTap: () => _showSaveAsDialog(fileName),
+                  onTap: () async {
+                    final bytes = await _resultFile!.readAsBytes();
+                    final exportResult = await FileExportService.instance.saveAsWithPicker(
+                      fileName: fileName,
+                      bytes: bytes,
+                      toolUsed: widget.tool.title,
+                    );
+                    if (mounted && exportResult.success) {
+                      GlassDownloadSuccessDialog.show(context, exportResult);
+                    }
+                  },
                 ),
               ),
             ],
@@ -1185,40 +1200,6 @@ class _ToolWorkspaceScreenState extends State<ToolWorkspaceScreen> {
           side: BorderSide(color: color.withOpacity(0.3)),
         ),
         padding: const EdgeInsets.symmetric(vertical: 10),
-      ),
-    );
-  }
-
-  void _showSaveAsDialog(String initialName) {
-    final ctrl = TextEditingController(text: initialName);
-    showDialog(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('Save Document As'),
-        content: TextField(
-          controller: ctrl,
-          decoration: const InputDecoration(labelText: 'New Filename', border: OutlineInputBorder()),
-        ),
-        actions: [
-          TextButton(onPressed: () => Navigator.of(ctx).pop(), child: const Text('Cancel')),
-          ElevatedButton(
-            style: ElevatedButton.styleFrom(backgroundColor: AppColors.brandRed),
-            onPressed: () async {
-              final newName = ctrl.text.trim();
-              if (newName.isNotEmpty) {
-                final bytes = await _resultFile!.readAsBytes();
-                await FileService.instance.saveFile(fileName: newName, bytes: bytes);
-                if (mounted) {
-                  Navigator.of(ctx).pop();
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text('Saved as $newName ✓')),
-                  );
-                }
-              }
-            },
-            child: const Text('Save', style: TextStyle(color: Colors.white)),
-          ),
-        ],
       ),
     );
   }

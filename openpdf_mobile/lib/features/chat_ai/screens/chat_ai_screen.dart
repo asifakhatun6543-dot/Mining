@@ -3,8 +3,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/services/file_service.dart';
+import '../../../core/services/file_export_service.dart';
 import '../../../core/services/document_ai_service.dart';
 import '../../../domain/entities/chat_message_entity.dart';
+import '../../../shared/widgets/glass/glass_download_success_dialog.dart';
 
 class ChatSessionItem {
   String id;
@@ -277,14 +279,20 @@ class _ChatAiScreenState extends State<ChatAiScreen> {
     final bytes = Uint8List.fromList(buffer.toString().codeUnits);
     final fileName = '${_currentSessionTitle.replaceAll(RegExp(r'[^a-zA-Z0-9]'), '_')}_chat.txt';
     try {
-      await FileService.instance.exportToPublicDownloads(fileName: fileName, bytes: bytes);
+      final res = await FileExportService.instance.exportDocument(
+        fileName: fileName,
+        bytes: bytes,
+        mimeType: 'text/plain',
+        toolUsed: 'Chat AI Transcript',
+      );
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Exported to Downloads: $fileName'),
-            backgroundColor: AppColors.success,
-          ),
-        );
+        if (res.success) {
+          GlassDownloadSuccessDialog.show(context, res);
+        } else {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text(res.errorMessage ?? 'Export error')),
+          );
+        }
       }
     } catch (e) {
       if (mounted) {

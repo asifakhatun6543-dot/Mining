@@ -1,7 +1,10 @@
-﻿import 'package:flutter/material.dart';
+﻿import 'dart:io';
+import 'package:flutter/material.dart';
 import '../../core/constants/app_colors.dart';
 import '../../core/services/file_service.dart';
+import '../../core/services/file_export_service.dart';
 import '../../domain/entities/history_entity.dart';
+import 'glass/glass_download_success_dialog.dart';
 
 /// OpenPDF Studio - Unified Document Action Drawer / Modal
 /// Implements all 15 actions specified by the user:
@@ -162,9 +165,22 @@ class DocumentActionsSheet extends StatelessWidget {
                     title: 'Open Document',
                     subtitle: 'View full PDF in interactive reader',
                     color: const Color(0xFF3B82F6),
-                    onTap: () {
+                    onTap: () async {
                       Navigator.of(context).pop();
-                      _showSnackBar(context, 'Opening document...');
+                      if (documentPath != null && File(documentPath!).existsSync()) {
+                        final res = FileExportResult(
+                          success: true,
+                          fileName: documentTitle,
+                          displayPath: documentPath!,
+                          localFilePath: documentPath,
+                          bytesWritten: File(documentPath!).lengthSync(),
+                          sizeFormatted: FileExportService.formatBytes(File(documentPath!).lengthSync()),
+                          mimeType: FileExportService.getMimeType(documentTitle),
+                        );
+                        await FileExportService.instance.openExportedFile(res);
+                      } else {
+                        _showSnackBar(context, 'Document file not found on local storage');
+                      }
                     },
                   ),
                   _buildActionTile(
@@ -173,9 +189,25 @@ class DocumentActionsSheet extends StatelessWidget {
                     title: 'Download',
                     subtitle: 'Save directly to device Downloads directory',
                     color: const Color(0xFF10B981),
-                    onTap: () {
+                    onTap: () async {
                       Navigator.of(context).pop();
-                      _showSnackBar(context, 'Document downloaded successfully to Downloads');
+                      if (documentPath != null && File(documentPath!).existsSync()) {
+                        final bytes = await File(documentPath!).readAsBytes();
+                        final res = await FileExportService.instance.exportDocument(
+                          fileName: documentTitle,
+                          bytes: bytes,
+                          toolUsed: item?.toolUsed ?? 'Document Drawer',
+                        );
+                        if (context.mounted) {
+                          if (res.success) {
+                            GlassDownloadSuccessDialog.show(context, res);
+                          } else {
+                            _showSnackBar(context, res.errorMessage ?? 'Download failed');
+                          }
+                        }
+                      } else {
+                        _showSnackBar(context, 'Source file could not be read for download');
+                      }
                     },
                   ),
                   _buildActionTile(
@@ -184,9 +216,21 @@ class DocumentActionsSheet extends StatelessWidget {
                     title: 'Save As',
                     subtitle: 'Choose target storage directory and format',
                     color: const Color(0xFFF59E0B),
-                    onTap: () {
+                    onTap: () async {
                       Navigator.of(context).pop();
-                      _showSnackBar(context, 'Exporting document to storage...');
+                      if (documentPath != null && File(documentPath!).existsSync()) {
+                        final bytes = await File(documentPath!).readAsBytes();
+                        final res = await FileExportService.instance.saveAsWithPicker(
+                          fileName: documentTitle,
+                          bytes: bytes,
+                          toolUsed: item?.toolUsed ?? 'Document Drawer',
+                        );
+                        if (context.mounted && res.success) {
+                          GlassDownloadSuccessDialog.show(context, res);
+                        }
+                      } else {
+                        _showSnackBar(context, 'Source file could not be read');
+                      }
                     },
                   ),
                   _buildActionTile(

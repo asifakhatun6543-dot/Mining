@@ -5,9 +5,10 @@ import 'package:image_picker/image_picker.dart';
 import 'package:syncfusion_flutter_pdf/pdf.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/services/file_service.dart';
+import '../../../core/services/file_export_service.dart';
 import '../../../core/services/history_service.dart';
 import '../../../shared/widgets/glass/glass_signature_pad.dart';
-import '../../../shared/widgets/document_actions_sheet.dart';
+import '../../../shared/widgets/glass/glass_download_success_dialog.dart';
 import 'package:printing/printing.dart';
 
 enum EditorActiveTool {
@@ -711,12 +712,16 @@ class _PdfEditorCanvasScreenState extends State<PdfEditorCanvasScreen> {
       Navigator.of(context).pop(); // dismiss loading dialog
       if (savedFile != null) {
         final docName = savedFile.path.split(Platform.isWindows ? r'\' : '/').last;
-        // Open the comprehensive 15-Action Drawer
-        DocumentActionsSheet.show(
-          context,
-          documentTitle: docName,
-          documentPath: savedFile.path,
+        final res = FileExportResult(
+          success: true,
+          fileName: docName,
+          displayPath: 'Download/PDF WITH LOVE/$docName',
+          localFilePath: savedFile.path,
+          bytesWritten: savedFile.lengthSync(),
+          sizeFormatted: FileExportService.formatBytes(savedFile.lengthSync()),
+          mimeType: 'application/pdf',
         );
+        GlassDownloadSuccessDialog.show(context, res);
       }
     }
   }

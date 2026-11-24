@@ -2,10 +2,11 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../../../core/constants/app_colors.dart';
-import '../../../core/services/file_service.dart';
+import '../../../core/services/file_export_service.dart';
 import '../../../core/services/ocr_scanning_service.dart';
 import '../../../shared/widgets/glass/glass_container.dart';
 import '../../../shared/widgets/glass/glass_button.dart';
+import '../../../shared/widgets/glass/glass_download_success_dialog.dart';
 
 /// OpenPDF Studio - Dedicated On-Device OCR Scanner & Receipt Processor
 class OcrScannerScreen extends StatefulWidget {
@@ -85,15 +86,23 @@ class _OcrScannerScreenState extends State<OcrScannerScreen> with SingleTickerPr
         ocrResult: _ocrResult!,
       );
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: const Text('Searchable OCR PDF created ✓'),
-          action: SnackBarAction(
-            label: 'Share',
-            onPressed: () => FileService.instance.shareFile(pdfFile.path),
-          ),
-        ),
+      final bytes = await pdfFile.readAsBytes();
+      final fileName = pdfFile.path.split(Platform.isWindows ? r'\' : '/').last;
+      final res = await FileExportService.instance.exportDocument(
+        fileName: fileName,
+        bytes: bytes,
+        toolUsed: 'OCR Scanner',
       );
+
+      if (mounted) {
+        if (res.success) {
+          GlassDownloadSuccessDialog.show(context, res);
+        } else {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text(res.errorMessage ?? 'Export error')),
+          );
+        }
+      }
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Export error: $e')));
     } finally {
