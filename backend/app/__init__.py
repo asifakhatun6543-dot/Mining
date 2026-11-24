@@ -1,1 +1,0 @@
-"""OpenPDF Studio backend package."""

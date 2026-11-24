@@ -1,6 +1,0 @@
-# OpenPDF Studio - Android Release Signing Configuration Example
-# Copy this file to 'key.properties' and fill in your actual keystore details:
-# storePassword=your_keystore_password
-# keyPassword=your_key_password
-# keyAlias=openpdf_release_key
-# storeFile=/absolute/path/to/upload-keystore.jks
