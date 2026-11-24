@@ -10,6 +10,7 @@ class AppStrings {
   static const String tabAllTools = 'All Tools';
   static const String tabChatAi = 'Chat AI';
   static const String tabHistory = 'History';
+  static const String tabProfile = 'Profile';
   static const String tabSettings = 'Settings';
 
   // Home Screen

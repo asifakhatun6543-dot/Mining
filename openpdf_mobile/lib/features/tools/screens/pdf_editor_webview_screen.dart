@@ -12,7 +12,11 @@ import '../../chat_ai/screens/chat_ai_screen.dart';
 import '../../profile/screens/profile_screen.dart';
 import 'pdf_editor_canvas_screen.dart';
 
-/// OpenPDF Studio - Exact Website PDF Editor Replication Screen (100% Offline WebView)
+/// PDF 🫰 Studio - Exact Website PDF Editor Replication Screen
+/// Multi-Tier Architecture:
+/// - Tier 1: Zero-latency on-device loopback HTTP server with binary PDF streaming
+/// - Tier 2: Direct Flutter asset loading (loadFlutterAsset) with Base64 bridge
+/// - Tier 3: Enhanced Native PDF Canvas Editor fallback
 class PdfEditorWebViewScreen extends StatefulWidget {
   final File pdfFile;
 
@@ -27,7 +31,7 @@ class _PdfEditorWebViewScreenState extends State<PdfEditorWebViewScreen> {
   WebViewController? _webViewController;
   bool _isLoading = true;
   bool _hasError = false;
-  String _errorMessage = '';
+  bool _isUsingFallback = false;
   int _loadingProgress = 0;
   bool _isSaving = false;
 
@@ -74,15 +78,14 @@ class _PdfEditorWebViewScreenState extends State<PdfEditorWebViewScreen> {
               if (mounted) {
                 setState(() => _isLoading = false);
               }
+              _injectPendingDocument(controller);
             },
             onWebResourceError: (error) {
-              // Ignore non-fatal favicon or optional analytics errors
+              debugPrint('Web resource warning: ${error.errorCode} - ${error.description}');
+              // Only trigger fallback if the main page completely fails to load
               if (error.isForMainFrame ?? false) {
-                if (mounted) {
-                  setState(() {
-                    _hasError = true;
-                    _errorMessage = error.description;
-                  });
+                if (error.errorCode < 0 && !_isUsingFallback) {
+                  _attemptAssetFallback(controller);
                 }
               }
             },
@@ -97,11 +100,71 @@ class _PdfEditorWebViewScreenState extends State<PdfEditorWebViewScreen> {
         });
       }
     } catch (e) {
+      debugPrint('WebEditor primary init error: $e');
+      if (mounted) {
+        _attemptAssetFallback(null);
+      }
+    }
+  }
+
+  Future<void> _injectPendingDocument(WebViewController controller) async {
+    try {
+      if (await widget.pdfFile.exists()) {
+        final bytes = await widget.pdfFile.readAsBytes();
+        final base64Data = base64Encode(bytes);
+        final docName = widget.pdfFile.path.split(Platform.isWindows ? r'\' : '/').last;
+        final js = '''
+          if (window.loadPdfFromBase64 && (!window.State || !window.State.pdfDoc)) {
+            window.loadPdfFromBase64("$base64Data", "$docName");
+          }
+        ''';
+        await controller.runJavaScript(js);
+      }
+    } catch (e) {
+      debugPrint('Inject document error: $e');
+    }
+  }
+
+  Future<void> _attemptAssetFallback(WebViewController? existingController) async {
+    if (_isUsingFallback) return;
+    _isUsingFallback = true;
+
+    try {
+      final controller = existingController ??
+          (WebViewController()
+            ..setJavaScriptMode(JavaScriptMode.unrestricted)
+            ..setBackgroundColor(const Color(0xFF0F172A))
+            ..addJavaScriptChannel(
+              'FlutterBridge',
+              onMessageReceived: (JavaScriptMessage message) {
+                _handleBridgeMessage(message.message);
+              },
+            ));
+
+      controller.setNavigationDelegate(
+        NavigationDelegate(
+          onPageFinished: (_) {
+            if (mounted) setState(() => _isLoading = false);
+            _injectPendingDocument(controller);
+          },
+          onWebResourceError: (_) {
+            if (mounted) setState(() => _hasError = true);
+          },
+        ),
+      );
+
+      await controller.loadFlutterAsset('assets/web/index.html');
+
       if (mounted) {
         setState(() {
-          _hasError = true;
-          _errorMessage = e.toString();
+          _webViewController = controller;
+          _hasError = false;
         });
+      }
+    } catch (e) {
+      debugPrint('Asset fallback error: $e');
+      if (mounted) {
+        setState(() => _hasError = true);
       }
     }
   }
@@ -153,7 +216,6 @@ class _PdfEditorWebViewScreenState extends State<PdfEditorWebViewScreen> {
     if (_isSaving) return;
     setState(() => _isSaving = true);
 
-    // Show circular loading popup ("Please wait... Saving changes")
     showDialog(
       context: context,
       barrierDismissible: false,
@@ -203,7 +265,6 @@ class _PdfEditorWebViewScreenState extends State<PdfEditorWebViewScreen> {
         Navigator.of(context).pop(); // dismiss loading dialog
         setState(() => _isSaving = false);
 
-        // Open the comprehensive 15-Action Drawer
         DocumentActionsSheet.show(
           context,
           documentTitle: outName,
@@ -212,7 +273,7 @@ class _PdfEditorWebViewScreenState extends State<PdfEditorWebViewScreen> {
       }
     } catch (e) {
       if (mounted) {
-        Navigator.of(context).pop(); // dismiss loading dialog
+        Navigator.of(context).pop();
         setState(() => _isSaving = false);
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Failed to save PDF: $e'), backgroundColor: AppColors.error),
@@ -236,7 +297,6 @@ class _PdfEditorWebViewScreenState extends State<PdfEditorWebViewScreen> {
 
   @override
   Widget build(BuildContext context) {
-    // If local server or WebView fails to load, gracefully fall back to native canvas
     if (_hasError) {
       return PdfEditorCanvasScreen(pdfFile: widget.pdfFile);
     }
@@ -251,7 +311,6 @@ class _PdfEditorWebViewScreenState extends State<PdfEditorWebViewScreen> {
               if (_webViewController != null)
                 WebViewWidget(controller: _webViewController!),
 
-              // Loading indicator while WebView loads HTML/JS bundle
               if (_isLoading)
                 Container(
                   color: const Color(0xFF0F172A),
@@ -269,7 +328,7 @@ class _PdfEditorWebViewScreenState extends State<PdfEditorWebViewScreen> {
                         ),
                         const SizedBox(height: 16),
                         const Text(
-                          'Opening OpenPDF Studio Editor...',
+                          'Opening PDF 🫰 Studio Editor...',
                           style: TextStyle(
                             color: Colors.white,
                             fontSize: 14,

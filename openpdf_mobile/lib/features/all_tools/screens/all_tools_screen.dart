@@ -1,11 +1,14 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/app_strings.dart';
+import '../../../core/services/file_service.dart';
 import '../../../data/datasources/tools_data.dart';
 import '../../../domain/entities/tool_entity.dart';
 import '../../../shared/widgets/glass/glass_search_bar.dart';
 import '../../../shared/widgets/glass/glass_tool_card.dart';
 import '../../tools/screens/tool_workspace_screen.dart';
+import '../../tools/screens/pdf_editor_webview_screen.dart';
 
 /// OpenPDF Studio - Complete 23 Tools Directory Screen
 class AllToolsScreen extends StatefulWidget {
@@ -34,7 +37,16 @@ class _AllToolsScreenState extends State<AllToolsScreen> {
     }).toList();
   }
 
-  void _openTool(ToolEntity tool) {
+  void _openTool(ToolEntity tool) async {
+    if (tool.id == 'edit-pdf') {
+      final doc = await FileService.instance.pickPdfFile();
+      if (doc != null && mounted) {
+        Navigator.of(context).push(
+          MaterialPageRoute(builder: (_) => PdfEditorWebViewScreen(pdfFile: File(doc.path))),
+        );
+        return;
+      }
+    }
     Navigator.of(context).push(
       MaterialPageRoute(builder: (_) => ToolWorkspaceScreen(tool: tool)),
     );
