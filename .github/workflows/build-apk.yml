@@ -67,50 +67,65 @@ jobs:
       - name: Build Android Release APK (Universal & Split-ABI)
         working-directory: openpdf_mobile
         run: |
-          # 1. Build Universal APK (Primary download — guaranteed to install on all Android devices)
+          # 1. Build Universal APK
           flutter build apk --release --no-tree-shake-icons --android-skip-build-dependency-validation
 
           mkdir -p /tmp/universal_apk
-          cp build/app/outputs/flutter-apk/app-release.apk /tmp/universal_apk/PDF-WITH-LOVE-Release.apk
+          cp build/app/outputs/flutter-apk/app-release.apk /tmp/universal_apk/PDF-Studio-Release.apk
 
-          # 2. Build Split-ABI APKs (Optional lightweight architecture-specific APKs)
+          # 2. Build Split-ABI APKs (Optional architecture-specific APKs)
           flutter build apk --release --split-per-abi --no-tree-shake-icons --android-skip-build-dependency-validation || true
 
-      - name: Verify Generated APK Integrity
-        run: |
-          if [ ! -s /tmp/universal_apk/PDF-WITH-LOVE-Release.apk ]; then
-            echo "ERROR: Universal Release APK was not generated or is empty!"
-            exit 1
-          fi
-          python3 -m zipfile -t /tmp/universal_apk/PDF-WITH-LOVE-Release.apk
-          echo "Verified Universal APK:"
-          ls -lh /tmp/universal_apk/PDF-WITH-LOVE-Release.apk
-
-      - name: Prepare Release APK Distribution Files
+      - name: Verify Generated APKs and Compute SHA-256 Checksums
         id: apks
         run: |
           mkdir -p output_apk
-          cp /tmp/universal_apk/PDF-WITH-LOVE-Release.apk output_apk/PDF-WITH-LOVE-Release.apk
 
-          if [ -f openpdf_mobile/build/app/outputs/flutter-apk/app-arm64-v8a-release.apk ]; then
-            cp openpdf_mobile/build/app/outputs/flutter-apk/app-arm64-v8a-release.apk output_apk/PDF-WITH-LOVE-arm64-v8a.apk
+          if [ ! -s /tmp/universal_apk/PDF-Studio-Release.apk ]; then
+            echo "ERROR: Universal Release APK was not generated or is empty!"
+            exit 1
           fi
-          if [ -f openpdf_mobile/build/app/outputs/flutter-apk/app-armeabi-v7a-release.apk ]; then
-            cp openpdf_mobile/build/app/outputs/flutter-apk/app-armeabi-v7a-release.apk output_apk/PDF-WITH-LOVE-armeabi-v7a.apk
-          fi
-          if [ -f openpdf_mobile/build/app/outputs/flutter-apk/app-x86_64-release.apk ]; then
-            cp openpdf_mobile/build/app/outputs/flutter-apk/app-x86_64-release.apk output_apk/PDF-WITH-LOVE-x86_64.apk
-          fi
+          cp /tmp/universal_apk/PDF-Studio-Release.apk output_apk/PDF-Studio-Release.apk
 
-          UNIVERSAL_SIZE=$(ls -lh output_apk/PDF-WITH-LOVE-Release.apk | awk '{print $5}')
-          echo "universal_size=${UNIVERSAL_SIZE}" >> "$GITHUB_OUTPUT"
-          echo "Prepared APK files:"
+          if [ ! -s openpdf_mobile/build/app/outputs/flutter-apk/app-arm64-v8a-release.apk ]; then
+            echo "ERROR: ARM64 Split-ABI APK was not generated or is empty!"
+            exit 1
+          fi
+          cp openpdf_mobile/build/app/outputs/flutter-apk/app-arm64-v8a-release.apk output_apk/PDF-Studio-arm64.apk
+
+          if [ ! -s openpdf_mobile/build/app/outputs/flutter-apk/app-armeabi-v7a-release.apk ]; then
+            echo "ERROR: ARM32 Split-ABI APK was not generated or is empty!"
+            exit 1
+          fi
+          cp openpdf_mobile/build/app/outputs/flutter-apk/app-armeabi-v7a-release.apk output_apk/PDF-Studio-arm32.apk
+
+          for f in output_apk/*.apk; do
+            python3 -m zipfile -t "$f"
+          done
+
+          SHA_UNI=$(sha256sum output_apk/PDF-Studio-Release.apk | awk '{print $1}')
+          SHA_ARM64=$(sha256sum output_apk/PDF-Studio-arm64.apk | awk '{print $1}')
+          SHA_ARM32=$(sha256sum output_apk/PDF-Studio-arm32.apk | awk '{print $1}')
+
+          SIZE_UNI=$(ls -lh output_apk/PDF-Studio-Release.apk | awk '{print $5}')
+          SIZE_ARM64=$(ls -lh output_apk/PDF-Studio-arm64.apk | awk '{print $5}')
+          SIZE_ARM32=$(ls -lh output_apk/PDF-Studio-arm32.apk | awk '{print $5}')
+
+          echo "sha_uni=${SHA_UNI}" >> "$GITHUB_OUTPUT"
+          echo "sha_arm64=${SHA_ARM64}" >> "$GITHUB_OUTPUT"
+          echo "sha_arm32=${SHA_ARM32}" >> "$GITHUB_OUTPUT"
+          echo "size_uni=${SIZE_UNI}" >> "$GITHUB_OUTPUT"
+          echo "size_arm64=${SIZE_ARM64}" >> "$GITHUB_OUTPUT"
+          echo "size_arm32=${SIZE_ARM32}" >> "$GITHUB_OUTPUT"
+
+          echo "Prepared APK files (strictly 3 assets):"
           ls -lh output_apk/
+          sha256sum output_apk/*.apk
 
       - name: Upload Release APK as Workflow Artifact (Backup)
         uses: actions/upload-artifact@v4
         with:
-          name: PDF-WITH-LOVE-Release-APK
+          name: PDF-Studio-Release-APK
           path: output_apk/*.apk
           retention-days: 30
 
@@ -118,21 +133,72 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ steps.version.outputs.tag }}
-          name: "PDF WITH LOVE v${{ steps.version.outputs.app_version }} (Build ${{ steps.version.outputs.build_number }})"
+          name: "PDF 🫰 Studio v${{ steps.version.outputs.app_version }} (Build ${{ steps.version.outputs.build_number }})"
           allowUpdates: true
-          generate_release_notes: false
+          generate_release_notes: true
           draft: false
           prerelease: false
           body: |
-            ## PDF WITH LOVE — Android Release v${{ steps.version.outputs.app_version }} (Build ${{ steps.version.outputs.build_number }})
+            ## PDF 🫰 Studio — Android Release v${{ steps.version.outputs.app_version }} (Build ${{ steps.version.outputs.build_number }})
 
             ### Direct APK Downloads
-            - **[PDF-WITH-LOVE-Release.apk](https://github.com/${{ github.repository }}/releases/download/${{ steps.version.outputs.tag }}/PDF-WITH-LOVE-Release.apk)** (${{ steps.apks.outputs.universal_size }}) — **Universal APK (Recommended for all Android phones)**
-            - **[PDF-WITH-LOVE-arm64-v8a.apk](https://github.com/${{ github.repository }}/releases/download/${{ steps.version.outputs.tag }}/PDF-WITH-LOVE-arm64-v8a.apk)** — Optimized 64-bit ARM APK
-            - **[PDF-WITH-LOVE-armeabi-v7a.apk](https://github.com/${{ github.repository }}/releases/download/${{ steps.version.outputs.tag }}/PDF-WITH-LOVE-armeabi-v7a.apk)** — 32-bit ARM APK
+            - **[PDF-Studio-Release.apk](https://github.com/${{ github.repository }}/releases/download/${{ steps.version.outputs.tag }}/PDF-Studio-Release.apk)** (${{ steps.apks.outputs.size_uni }}) — **Universal APK** (Android 7.0+ / API 24+, supports `arm64-v8a`, `armeabi-v7a`, `x86_64`)
+            - **[PDF-Studio-arm64.apk](https://github.com/${{ github.repository }}/releases/download/${{ steps.version.outputs.tag }}/PDF-Studio-arm64.apk)** (${{ steps.apks.outputs.size_arm64 }}) — **64-bit ARM (`arm64-v8a`)**
+            - **[PDF-Studio-arm32.apk](https://github.com/${{ github.repository }}/releases/download/${{ steps.version.outputs.tag }}/PDF-Studio-arm32.apk)** (${{ steps.apks.outputs.size_arm32 }}) — **32-bit ARM (`armeabi-v7a`)**
 
-            **Always-Latest Direct URL:**
-            `https://github.com/${{ github.repository }}/releases/latest/download/PDF-WITH-LOVE-Release.apk`
-          files: output_apk/*.apk
+            ### SHA-256 Checksums
+            - `PDF-Studio-Release.apk`: `${{ steps.apks.outputs.sha_uni }}`
+            - `PDF-Studio-arm64.apk`: `${{ steps.apks.outputs.sha_arm64 }}`
+            - `PDF-Studio-arm32.apk`: `${{ steps.apks.outputs.sha_arm32 }}`
+
+            **Latest Universal APK URL:**
+            `https://github.com/${{ github.repository }}/releases/latest/download/PDF-Studio-Release.apk`
+          files: |
+            output_apk/PDF-Studio-Release.apk
+            output_apk/PDF-Studio-arm64.apk
+            output_apk/PDF-Studio-arm32.apk
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Verify Uploaded Release Assets, SHA-256 Checksums, and Clean Obsolete Duplicates
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          TAG="${{ steps.version.outputs.tag }}"
+          REPO="${{ github.repository }}"
+
+          # 1. Remove any obsolete assets from the current release if present
+          for OBSOLETE in OpenPDF-Studio-Release.apk PDF-Studio-Universal.apk PDF-WITH-LOVE-Release.apk PDF-WITH-LOVE-arm64-v8a.apk PDF-WITH-LOVE-armeabi-v7a.apk PDF-WITH-LOVE-x86_64.apk; do
+            gh release delete-asset "$TAG" "$OBSOLETE" --repo "$REPO" --yes 2>/dev/null || true
+          done
+
+          # 2. Verify all 3 expected APK assets exist on the release and match local SHA-256
+          mkdir -p /tmp/verify_release
+          for APK in PDF-Studio-Release.apk PDF-Studio-arm64.apk PDF-Studio-arm32.apk; do
+            gh release download "$TAG" --repo "$REPO" --pattern "$APK" --dir /tmp/verify_release --clobber
+            LOCAL_SHA=$(sha256sum "output_apk/${APK}" | awk '{print $1}')
+            REMOTE_SHA=$(sha256sum "/tmp/verify_release/${APK}" | awk '{print $1}')
+            echo "${APK}: local=${LOCAL_SHA} remote=${REMOTE_SHA}"
+            if [ "$LOCAL_SHA" != "$REMOTE_SHA" ]; then
+              echo "ERROR: SHA-256 mismatch for ${APK}!"
+              exit 1
+            fi
+          done
+
+          # 3. Verify identical obsolete duplicates on legacy v2.0.0 release and remove them
+          if gh release view v2.0.0 --repo "$REPO" >/dev/null 2>&1; then
+            mkdir -p /tmp/verify_v2
+            gh release download v2.0.0 --repo "$REPO" --pattern "PDF-Studio-Release.apk" --dir /tmp/verify_v2 --clobber 2>/dev/null || true
+            if [ -f /tmp/verify_v2/PDF-Studio-Release.apk ]; then
+              BASE_SHA=$(sha256sum /tmp/verify_v2/PDF-Studio-Release.apk | awk '{print $1}')
+              for OBSOLETE in OpenPDF-Studio-Release.apk PDF-Studio-Universal.apk; do
+                if gh release download v2.0.0 --repo "$REPO" --pattern "$OBSOLETE" --dir /tmp/verify_v2 --clobber 2>/dev/null; then
+                  OBS_SHA=$(sha256sum "/tmp/verify_v2/${OBSOLETE}" | awk '{print $1}')
+                  if [ "$OBS_SHA" = "$BASE_SHA" ]; then
+                    echo "Verified ${OBSOLETE} on v2.0.0 is identical (${OBS_SHA}). Removing obsolete asset..."
+                    gh release delete-asset v2.0.0 "$OBSOLETE" --repo "$REPO" --yes
+                  fi
+                fi
+              done
+            fi
+          fi
