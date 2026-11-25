@@ -1,4 +1,4 @@
-name: Build OpenPDF Studio Android APK
+name: Build PDF WITH LOVE Android APK
 
 on:
   push:
@@ -10,12 +10,27 @@ permissions:
 
 jobs:
   build-apk:
-    name: Build & Package Release APK
+    name: Build & Publish Release APK
     runs-on: ubuntu-latest
 
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v4
+
+      - name: Extract App Version and Build Number
+        id: version
+        run: |
+          VERSION_LINE=$(grep -E '^version:' openpdf_mobile/pubspec.yaml | awk '{print $2}')
+          APP_VERSION=$(echo "$VERSION_LINE" | cut -d'+' -f1)
+          BUILD_NUMBER=$(echo "$VERSION_LINE" | cut -d'+' -f2)
+          if [ -z "$BUILD_NUMBER" ] || [ "$BUILD_NUMBER" = "$APP_VERSION" ]; then
+            BUILD_NUMBER="${{ github.run_number }}"
+          fi
+          RELEASE_TAG="v${APP_VERSION}-build.${BUILD_NUMBER}"
+          echo "app_version=${APP_VERSION}" >> "$GITHUB_OUTPUT"
+          echo "build_number=${BUILD_NUMBER}" >> "$GITHUB_OUTPUT"
+          echo "tag=${RELEASE_TAG}" >> "$GITHUB_OUTPUT"
+          echo "Detected version: ${APP_VERSION} (build ${BUILD_NUMBER}) -> tag ${RELEASE_TAG}"
 
       - name: Set up Java JDK 17
         uses: actions/setup-java@v4
@@ -52,101 +67,72 @@ jobs:
       - name: Build Android Release APK (Universal & Split-ABI)
         working-directory: openpdf_mobile
         run: |
-          # 1. Build Universal APK (Guaranteed to install on all Android devices)
-          flutter build apk --release --no-tree-shake-icons --android-skip-build-dependency-validation > /tmp/build_log.txt 2>&1 || true
+          # 1. Build Universal APK (Primary download — guaranteed to install on all Android devices)
+          flutter build apk --release --no-tree-shake-icons --android-skip-build-dependency-validation
+
           mkdir -p /tmp/universal_apk
-          cp build/app/outputs/flutter-apk/app-release.apk /tmp/universal_apk/PDF-Studio-Universal.apk || true
+          cp build/app/outputs/flutter-apk/app-release.apk /tmp/universal_apk/PDF-WITH-LOVE-Release.apk
 
-          # 2. Build Split-ABI APKs (Lightweight size optimized)
-          flutter build apk --release --split-per-abi --no-tree-shake-icons --android-skip-build-dependency-validation >> /tmp/build_log.txt 2>&1 || true
+          # 2. Build Split-ABI APKs (Optional lightweight architecture-specific APKs)
+          flutter build apk --release --split-per-abi --no-tree-shake-icons --android-skip-build-dependency-validation || true
 
-      - name: Save and Commit Build Log
+      - name: Verify Generated APK Integrity
         run: |
-          git config --global user.name "github-actions[bot]"
-          git config --global user.email "github-actions[bot]@users.noreply.github.com"
-          git remote set-url origin https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git
-          git checkout -B debug-build-log
-          cp /tmp/build_log.txt ./build_log.txt
-          git add build_log.txt
-          git commit -m "debug: build log output" || true
-          git push -f origin debug-build-log || true
-          git checkout main
-
-      - name: Verify APK Was Generated
-        run: |
-          if ! find openpdf_mobile/build -name "*.apk" | grep -q apk && [ ! -f /tmp/universal_apk/PDF-Studio-Universal.apk ]; then
-            echo "APK build failed! Displaying last 80 lines of log:"
-            tail -n 80 /tmp/build_log.txt
+          if [ ! -s /tmp/universal_apk/PDF-WITH-LOVE-Release.apk ]; then
+            echo "ERROR: Universal Release APK was not generated or is empty!"
             exit 1
           fi
+          python3 -m zipfile -t /tmp/universal_apk/PDF-WITH-LOVE-Release.apk
+          echo "Verified Universal APK:"
+          ls -lh /tmp/universal_apk/PDF-WITH-LOVE-Release.apk
 
-      - name: Prepare Release APK Artifact
+      - name: Prepare Release APK Distribution Files
+        id: apks
         run: |
           mkdir -p output_apk
-          if [ -f /tmp/universal_apk/PDF-Studio-Universal.apk ]; then
-            cp /tmp/universal_apk/PDF-Studio-Universal.apk output_apk/PDF-Studio-Release.apk
-            cp /tmp/universal_apk/PDF-Studio-Universal.apk output_apk/OpenPDF-Studio-Release.apk
-            cp /tmp/universal_apk/PDF-Studio-Universal.apk output_apk/PDF-Studio-Universal.apk
-          elif [ -f openpdf_mobile/build/app/outputs/flutter-apk/app-arm64-v8a-release.apk ]; then
-            cp openpdf_mobile/build/app/outputs/flutter-apk/app-arm64-v8a-release.apk output_apk/PDF-Studio-Release.apk
-            cp openpdf_mobile/build/app/outputs/flutter-apk/app-arm64-v8a-release.apk output_apk/OpenPDF-Studio-Release.apk
-          fi
+          cp /tmp/universal_apk/PDF-WITH-LOVE-Release.apk output_apk/PDF-WITH-LOVE-Release.apk
+
           if [ -f openpdf_mobile/build/app/outputs/flutter-apk/app-arm64-v8a-release.apk ]; then
-            cp openpdf_mobile/build/app/outputs/flutter-apk/app-arm64-v8a-release.apk output_apk/PDF-Studio-arm64.apk
+            cp openpdf_mobile/build/app/outputs/flutter-apk/app-arm64-v8a-release.apk output_apk/PDF-WITH-LOVE-arm64-v8a.apk
           fi
           if [ -f openpdf_mobile/build/app/outputs/flutter-apk/app-armeabi-v7a-release.apk ]; then
-            cp openpdf_mobile/build/app/outputs/flutter-apk/app-armeabi-v7a-release.apk output_apk/PDF-Studio-arm32.apk
+            cp openpdf_mobile/build/app/outputs/flutter-apk/app-armeabi-v7a-release.apk output_apk/PDF-WITH-LOVE-armeabi-v7a.apk
           fi
+          if [ -f openpdf_mobile/build/app/outputs/flutter-apk/app-x86_64-release.apk ]; then
+            cp openpdf_mobile/build/app/outputs/flutter-apk/app-x86_64-release.apk output_apk/PDF-WITH-LOVE-x86_64.apk
+          fi
+
+          UNIVERSAL_SIZE=$(ls -lh output_apk/PDF-WITH-LOVE-Release.apk | awk '{print $5}')
+          echo "universal_size=${UNIVERSAL_SIZE}" >> "$GITHUB_OUTPUT"
           echo "Prepared APK files:"
           ls -lh output_apk/
 
-      - name: Upload Release APK as Workflow Artifact
+      - name: Upload Release APK as Workflow Artifact (Backup)
         uses: actions/upload-artifact@v4
         with:
-          name: PDF-Studio-Release-APK
+          name: PDF-WITH-LOVE-Release-APK
           path: output_apk/*.apk
           retention-days: 30
 
       - name: Publish GitHub Release with Direct APK Download
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: v2.0.0
-          name: "PDF 🫰 Studio v2.0.0 — Production Android APK"
+          tag_name: ${{ steps.version.outputs.tag }}
+          name: "PDF WITH LOVE v${{ steps.version.outputs.app_version }} (Build ${{ steps.version.outputs.build_number }})"
           allowUpdates: true
           generate_release_notes: false
           draft: false
           prerelease: false
           body: |
-            ## 📱 PDF 🫰 Studio — Production Android APK (Major Release v2.0.0)
+            ## PDF WITH LOVE — Android Release v${{ steps.version.outputs.app_version }} (Build ${{ steps.version.outputs.build_number }})
 
-            Direct APK Downloads:
-            👉 **[PDF-Studio-Release.apk](https://github.com/${{ github.repository }}/releases/download/v2.0.0/PDF-Studio-Release.apk)** (Universal APK — Installs on 100% of all Android phones)
-            👉 **[PDF-Studio-arm64.apk](https://github.com/${{ github.repository }}/releases/download/v2.0.0/PDF-Studio-arm64.apk)** (Optimized Lightweight 64-bit APK)
-            👉 **[PDF-Studio-arm32.apk](https://github.com/${{ github.repository }}/releases/download/v2.0.0/PDF-Studio-arm32.apk)** (32-bit Phones APK)
+            ### Direct APK Downloads
+            - **[PDF-WITH-LOVE-Release.apk](https://github.com/${{ github.repository }}/releases/download/${{ steps.version.outputs.tag }}/PDF-WITH-LOVE-Release.apk)** (${{ steps.apks.outputs.universal_size }}) — **Universal APK (Recommended for all Android phones)**
+            - **[PDF-WITH-LOVE-arm64-v8a.apk](https://github.com/${{ github.repository }}/releases/download/${{ steps.version.outputs.tag }}/PDF-WITH-LOVE-arm64-v8a.apk)** — Optimized 64-bit ARM APK
+            - **[PDF-WITH-LOVE-armeabi-v7a.apk](https://github.com/${{ github.repository }}/releases/download/${{ steps.version.outputs.tag }}/PDF-WITH-LOVE-armeabi-v7a.apk)** — 32-bit ARM APK
 
-            ---
-            ### ✨ What's New in v2.0.0:
-            - **Exact Website PDF Editor Replication**: 100% accurate, full-featured in-place vector PDF editor embedded directly inside the app matching the single source of truth (`https://mining-lilac.vercel.app/`).
-            - **All 17 Editor Tools**: Pages sidebar (reorder, rotate, duplicate, delete), Undo/Redo, Select, In-place WYSIWYG Text Edit, Signatures, Erase, Image Stamps, Checkmarks, Crosses, Shapes, Redaction/Blackout, Multi-Color Highlights, Freehand Draw, Sticky Notes, Watermarks, OCR, and Search & Replace.
-            - **Blank White Canvas Bug Completely Fixed**: Dual-layer loopback + asset streaming guarantees real PDF vector pages render immediately without white screens.
-            - **Brand New Executive Home Dashboard**: Clean, solid touch response (no accidental scroll), prominent "Edit PDF Document" hero launcher, 4 quick engines, and direct cloud storage hub.
-            - **Luxury App Icon & Splash Screen**: High-resolution sharp icons across all mipmap densities with Korean Finger Heart love branding: **PDF 🫰 Studio • Built with love 🫰 RS7 Private Limited**.
-            - **Real Cloud Storage Integration**: Direct document imports from Google Drive, Dropbox, OneDrive, and local device storage.
-            - **15-Action Document Drawer**: On tapping "DONE", automatically open the 15-Action drawer (Download, Save As, Print, Share, Compress, Sign, etc.).
+            **Always-Latest Direct URL:**
+            `https://github.com/${{ github.repository }}/releases/latest/download/PDF-WITH-LOVE-Release.apk`
           files: output_apk/*.apk
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Commit and Push APK directly to release-apk Branch
-        continue-on-error: true
-        run: |
-          git config --global user.name "github-actions[bot]"
-          git config --global user.email "github-actions[bot]@users.noreply.github.com"
-          git remote set-url origin https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git
-          git checkout -B release-apk
-          git rm -rf . || true
-          mkdir -p apk_dist
-          cp output_apk/*.apk apk_dist/
-          git add apk_dist/
-          git commit -m "chore: publish v2.0.0 standalone APK binaries"
-          git push -f origin release-apk

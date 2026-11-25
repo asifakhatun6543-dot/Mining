@@ -17,3 +17,10 @@ openpdf_mobile/build/
 .tmp_localappdata/
 .sandboxed_cache/
 openpdf_mobile/android/app/src/main/java/
+
+# APK & Release Distribution Binaries (use GitHub Releases, never commit to git)
+*.apk
+*.aab
+apk_dist/
+output_apk/
+build_log.txt
