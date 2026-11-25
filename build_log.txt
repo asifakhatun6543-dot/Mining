@@ -1,0 +1,12 @@
+
+Running Gradle task 'assembleRelease'...                        
+Caught exception: Already watching path: /home/runner/work/Mining/Mining/openpdf_mobile/android
+Running Gradle task 'assembleRelease'...                          161.1s
+✓ Built build/app/outputs/flutter-apk/app-release.apk (109.8MB)
+
+Running Gradle task 'assembleRelease'...                        
+Caught exception: Already watching path: /home/runner/work/Mining/Mining/openpdf_mobile/android
+Running Gradle task 'assembleRelease'...                           10.8s
+✓ Built build/app/outputs/flutter-apk/app-armeabi-v7a-release.apk (33.3MB)
+✓ Built build/app/outputs/flutter-apk/app-arm64-v8a-release.apk (39.4MB)
+✓ Built build/app/outputs/flutter-apk/app-x86_64-release.apk (41.2MB)
