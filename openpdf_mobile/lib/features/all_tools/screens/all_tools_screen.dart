@@ -6,7 +6,6 @@ import '../../../domain/entities/tool_entity.dart';
 import '../../../shared/widgets/glass/glass_search_bar.dart';
 import '../../../shared/widgets/glass/glass_tool_card.dart';
 import '../../tools/screens/tool_workspace_screen.dart';
-import '../../tools/screens/pdf_editor_webview_screen.dart';
 
 /// OpenPDF Studio - Complete 23 Tools Directory Screen
 class AllToolsScreen extends StatefulWidget {
@@ -36,12 +35,6 @@ class _AllToolsScreenState extends State<AllToolsScreen> {
   }
 
   void _openTool(ToolEntity tool) {
-    if (tool.id == 'edit-pdf') {
-      Navigator.of(context).push(
-        MaterialPageRoute(builder: (_) => const PdfEditorWebViewScreen(pdfFile: null)),
-      );
-      return;
-    }
     Navigator.of(context).push(
       MaterialPageRoute(builder: (_) => ToolWorkspaceScreen(tool: tool)),
     );

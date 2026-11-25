@@ -31,9 +31,11 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   void _launchPdfEditor() {
-    Navigator.of(context).push(
-      MaterialPageRoute(builder: (_) => const PdfEditorWebViewScreen(pdfFile: null)),
+    final editTool = ToolsData.allTools.firstWhere(
+      (t) => t.id == 'edit-pdf',
+      orElse: () => ToolsData.allTools.first,
     );
+    _openTool(editTool);
   }
 
   @override

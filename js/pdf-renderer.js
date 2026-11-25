@@ -75,7 +75,7 @@ export class PDFRenderer {
 
     const pdfPage = await State.pdfDoc.getPage(pageIndex + 1);
     const viewport = pdfPage.getViewport({ scale: State.zoomScale });
-    const dpr = window.devicePixelRatio || 1;
+    const dpr = Math.min(3, Math.max(window.devicePixelRatio || 1, 2));
 
     const pageContainer = document.getElementById(`page-container-${pageIndex}`);
     const canvas = document.getElementById(`page-canvas-${pageIndex}`);

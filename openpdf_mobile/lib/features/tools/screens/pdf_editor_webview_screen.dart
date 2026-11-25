@@ -29,11 +29,9 @@ class PdfEditorWebViewScreen extends StatefulWidget {
 class _PdfEditorWebViewScreenState extends State<PdfEditorWebViewScreen> {
   final PdfEditorServer _server = PdfEditorServer();
   WebViewController? _webViewController;
-  bool _isLoading = true;
   bool _hasError = false;
   bool _isUsingFallback = false;
   bool _documentInjected = false;
-  int _loadingProgress = 0;
   bool _isSaving = false;
 
   @override
@@ -81,15 +79,7 @@ class _PdfEditorWebViewScreenState extends State<PdfEditorWebViewScreen> {
         )
         ..setNavigationDelegate(
           NavigationDelegate(
-            onProgress: (progress) {
-              if (mounted) {
-                setState(() => _loadingProgress = progress);
-              }
-            },
             onPageFinished: (url) {
-              if (mounted) {
-                setState(() => _isLoading = false);
-              }
               _injectPendingDocument(controller);
             },
             onWebResourceError: (error) {
@@ -172,13 +162,7 @@ class _PdfEditorWebViewScreenState extends State<PdfEditorWebViewScreen> {
         )
         ..setNavigationDelegate(
           NavigationDelegate(
-            onProgress: (progress) {
-              if (mounted) {
-                setState(() => _loadingProgress = progress);
-              }
-            },
             onPageFinished: (_) {
-              if (mounted) setState(() => _isLoading = false);
               _injectPendingDocument(controller);
             },
             onWebResourceError: (_) {
@@ -381,48 +365,9 @@ class _PdfEditorWebViewScreenState extends State<PdfEditorWebViewScreen> {
       child: Scaffold(
         backgroundColor: const Color(0xFF0F172A),
         body: SafeArea(
-          child: Stack(
-            children: [
-              if (_webViewController != null)
-                WebViewWidget(controller: _webViewController!),
-              if (_isLoading)
-                Container(
-                  color: const Color(0xFF0F172A),
-                  child: Center(
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        const SizedBox(
-                          width: 36,
-                          height: 36,
-                          child: CircularProgressIndicator(
-                            strokeWidth: 3,
-                            color: AppColors.brandRed,
-                          ),
-                        ),
-                        const SizedBox(height: 16),
-                        const Text(
-                          'Opening PDF 🫰 Studio Editor...',
-                          style: TextStyle(
-                            color: Colors.white,
-                            fontSize: 14,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                        const SizedBox(height: 8),
-                        Text(
-                          '$_loadingProgress%',
-                          style: const TextStyle(
-                            color: Colors.white54,
-                            fontSize: 12,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-            ],
-          ),
+          child: _webViewController != null
+              ? WebViewWidget(controller: _webViewController!)
+              : const SizedBox.shrink(),
         ),
       ),
     );

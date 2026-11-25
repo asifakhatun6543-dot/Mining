@@ -389,6 +389,7 @@ export class InlineTextEditor {
     const fontSelect = this.miniToolbarEl.querySelector("#mt-font-select");
     fontSelect?.addEventListener("change", (e) => {
       this.currentFont = e.target.value;
+      this.userChangedFont = true;
       this._updateEditableStyle();
     });
 
@@ -677,6 +678,81 @@ export class InlineTextEditor {
     return `"${fontKey}", Arimo, Arial, sans-serif`;
   }
 
+  _getSpanCssFontFamily(fontKey, loadedFontName, userChangedFont) {
+    const baseCss = this._getCssFontFamily(fontKey);
+    if (!userChangedFont && loadedFontName) {
+      return `"${loadedFontName}", ${baseCss}`;
+    }
+    return baseCss;
+  }
+
+  /**
+   * Seamless 4-edge bilinear background inpainting:
+   * Samples the outer perimeter around span.bbox on the rendered PDF canvas
+   * and interpolates gradients/textures smoothly so original PDF backgrounds
+   * (gradients, watermarks, shading, paper tint) are never overwritten by a flat box.
+   */
+  _createInpaintedBgDataUrl(pageIndex, bbox) {
+    try {
+      const canvas = document.getElementById(`page-canvas-${pageIndex}`);
+      if (!canvas || !canvas.width || !canvas.height) return null;
+
+      const pageDim = State.pageDimensions[pageIndex] || { width: 612, height: 792 };
+      const scaleX = canvas.width / pageDim.width;
+      const scaleY = canvas.height / pageDim.height;
+
+      const [x0, y0, x1, y1] = bbox;
+      const pad = Math.max(2, Math.round(2 * scaleX));
+      const rx0 = Math.max(0, Math.floor(x0 * scaleX) - pad);
+      const ry0 = Math.max(0, Math.floor(y0 * scaleY) - pad);
+      const rx1 = Math.min(canvas.width, Math.ceil(x1 * scaleX) + pad);
+      const ry1 = Math.min(canvas.height, Math.ceil(y1 * scaleY) + pad);
+      const rw = rx1 - rx0;
+      const rh = ry1 - ry0;
+      if (rw < 4 || rh < 4 || rw > 2400 || rh > 600) return null;
+
+      const ctx = canvas.getContext("2d", { willReadFrequently: true });
+      const srcData = ctx.getImageData(rx0, ry0, rw, rh).data;
+
+      const outCanvas = document.createElement("canvas");
+      outCanvas.width = rw;
+      outCanvas.height = rh;
+      const outCtx = outCanvas.getContext("2d");
+      const outImg = outCtx.createImageData(rw, rh);
+      const dst = outImg.data;
+
+      for (let y = 0; y < rh; y++) {
+        const ty = rh > 1 ? y / (rh - 1) : 0.5;
+        const leftIdx = (y * rw + 0) * 4;
+        const rightIdx = (y * rw + (rw - 1)) * 4;
+
+        for (let x = 0; x < rw; x++) {
+          const tx = rw > 1 ? x / (rw - 1) : 0.5;
+          const topIdx = (0 * rw + x) * 4;
+          const botIdx = ((rh - 1) * rw + x) * 4;
+
+          // Weight closer edges higher (inverse distance + bilinear blend)
+          const wTop = 1 - ty;
+          const wBot = ty;
+          const wLeft = 1 - tx;
+          const wRight = tx;
+          const wSum = wTop + wBot + wLeft + wRight;
+
+          const idx = (y * rw + x) * 4;
+          dst[idx]     = Math.round((srcData[topIdx] * wTop + srcData[botIdx] * wBot + srcData[leftIdx] * wLeft + srcData[rightIdx] * wRight) / wSum);
+          dst[idx + 1] = Math.round((srcData[topIdx + 1] * wTop + srcData[botIdx + 1] * wBot + srcData[leftIdx + 1] * wLeft + srcData[rightIdx + 1] * wRight) / wSum);
+          dst[idx + 2] = Math.round((srcData[topIdx + 2] * wTop + srcData[botIdx + 2] * wBot + srcData[leftIdx + 2] * wLeft + srcData[rightIdx + 2] * wRight) / wSum);
+          dst[idx + 3] = 255;
+        }
+      }
+
+      outCtx.putImageData(outImg, 0, 0);
+      return outCanvas.toDataURL("image/png");
+    } catch (_) {
+      return null;
+    }
+  }
+
   _ensureGoogleFontLoaded(fontKey) {
     const GOOGLE_FONT_MAP = {
       "roboto": "Roboto:ital,wght@0,400;0,700;1,400;1,700",
@@ -811,7 +887,7 @@ export class InlineTextEditor {
           const g = imgData[idx + 1];
           const b = imgData[idx + 2];
           const dist = Math.hypot(r - bR, g - bG, b - bB);
-          if (dist > 32) {
+          if (dist > 22) {
             inkPixels.push({ r, g, b, dist });
           }
         }
@@ -825,9 +901,9 @@ export class InlineTextEditor {
         return { bgHex, bgRgb, fgHex: null, fgRgb: null, visualBold: false };
       }
 
-      // Take top 20% highest-contrast core ink pixels (eliminates anti-aliased gray fringes!)
+      // Take top 12% highest-contrast core ink pixels (eliminates anti-aliased gray fringes!)
       inkPixels.sort((a, b) => b.dist - a.dist);
-      const coreCount = Math.max(3, Math.floor(inkPixels.length * 0.22));
+      const coreCount = Math.max(2, Math.floor(inkPixels.length * 0.12));
       const core = inkPixels.slice(0, coreCount);
 
       let fR = median(core.map(p => p.r));
@@ -890,8 +966,17 @@ export class InlineTextEditor {
 
     const scale = State.zoomScale;
     this._ensureGoogleFontLoaded(this.currentFont);
-    this.activeBoxEl.style.background = this.currentBgColorHex || "#ffffff";
-    editableDiv.style.fontFamily = this._getCssFontFamily(this.currentFont);
+    if (this.currentInpaintedBgUrl) {
+      this.activeBoxEl.style.backgroundColor = "transparent";
+      this.activeBoxEl.style.backgroundImage = `url(${this.currentInpaintedBgUrl})`;
+      this.activeBoxEl.style.backgroundSize = "100% 100%";
+      this.activeBoxEl.style.backgroundRepeat = "no-repeat";
+    } else {
+      this.activeBoxEl.style.backgroundImage = "none";
+      this.activeBoxEl.style.backgroundColor = this.currentBgColorHex || "#ffffff";
+    }
+    const loadedFont = this.currentSpanData?.span?.loadedFontName;
+    editableDiv.style.fontFamily = this._getSpanCssFontFamily(this.currentFont, loadedFont, this.userChangedFont);
     editableDiv.style.fontSize = `${this.currentFontSize * scale}px`;
     editableDiv.style.fontWeight = this.isBold ? "bold" : "normal";
     editableDiv.style.fontStyle = this.isItalic ? "italic" : "normal";
@@ -960,6 +1045,11 @@ export class InlineTextEditor {
     this._openedAt = Date.now();
     this.currentSpanData = selectedData;
     const { pageIndex, span, element } = selectedData;
+    this.userChangedFont = !!span.userChangedFont;
+    this.currentInpaintedBgUrl = span.inpaintedBgUrl || this._createInpaintedBgDataUrl(pageIndex, span.bbox);
+    if (this.currentInpaintedBgUrl) {
+      span.inpaintedBgUrl = this.currentInpaintedBgUrl;
+    }
 
     // Use current replacement text if already edited, otherwise original text
     const textToShow = span.currentText !== undefined ? span.currentText : span.text;
@@ -1098,19 +1188,26 @@ export class InlineTextEditor {
     const box = document.createElement("div");
     box.className = "inplace-text-box word-style-editor";
     box.style.position = "absolute";
-    box.style.left = `${(x0 - 1) * scale}px`;
-    box.style.top = `${(y0 - 1) * scale}px`;
-    box.style.minWidth = `${width + 2 * scale}px`;
+    box.style.left = `${x0 * scale}px`;
+    box.style.top = `${y0 * scale}px`;
+    box.style.minWidth = `${width}px`;
     box.style.width = "max-content";
-    box.style.maxWidth = `calc(100% - ${(x0 - 1) * scale + 6}px)`;
-    box.style.height = `${height + 2 * scale}px`;
-    box.style.minHeight = `${height + 2 * scale}px`;
+    box.style.maxWidth = `calc(100% - ${x0 * scale + 4}px)`;
+    box.style.height = `${height}px`;
+    box.style.minHeight = `${height}px`;
     box.style.boxSizing = "border-box";
-    box.style.background = this.currentBgColorHex || "#ffffff";
+    if (this.currentInpaintedBgUrl) {
+      box.style.backgroundColor = "transparent";
+      box.style.backgroundImage = `url(${this.currentInpaintedBgUrl})`;
+      box.style.backgroundSize = "100% 100%";
+      box.style.backgroundRepeat = "no-repeat";
+    } else {
+      box.style.background = this.currentBgColorHex || "#ffffff";
+    }
     box.style.border = "1.5px solid #2563eb";
     box.style.borderRadius = "2px";
     box.style.boxShadow = "0 1px 6px rgba(37, 99, 235, 0.22)";
-    box.style.padding = "0 1px";
+    box.style.padding = "0";
     box.style.display = "inline-flex";
     box.style.alignItems = "center";
     box.style.zIndex = "80";
@@ -1241,6 +1338,7 @@ export class InlineTextEditor {
     span.original_text = span.original_text || span.text;
     span.currentText = replacementText;
     span.currentFont = this.currentFont;
+    span.userChangedFont = !!this.userChangedFont;
     span.currentFontSize = this.currentFontSize;
     span.isBold = this.isBold;
     span.isItalic = this.isItalic;
@@ -1249,6 +1347,7 @@ export class InlineTextEditor {
     span.currentColorRgb = [...this.currentColorRgb];
     span.bgColorHex = this.currentBgColorHex;
     span.bgColorRgb = [...this.currentBgColorRgb];
+    span.inpaintedBgUrl = this.currentInpaintedBgUrl || span.inpaintedBgUrl || null;
     span.letterSpacing = this.currentLetterSpacing;
     span.currentAlignment = this.currentAlignment;
 
@@ -1257,8 +1356,11 @@ export class InlineTextEditor {
       original_text: span.original_text,
       replacement_text: replacementText,
       bbox: [...span.bbox],
+      baseline_y: span.baselineY,
       font_name: this.currentFont,
       original_font: span.rawFontName || span.font,
+      loaded_font_name: span.loadedFontName || "",
+      user_changed_font: !!this.userChangedFont,
       font_size: this.currentFontSize,
       fit_mode: this.currentFitMode,
       alignment: this.currentAlignment,
@@ -1270,6 +1372,7 @@ export class InlineTextEditor {
       text_color_hex: this.currentColorHex,
       bg_color: [...this.currentBgColorRgb],
       bg_color_hex: this.currentBgColorHex,
+      inpainted_bg_url: span.inpaintedBgUrl || null,
       letter_spacing: this.currentLetterSpacing
     };
 
@@ -1498,21 +1601,30 @@ export class InlineTextEditor {
     }
 
     const bgHex = editItem.bg_color_hex || origSpan.bgColorHex || "#ffffff";
+    const inpaintedBg = editItem.inpainted_bg_url || origSpan.inpaintedBgUrl || this._createInpaintedBgDataUrl(pageIndex, editItem.bbox);
     cover.style.position = "absolute";
-    cover.style.left = `${(x0 - 1) * scale}px`;
-    cover.style.top = `${(y0 - 1) * scale}px`;
-    cover.style.minWidth = `${origWidth + 2 * scale}px`;
+    cover.style.left = `${x0 * scale}px`;
+    cover.style.top = `${y0 * scale}px`;
+    cover.style.minWidth = `${origWidth}px`;
     cover.style.width = "max-content";
-    cover.style.maxWidth = `calc(100% - ${(x0 - 1) * scale + 10}px)`;
-    cover.style.height = `${origHeight + 2 * scale}px`;
-    cover.style.minHeight = `${origHeight + 2 * scale}px`;
-    cover.style.background = bgHex;
+    cover.style.maxWidth = `calc(100% - ${x0 * scale + 4}px)`;
+    cover.style.height = `${origHeight}px`;
+    cover.style.minHeight = `${origHeight}px`;
+    if (inpaintedBg) {
+      cover.style.backgroundColor = "transparent";
+      cover.style.backgroundImage = `url(${inpaintedBg})`;
+      cover.style.backgroundSize = "100% 100%";
+      cover.style.backgroundRepeat = "no-repeat";
+    } else {
+      cover.style.backgroundImage = "none";
+      cover.style.backgroundColor = bgHex;
+    }
     cover.style.zIndex = "6";
     cover.style.visibility = "visible";
     cover.title = `Edited: "${replacementText}" (Click to edit again)`;
     cover.style.display = "inline-flex";
     cover.style.alignItems = "center";
-    cover.style.padding = "0 1px";
+    cover.style.padding = "0";
     cover.style.cursor = "pointer";
     cover.style.pointerEvents = "auto";
     cover.style.overflow = "visible";
@@ -1534,13 +1646,19 @@ export class InlineTextEditor {
     textEl.textContent = replacementText;
     textEl.style.color = colorHex;
     textEl.style.fontSize = `${(editItem.font_size || origSpan.size) * scale}px`;
-    textEl.style.fontFamily = this._getCssFontFamily(editItem.font_name);
+    textEl.style.fontFamily = this._getSpanCssFontFamily(
+      editItem.font_name,
+      editItem.loaded_font_name || origSpan.loadedFontName,
+      editItem.user_changed_font
+    );
     textEl.style.fontWeight = editItem.is_bold ? "bold" : "normal";
     textEl.style.fontStyle = editItem.is_italic ? "italic" : "normal";
     textEl.style.textDecoration = editItem.is_underline ? "underline" : "none";
     textEl.style.letterSpacing = letterSpacingVal ? `${letterSpacingVal * scale}px` : "normal";
     textEl.style.whiteSpace = "pre";
-    textEl.style.lineHeight = "1.05";
+    textEl.style.lineHeight = "1";
+    textEl.style.webkitFontSmoothing = "antialiased";
+    textEl.style.textRendering = "optimizeLegibility";
     textEl.style.pointerEvents = "none"; // Text inside cover shouldn't eat clicks
 
     cover.appendChild(textEl);

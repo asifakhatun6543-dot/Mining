@@ -614,8 +614,9 @@ class OpenPDFStudioApp {
       pageDimensions.push({ width: pageW, height: pageH });
 
       // CRITICAL: Call getOperatorList() FIRST so PDF.js populates page.commonObjs
-      // with EVERY real embedded font object (name, bold, italic, loadedName) AND fill colors!
-      const fontColorMap = new Map();
+      // with EVERY real embedded font object (name, bold, italic, loadedName) AND per-span fill colors!
+      const fontColorListMap = new Map();
+      const fontColorCursor = new Map();
       const fontFakeBoldSet = new Set();
       try {
         const opList = await page.getOperatorList();
@@ -656,9 +657,10 @@ class OpenPDFStudioApp {
             } else if (fn === OPS.setFont && args && args.length >= 1) {
               curFontId = args[0];
             } else if ((fn === OPS.showText || fn === OPS.showSpacedText) && curFontId) {
-              if (!fontColorMap.has(curFontId)) {
-                fontColorMap.set(curFontId, curColor);
+              if (!fontColorListMap.has(curFontId)) {
+                fontColorListMap.set(curFontId, []);
               }
+              fontColorListMap.get(curFontId).push(curColor);
               if (curRenderMode === 2) {
                 fontFakeBoldSet.add(curFontId);
               }
@@ -750,7 +752,13 @@ class OpenPDFStudioApp {
           else detectedFont = "arial";
         }
 
-        const opColor = fontColorMap.has(item.fontName) ? fontColorMap.get(item.fontName) : null;
+        const colorArr = fontColorListMap.get(item.fontName);
+        let opColor = null;
+        if (colorArr && colorArr.length > 0) {
+          const cIdx = fontColorCursor.get(item.fontName) || 0;
+          opColor = colorArr[Math.min(cIdx, colorArr.length - 1)];
+          fontColorCursor.set(item.fontName, cIdx + 1);
+        }
 
         rawSpans.push({
           id: `span_${pageNum - 1}_${itemIdx}`,

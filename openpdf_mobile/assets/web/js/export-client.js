@@ -268,10 +268,108 @@ export class ExportClient {
     }
   }
 
+  _resolveCssFontFamily(fontKey, loadedFontName, userChangedFont) {
+    if (window.app?.textEditor?._getSpanCssFontFamily) {
+      return window.app.textEditor._getSpanCssFontFamily(fontKey, loadedFontName, userChangedFont);
+    }
+    const k = String(fontKey || "arial").toLowerCase();
+    let css = '"Arial", "Helvetica Neue", Helvetica, sans-serif';
+    if (/times|roman|tinos|serif|georgia|cambria|garamond|palatino/.test(k)) {
+      css = '"Times New Roman", Tinos, Georgia, serif';
+    } else if (/courier|mono|consolas|code/.test(k)) {
+      css = '"Courier New", Cousine, monospace';
+    } else if (fontKey) {
+      css = `"${fontKey}", Arial, sans-serif`;
+    }
+    if (!userChangedFont && loadedFontName) {
+      return `"${loadedFontName}", ${css}`;
+    }
+    return css;
+  }
+
+  _suppressOriginalTextInContentStream(pdfDoc, page, edit) {
+    try {
+      const { PDFName, PDFArray, PDFRawStream, PDFRef, decodePDFRawStream } = window.PDFLib || {};
+      if (!PDFName || !decodePDFRawStream) return false;
+      const originalText = (edit.original_text || "").trim();
+      if (!originalText) return false;
+
+      const contentsRef = page.node.get(PDFName.of("Contents"));
+      if (!contentsRef) return false;
+
+      const refs = [];
+      const resolved = pdfDoc.context.lookup(contentsRef);
+      if (resolved instanceof PDFArray) {
+        for (let i = 0; i < resolved.size(); i++) {
+          refs.push(resolved.get(i));
+        }
+      } else {
+        refs.push(contentsRef);
+      }
+
+      const escRegex = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+      const escapePdfStr = (s) => s.replace(/\\/g, "\\\\").replace(/\(/g, "\\(").replace(/\)/g, "\\)");
+      const escapedTarget = escapePdfStr(originalText);
+
+      for (const refOrStream of refs) {
+        const stream = pdfDoc.context.lookup(refOrStream);
+        if (!stream || !(stream instanceof PDFRawStream)) continue;
+
+        const decodedBytes = decodePDFRawStream(stream).decode();
+        let contentStr = "";
+        for (let i = 0; i < decodedBytes.length; i++) {
+          contentStr += String.fromCharCode(decodedBytes[i]);
+        }
+
+        let modified = false;
+        const tjRegex = new RegExp(`\\(${escRegex(escapedTarget)}\\)\\s*Tj`);
+        if (tjRegex.test(contentStr)) {
+          contentStr = contentStr.replace(tjRegex, "() Tj");
+          modified = true;
+        }
+
+        if (!modified && contentStr.includes("TJ")) {
+          contentStr = contentStr.replace(/\[([^\]]*)\]\s*TJ/g, (fullMatch, inner) => {
+            if (modified) return fullMatch;
+            const parts = [];
+            const strRe = /\(([^)\\]*(?:\\.[^)\\]*)*)\)/g;
+            let m;
+            while ((m = strRe.exec(inner)) !== null) {
+              parts.push(m[1].replace(/\\([()\\])/g, "$1"));
+            }
+            const joined = parts.join("");
+            if (joined.trim() === originalText || joined.includes(originalText)) {
+              modified = true;
+              return "() Tj";
+            }
+            return fullMatch;
+          });
+        }
+
+        if (modified) {
+          const outBytes = new Uint8Array(contentStr.length);
+          for (let i = 0; i < contentStr.length; i++) {
+            outBytes[i] = contentStr.charCodeAt(i) & 0xff;
+          }
+          const newStream = pdfDoc.context.stream(outBytes);
+          if (refOrStream instanceof PDFRef) {
+            pdfDoc.context.assign(refOrStream, newStream);
+          } else {
+            page.node.set(PDFName.of("Contents"), pdfDoc.context.register(newStream));
+          }
+          return true;
+        }
+      }
+    } catch (e) {
+      console.warn("Content stream text suppression skipped:", e);
+    }
+    return false;
+  }
+
   async _renderUnicodeTextToPngBytes(text, opts) {
-    const scale = 3;
+    const scale = 6;
     const fontSize = Math.max(6, opts.fontSize || 12);
-    const fontFamily = opts.fontFamily || "Arial, Helvetica, sans-serif";
+    const fontFamily = opts.cssFontFamily || this._resolveCssFontFamily(opts.fontFamily, opts.loadedFontName, opts.userChangedFont);
     const fontWeight = opts.isBold ? "700" : "400";
     const fontStyle = opts.isItalic ? "italic" : "normal";
     const color = opts.colorCss || "#000000";
@@ -287,8 +385,8 @@ export class ExportClient {
       const w = mctx.measureText(line || " ").width;
       if (w > maxW) maxW = w;
     }
-    const padX = 2;
-    const padY = 2;
+    const padX = 1;
+    const padY = 1;
     const cssW = Math.ceil(maxW + padX * 2);
     const cssH = Math.ceil(Math.max(opts.minHeight || lineHeight, lines.length * lineHeight) + padY * 2);
 
@@ -296,6 +394,8 @@ export class ExportClient {
     canvas.width = Math.max(4, Math.ceil(cssW * scale));
     canvas.height = Math.max(4, Math.ceil(cssH * scale));
     const ctx = canvas.getContext("2d");
+    ctx.imageSmoothingEnabled = true;
+    ctx.imageSmoothingQuality = "high";
     ctx.scale(scale, scale);
     ctx.font = `${fontStyle} ${fontWeight} ${fontSize}px ${fontFamily}`;
     ctx.fillStyle = color;
@@ -442,13 +542,17 @@ export class ExportClient {
       const color = this._parseRgb(opts.colorRgb, opts.colorHex, rgb);
       const colorCss = this._colorToCss(opts.colorRgb, opts.colorHex);
       const isHandwriting = /caveat|dancing|vibes|script|cursive/i.test(String(fontName));
+      const isStandardPdfFont = /^(helvetica|arial|times|times-roman|courier)$/i.test(String(fontName).trim());
+      const useExactEmbeddedOrCustomFont = (!opts.userChangedFont && !!opts.loadedFontName) || !isStandardPdfFont;
 
-      // Use high-DPI transparent PNG overlay if text has non-WinAnsi Unicode (Hindi, ₹, emojis, etc.) or script font
+      // Use 6x ultra-crisp transparent PNG overlay for Unicode, custom/embedded fonts, or script fonts
       const winAnsiTestStr = normalized.replace(/\n/g, "");
-      if (isHandwriting || !this._canEncodeWinAnsi(font, winAnsiTestStr)) {
+      if (isHandwriting || useExactEmbeddedOrCustomFont || !this._canEncodeWinAnsi(font, winAnsiTestStr)) {
         const rendered = await this._renderUnicodeTextToPngBytes(text, {
           fontSize,
           fontFamily: fontName,
+          loadedFontName: opts.loadedFontName,
+          userChangedFont: opts.userChangedFont,
           isBold,
           isItalic,
           isUnderline,
@@ -488,8 +592,10 @@ export class ExportClient {
           } catch (_) {}
         }
 
-        // Baseline sits ~0.82 * fontSize below top of box
-        const baselineY = box.y + box.height - topYFromBoxTop - (i * lineHeight) - (fontSize * 0.84);
+        // Align to exact PDF baselineY when available
+        const baselineY = (opts.baselineY !== undefined && opts.baselineY !== null)
+          ? (box.y + box.height - opts.baselineY - (i * lineHeight))
+          : (box.y + box.height - topYFromBoxTop - (i * lineHeight) - (fontSize * 0.84));
 
         page.drawText(line, {
           x: lineX,
@@ -513,33 +619,56 @@ export class ExportClient {
       }
     };
 
-    // 1. Apply Text Edits (whiteout original span + draw styled replacement)
+    // 1. Apply Text Edits (suppress original text in content stream to preserve original background; fallback to patch only if needed)
     for (const edit of (State.pendingTextEdits || [])) {
       const page = pages[edit.page_number];
       if (!page || !Array.isArray(edit.bbox) || edit.bbox.length < 4) continue;
 
       const box = getPageBox(page);
       const [x0, y0, x1, y1] = edit.bbox.map(Number);
-      const pad = 1.5;
+      const pad = 1.0;
       const w = Math.max(x1 - x0, 8);
       const h = Math.max(y1 - y0, 8);
       const rectY = box.y + box.height - y1 - pad;
 
-      // Cover original text seamlessly with exact sampled background color (defaults to white)
-      const bgFill = (edit.bg_color || edit.bg_color_hex)
-        ? this._parseRgb(edit.bg_color, edit.bg_color_hex || "#ffffff", rgb)
-        : rgb(1, 1, 1);
-      page.drawRectangle({
-        x: box.x + x0 - pad,
-        y: rectY,
-        width: w + pad * 2,
-        height: h + pad * 2,
-        color: bgFill
-      });
+      const suppressedInStream = this._suppressOriginalTextInContentStream(pdfDoc, page, edit);
+
+      if (!suppressedInStream) {
+        let patched = false;
+        if (edit.inpainted_bg_url) {
+          try {
+            const bgImg = await this._embedAnyImageData(pdfDoc, edit.inpainted_bg_url);
+            if (bgImg) {
+              page.drawImage(bgImg, {
+                x: box.x + x0 - pad,
+                y: rectY,
+                width: w + pad * 2,
+                height: h + pad * 2
+              });
+              patched = true;
+            }
+          } catch (_) {}
+        }
+        if (!patched) {
+          const bgFill = (edit.bg_color || edit.bg_color_hex)
+            ? this._parseRgb(edit.bg_color, edit.bg_color_hex || "#ffffff", rgb)
+            : rgb(1, 1, 1);
+          page.drawRectangle({
+            x: box.x + x0 - pad,
+            y: rectY,
+            width: w + pad * 2,
+            height: h + pad * 2,
+            color: bgFill
+          });
+        }
+      }
 
       if (edit.replacement_text && String(edit.replacement_text).length > 0) {
         await drawSafeMultilineText(page, edit.replacement_text, x0, y0, box, {
           fontName: edit.font_name || edit.original_font || edit.font || "Helvetica",
+          loadedFontName: edit.loaded_font_name || "",
+          userChangedFont: !!edit.user_changed_font,
+          baselineY: edit.baseline_y,
           fontSize: edit.font_size || Math.max(8, h * 0.82),
           isBold: !!edit.is_bold,
           isItalic: !!edit.is_italic,
