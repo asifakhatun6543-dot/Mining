@@ -182,8 +182,13 @@ export class InlineTextEditor {
     this.currentBgColorHex = "#ffffff";
     this.currentBgColorRgb = [1.0, 1.0, 1.0];
     this.currentLetterSpacing = 0;
+    this.currentOpacity = 1.0;
+    this.currentAngleDeg = 0;
+    this.userChangedFont = false;
+    this.userChangedStyle = false;
     this.currentFitMode = "expand"; // Default to expand bounds rather than shrink font size
     this._loadedGoogleFonts = new Set();
+    this._measureCache = new Map();
 
     this._createDOM();
     this._initEvents();
@@ -268,6 +273,7 @@ export class InlineTextEditor {
       <button type="button" class="mini-btn" id="mt-more-btn" title="More formatting options" style="height: 26px; padding: 0 6px;">
         <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/><circle cx="5" cy="12" r="1"/></svg>
       </button>
+      <span id="mt-overflow-pill" style="display: none; font-size: 10px; font-weight: 700; color: #b45309; background: #fef3c7; border: 1px solid #f59e0b; border-radius: 4px; padding: 1px 5px; cursor: pointer;" title="Replacement text exceeds available width. Click to scale down.">⚠ Fit</span>
     `;
 
     // 2. More Options Dropdown Menu
@@ -304,6 +310,7 @@ export class InlineTextEditor {
           <option value="exact">Exact BBox</option>
         </select>
       </div>
+      <div id="mt-font-status" style="font-size: 10.5px; color: #334155; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px; padding: 4px 6px; line-height: 1.3;"></div>
     `;
 
     document.body.appendChild(this.miniToolbarEl);
@@ -362,6 +369,7 @@ export class InlineTextEditor {
     boldBtn?.addEventListener("click", (e) => {
       e.stopPropagation();
       this.isBold = !this.isBold;
+      this.userChangedStyle = true;
       boldBtn.classList.toggle("active", this.isBold);
       updateStyleBtnState();
       this._updateEditableStyle();
@@ -371,6 +379,7 @@ export class InlineTextEditor {
     italicBtn?.addEventListener("click", (e) => {
       e.stopPropagation();
       this.isItalic = !this.isItalic;
+      this.userChangedStyle = true;
       italicBtn.classList.toggle("active", this.isItalic);
       updateStyleBtnState();
       this._updateEditableStyle();
@@ -380,6 +389,7 @@ export class InlineTextEditor {
     underlineBtn?.addEventListener("click", (e) => {
       e.stopPropagation();
       this.isUnderline = !this.isUnderline;
+      this.userChangedStyle = true;
       underlineBtn.classList.toggle("active", this.isUnderline);
       updateStyleBtnState();
       this._updateEditableStyle();
@@ -390,6 +400,8 @@ export class InlineTextEditor {
     fontSelect?.addEventListener("change", (e) => {
       this.currentFont = e.target.value;
       this.userChangedFont = true;
+      this.userChangedStyle = true;
+      this._updateFontStatusBadge();
       this._updateEditableStyle();
     });
 
@@ -397,7 +409,9 @@ export class InlineTextEditor {
     const sizeInput = this.miniToolbarEl.querySelector("#mt-font-size");
     sizeInput?.addEventListener("input", (e) => {
       this.currentFontSize = parseFloat(e.target.value) || 12;
+      this.userChangedStyle = true;
       this._updateEditableStyle();
+      this._checkTextOverflow();
     });
 
     // Text Color
@@ -405,7 +419,15 @@ export class InlineTextEditor {
     colorPicker?.addEventListener("input", (e) => {
       this.currentColorHex = e.target.value;
       this.currentColorRgb = this._hexToRgbArray(e.target.value);
+      this.userChangedStyle = true;
       this._updateEditableStyle();
+    });
+
+    // Overflow "Fit" quick-action pill
+    const overflowPill = this.miniToolbarEl.querySelector("#mt-overflow-pill");
+    overflowPill?.addEventListener("click", (e) => {
+      e.stopPropagation();
+      this._fitFontSizeToAvailableWidth();
     });
 
     // More Options Menu Toggle
@@ -1046,6 +1068,9 @@ export class InlineTextEditor {
     this.currentSpanData = selectedData;
     const { pageIndex, span, element } = selectedData;
     this.userChangedFont = !!span.userChangedFont;
+    this.userChangedStyle = !!span.userChangedStyle;
+    this.currentOpacity = span.opacity !== undefined ? span.opacity : 1.0;
+    this.currentAngleDeg = span.angleDeg || 0;
     this.currentInpaintedBgUrl = span.inpaintedBgUrl || this._createInpaintedBgDataUrl(pageIndex, span.bbox);
     if (this.currentInpaintedBgUrl) {
       span.inpaintedBgUrl = this.currentInpaintedBgUrl;
@@ -1165,6 +1190,84 @@ export class InlineTextEditor {
 
     // Build In-Place Bounding Box right over the text (Word-style)
     this._buildInPlaceBox(pageIndex, span, element, textToShow);
+    this._updateFontStatusBadge();
+    this._checkTextOverflow();
+  }
+
+  _updateFontStatusBadge() {
+    const statusEl = this.moreMenuEl?.querySelector("#mt-font-status");
+    if (!statusEl || !this.currentSpanData) return;
+    const { span } = this.currentSpanData;
+    const origName = span.rawFontName || span.font || "Unknown";
+    if (!this.userChangedFont && span.loadedFontName) {
+      const subsetNote = span.isSubset ? " • Subset (fallback if missing glyphs)" : "";
+      statusEl.innerHTML = `<strong style="color:#059669;">Original:</strong> ${origName} (Embedded${subsetNote})`;
+    } else if (this.userChangedFont) {
+      statusEl.innerHTML = `<strong style="color:#2563eb;">Custom:</strong> ${this.currentFont} (orig: ${origName})`;
+    } else {
+      statusEl.innerHTML = `<strong style="color:#d97706;">Fallback:</strong> ${this.currentFont} (orig: ${origName})`;
+    }
+  }
+
+  _checkTextOverflow() {
+    const pill = this.miniToolbarEl?.querySelector("#mt-overflow-pill");
+    if (!pill || !this.activeBoxEl || !this.currentSpanData) return;
+    const editableDiv = this.activeBoxEl.querySelector(".inplace-text-editable");
+    if (!editableDiv) return;
+
+    const { pageIndex, span } = this.currentSpanData;
+    const pageDim = State.pageDimensions[pageIndex] || { width: 612, height: 792 };
+    const text = editableDiv.innerText || "";
+    const [x0] = span.bbox;
+    const availW = Math.max(20, pageDim.width - x0 - 12);
+
+    const cacheKey = `${this.currentFont}|${this.currentFontSize}|${this.isBold}|${this.isItalic}|${text}`;
+    let measuredW = this._measureCache.get(cacheKey);
+    if (measuredW === undefined) {
+      const c = document.createElement("canvas");
+      const ctx = c.getContext("2d");
+      const wt = this.isBold ? "bold" : "normal";
+      const st = this.isItalic ? "italic" : "normal";
+      ctx.font = `${st} ${wt} ${this.currentFontSize}px ${this._getSpanCssFontFamily(this.currentFont, span.loadedFontName, this.userChangedFont)}`;
+      measuredW = Math.max(...text.split("\n").map(line => ctx.measureText(line || " ").width));
+      if (this._measureCache.size > 200) this._measureCache.clear();
+      this._measureCache.set(cacheKey, measuredW);
+    }
+
+    if (measuredW > availW) {
+      pill.style.display = "inline-block";
+      this.activeBoxEl.style.borderColor = "#f59e0b";
+    } else {
+      pill.style.display = "none";
+      this.activeBoxEl.style.borderColor = "#2563eb";
+    }
+  }
+
+  _fitFontSizeToAvailableWidth() {
+    if (!this.activeBoxEl || !this.currentSpanData) return;
+    const editableDiv = this.activeBoxEl.querySelector(".inplace-text-editable");
+    if (!editableDiv) return;
+    const { pageIndex, span } = this.currentSpanData;
+    const pageDim = State.pageDimensions[pageIndex] || { width: 612, height: 792 };
+    const availW = Math.max(20, pageDim.width - span.bbox[0] - 12);
+    const text = editableDiv.innerText || "";
+
+    const c = document.createElement("canvas");
+    const ctx = c.getContext("2d");
+    const wt = this.isBold ? "bold" : "normal";
+    const st = this.isItalic ? "italic" : "normal";
+    ctx.font = `${st} ${wt} ${this.currentFontSize}px ${this._getSpanCssFontFamily(this.currentFont, span.loadedFontName, this.userChangedFont)}`;
+    const measuredW = Math.max(...text.split("\n").map(line => ctx.measureText(line || " ").width), 1);
+
+    if (measuredW > availW) {
+      const nextSize = Math.max(5, Math.floor((this.currentFontSize * (availW / measuredW)) * 2) / 2);
+      this.currentFontSize = nextSize;
+      this.userChangedStyle = true;
+      const sizeInput = this.miniToolbarEl.querySelector("#mt-font-size");
+      if (sizeInput) sizeInput.value = nextSize;
+      this._updateEditableStyle();
+      this._checkTextOverflow();
+    }
   }
 
   _buildInPlaceBox(pageIndex, span, originalHighlightEl, textToShow) {
@@ -1237,6 +1340,7 @@ export class InlineTextEditor {
 
     editableDiv.addEventListener("input", () => {
       this._positionMiniToolbar(box);
+      this._checkTextOverflow();
     });
 
     setTimeout(() => {
@@ -1339,6 +1443,9 @@ export class InlineTextEditor {
     span.currentText = replacementText;
     span.currentFont = this.currentFont;
     span.userChangedFont = !!this.userChangedFont;
+    span.userChangedStyle = !!this.userChangedStyle;
+    span.opacity = this.currentOpacity;
+    span.angleDeg = this.currentAngleDeg;
     span.currentFontSize = this.currentFontSize;
     span.isBold = this.isBold;
     span.isItalic = this.isItalic;
@@ -1361,6 +1468,9 @@ export class InlineTextEditor {
       original_font: span.rawFontName || span.font,
       loaded_font_name: span.loadedFontName || "",
       user_changed_font: !!this.userChangedFont,
+      user_changed_style: !!this.userChangedStyle,
+      opacity: this.currentOpacity !== undefined ? this.currentOpacity : 1.0,
+      angle_deg: this.currentAngleDeg || 0,
       font_size: this.currentFontSize,
       fit_mode: this.currentFitMode,
       alignment: this.currentAlignment,

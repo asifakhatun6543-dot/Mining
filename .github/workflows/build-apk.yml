@@ -64,6 +64,20 @@ jobs:
         run: flutter test test/unit/
         continue-on-error: true
 
+      - name: Set up Node.js for PDF Editing Regression Tests
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Run Mandatory PDF Text Editing Regression Tests
+        run: |
+          npm ci || npm install --no-save pdfjs-dist@3.11.174
+          node --check js/pdf-content-stream-editor.js
+          node --check js/text-editor.js
+          node --check js/export-client.js
+          node --check js/app.js
+          node tests/pdf-text-editing.test.mjs
+
       - name: Build Android Release APK (Universal & Split-ABI)
         working-directory: openpdf_mobile
         run: |

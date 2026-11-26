@@ -624,6 +624,9 @@ class OpenPDFStudioApp {
           let curColor = 0; // default black
           let curFontId = null;
           let curRenderMode = 0;
+          let curOpacity = 1.0;
+          let curCharSpacing = 0;
+          let curWordSpacing = 0;
           const colorStack = [];
 
           for (let k = 0; k < opList.fnArray.length; k++) {
@@ -631,12 +634,15 @@ class OpenPDFStudioApp {
             const args = opList.argsArray[k];
 
             if (fn === OPS.save) {
-              colorStack.push({ color: curColor, mode: curRenderMode });
+              colorStack.push({ color: curColor, mode: curRenderMode, opacity: curOpacity, tc: curCharSpacing, tw: curWordSpacing });
             } else if (fn === OPS.restore) {
               const prev = colorStack.pop();
               if (prev) {
                 curColor = prev.color;
                 curRenderMode = prev.mode;
+                curOpacity = prev.opacity;
+                curCharSpacing = prev.tc;
+                curWordSpacing = prev.tw;
               }
             } else if (fn === OPS.setFillRGBColor && args && args.length >= 3) {
               const r = args[0] <= 1 && args[1] <= 1 && args[2] <= 1 ? args[0] * 255 : args[0];
@@ -652,6 +658,14 @@ class OpenPDFStudioApp {
               const g = 255 * (1 - m) * (1 - kVal);
               const b = 255 * (1 - y) * (1 - kVal);
               curColor = rgbToInt(r, g, b);
+            } else if (fn === OPS.setGState && args && Array.isArray(args[0])) {
+              for (const [gsKey, gsVal] of args[0]) {
+                if (gsKey === "ca" && typeof gsVal === "number") curOpacity = gsVal;
+              }
+            } else if (fn === OPS.setCharSpacing && args && args.length >= 1) {
+              curCharSpacing = Number(args[0]) || 0;
+            } else if (fn === OPS.setWordSpacing && args && args.length >= 1) {
+              curWordSpacing = Number(args[0]) || 0;
             } else if (fn === OPS.setTextRenderingMode && args && args.length >= 1) {
               curRenderMode = args[0];
             } else if (fn === OPS.setFont && args && args.length >= 1) {
@@ -660,7 +674,13 @@ class OpenPDFStudioApp {
               if (!fontColorListMap.has(curFontId)) {
                 fontColorListMap.set(curFontId, []);
               }
-              fontColorListMap.get(curFontId).push(curColor);
+              fontColorListMap.get(curFontId).push({
+                color: curColor,
+                opacity: curOpacity,
+                renderMode: curRenderMode,
+                charSpacing: curCharSpacing,
+                wordSpacing: curWordSpacing
+              });
               if (curRenderMode === 2) {
                 fontFakeBoldSet.add(curFontId);
               }
@@ -679,7 +699,7 @@ class OpenPDFStudioApp {
         if (!text || !text.trim()) return;
 
         // Transform coordinates cleanly through viewport.transform (handles CropBox offsets & rotations!)
-        let x0, baselineY, fontH;
+        let x0, baselineY, fontH, angleDeg = 0;
         if (window.pdfjsLib?.Util?.transform) {
           const txMat = window.pdfjsLib.Util.transform(viewport.transform, item.transform);
           x0 = txMat[4];
@@ -687,6 +707,7 @@ class OpenPDFStudioApp {
           const vScale = Math.hypot(txMat[2], txMat[3]);
           const hScale = Math.hypot(txMat[0], txMat[1]);
           fontH = vScale || hScale || item.height || 12;
+          angleDeg = Math.round((Math.atan2(txMat[1], txMat[0]) * 180 / Math.PI) * 100) / 100;
         } else {
           x0 = item.transform[4];
           baselineY = pageH - item.transform[5];
@@ -753,12 +774,14 @@ class OpenPDFStudioApp {
         }
 
         const colorArr = fontColorListMap.get(item.fontName);
-        let opColor = null;
+        let opMeta = null;
         if (colorArr && colorArr.length > 0) {
           const cIdx = fontColorCursor.get(item.fontName) || 0;
-          opColor = colorArr[Math.min(cIdx, colorArr.length - 1)];
+          opMeta = colorArr[Math.min(cIdx, colorArr.length - 1)];
           fontColorCursor.set(item.fontName, cIdx + 1);
         }
+        const opColor = opMeta ? opMeta.color : null;
+        const isSubset = /^[A-Za-z0-9]{6}\+/.test(realFontName);
 
         rawSpans.push({
           id: `span_${pageNum - 1}_${itemIdx}`,
@@ -771,14 +794,20 @@ class OpenPDFStudioApp {
             Math.round(bottomY * 100) / 100
           ],
           baselineY: Math.round(baselineY * 100) / 100,
+          angleDeg: angleDeg,
           size: Math.round(fontH * 10) / 10,
           font: detectedFont,
           rawFontName: cleanReal,
+          isSubset: isSubset,
           loadedFontName: loadedFontName,
           fontName: item.fontName,
           flags: flags,
           color: opColor !== null ? opColor : 0,
-          hasOpColor: opColor !== null
+          hasOpColor: opColor !== null,
+          opacity: opMeta ? opMeta.opacity : 1.0,
+          renderMode: opMeta ? opMeta.renderMode : 0,
+          opCharSpacing: opMeta ? opMeta.charSpacing : 0,
+          opWordSpacing: opMeta ? opMeta.wordSpacing : 0
         });
       });
 

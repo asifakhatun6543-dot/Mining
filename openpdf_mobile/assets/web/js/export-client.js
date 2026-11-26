@@ -5,6 +5,7 @@
  */
 
 import { State } from "./state.js";
+import { editPageContentStream } from "./pdf-content-stream-editor.js";
 
 export class ExportClient {
   constructor() {
@@ -597,13 +598,21 @@ export class ExportClient {
           ? (box.y + box.height - opts.baselineY - (i * lineHeight))
           : (box.y + box.height - topYFromBoxTop - (i * lineHeight) - (fontSize * 0.84));
 
-        page.drawText(line, {
+        const drawOpts = {
           x: lineX,
           y: baselineY,
           size: fontSize,
           font,
           color
-        });
+        };
+        if (opts.opacity !== undefined && opts.opacity !== null && opts.opacity < 1) {
+          drawOpts.opacity = Math.max(0.05, Math.min(1, Number(opts.opacity)));
+        }
+        if (opts.angleDeg && Math.abs(opts.angleDeg) > 0.25) {
+          drawOpts.rotate = degrees(-Number(opts.angleDeg));
+        }
+
+        page.drawText(line, drawOpts);
 
         if (isUnderline) {
           try {
@@ -619,7 +628,7 @@ export class ExportClient {
       }
     };
 
-    // 1. Apply Text Edits (suppress original text in content stream to preserve original background; fallback to patch only if needed)
+    // 1. Apply Text Edits using true content-stream editing (preserves original background & embedded vector fonts)
     for (const edit of (State.pendingTextEdits || [])) {
       const page = pages[edit.page_number];
       if (!page || !Array.isArray(edit.bbox) || edit.bbox.length < 4) continue;
@@ -631,9 +640,13 @@ export class ExportClient {
       const h = Math.max(y1 - y0, 8);
       const rectY = box.y + box.height - y1 - pad;
 
-      const suppressedInStream = this._suppressOriginalTextInContentStream(pdfDoc, page, edit);
+      const csResult = editPageContentStream(pdfDoc, page, edit, box, window.PDFLib);
 
-      if (!suppressedInStream) {
+      if (csResult.mode === "inplace") {
+        continue;
+      }
+
+      if (!csResult.handled) {
         let patched = false;
         if (edit.inpainted_bg_url) {
           try {
@@ -669,6 +682,8 @@ export class ExportClient {
           loadedFontName: edit.loaded_font_name || "",
           userChangedFont: !!edit.user_changed_font,
           baselineY: edit.baseline_y,
+          angleDeg: edit.angle_deg || 0,
+          opacity: edit.opacity !== undefined ? edit.opacity : 1.0,
           fontSize: edit.font_size || Math.max(8, h * 0.82),
           isBold: !!edit.is_bold,
           isItalic: !!edit.is_italic,
