@@ -878,73 +878,6 @@ export class InlineTextEditor {
     return baseCss;
   }
 
-  /**
-   * Seamless 4-edge bilinear background inpainting:
-   * Samples the outer perimeter around span.bbox on the rendered PDF canvas
-   * and interpolates gradients/textures smoothly so original PDF backgrounds
-   * (gradients, watermarks, shading, paper tint) are never overwritten by a flat box.
-   */
-  _createInpaintedBgDataUrl(pageIndex, bbox) {
-    try {
-      const canvas = document.getElementById(`page-canvas-${pageIndex}`);
-      if (!canvas || !canvas.width || !canvas.height) return null;
-
-      const pageDim = State.pageDimensions[pageIndex] || { width: 612, height: 792 };
-      const scaleX = canvas.width / pageDim.width;
-      const scaleY = canvas.height / pageDim.height;
-
-      const [x0, y0, x1, y1] = bbox;
-      const pad = Math.max(2, Math.round(2 * scaleX));
-      const rx0 = Math.max(0, Math.floor(x0 * scaleX) - pad);
-      const ry0 = Math.max(0, Math.floor(y0 * scaleY) - pad);
-      const rx1 = Math.min(canvas.width, Math.ceil(x1 * scaleX) + pad);
-      const ry1 = Math.min(canvas.height, Math.ceil(y1 * scaleY) + pad);
-      const rw = rx1 - rx0;
-      const rh = ry1 - ry0;
-      if (rw < 4 || rh < 4 || rw > 2400 || rh > 600) return null;
-
-      const ctx = canvas.getContext("2d", { willReadFrequently: true });
-      const srcData = ctx.getImageData(rx0, ry0, rw, rh).data;
-
-      const outCanvas = document.createElement("canvas");
-      outCanvas.width = rw;
-      outCanvas.height = rh;
-      const outCtx = outCanvas.getContext("2d");
-      const outImg = outCtx.createImageData(rw, rh);
-      const dst = outImg.data;
-
-      for (let y = 0; y < rh; y++) {
-        const ty = rh > 1 ? y / (rh - 1) : 0.5;
-        const leftIdx = (y * rw + 0) * 4;
-        const rightIdx = (y * rw + (rw - 1)) * 4;
-
-        for (let x = 0; x < rw; x++) {
-          const tx = rw > 1 ? x / (rw - 1) : 0.5;
-          const topIdx = (0 * rw + x) * 4;
-          const botIdx = ((rh - 1) * rw + x) * 4;
-
-          // Weight closer edges higher (inverse distance + bilinear blend)
-          const wTop = 1 - ty;
-          const wBot = ty;
-          const wLeft = 1 - tx;
-          const wRight = tx;
-          const wSum = wTop + wBot + wLeft + wRight;
-
-          const idx = (y * rw + x) * 4;
-          dst[idx]     = Math.round((srcData[topIdx] * wTop + srcData[botIdx] * wBot + srcData[leftIdx] * wLeft + srcData[rightIdx] * wRight) / wSum);
-          dst[idx + 1] = Math.round((srcData[topIdx + 1] * wTop + srcData[botIdx + 1] * wBot + srcData[leftIdx + 1] * wLeft + srcData[rightIdx + 1] * wRight) / wSum);
-          dst[idx + 2] = Math.round((srcData[topIdx + 2] * wTop + srcData[botIdx + 2] * wBot + srcData[leftIdx + 2] * wLeft + srcData[rightIdx + 2] * wRight) / wSum);
-          dst[idx + 3] = 255;
-        }
-      }
-
-      outCtx.putImageData(outImg, 0, 0);
-      return outCanvas.toDataURL("image/png");
-    } catch (_) {
-      return null;
-    }
-  }
-
   _ensureGoogleFontLoaded(fontKey) {
     const GOOGLE_FONT_MAP = {
       "roboto": "Roboto:ital,wght@0,400;0,700;1,400;1,700",
@@ -1004,126 +937,6 @@ export class InlineTextEditor {
     } catch (_) {}
   }
 
-  /**
-   * Pixel-accurate Canvas Visual Sampler:
-   * Extracts exact background color (bgHex) and foreground text ink color (fgHex)
-   * directly from the rendered PDF page canvas at span.bbox!
-   */
-  _sampleSpanVisualMetrics(pageIndex, span) {
-    try {
-      const canvas = document.getElementById(`page-canvas-${pageIndex}`);
-      if (!canvas || !canvas.width || !canvas.height) return null;
-
-      const pageDim = State.pageDimensions[pageIndex] || { width: 612, height: 792 };
-      const scaleX = canvas.width / pageDim.width;
-      const scaleY = canvas.height / pageDim.height;
-
-      const [x0, y0, x1, y1] = span.bbox;
-      const padPx = Math.max(2, Math.round(2 * scaleX));
-      const rx0 = Math.max(0, Math.floor(x0 * scaleX) - padPx);
-      const ry0 = Math.max(0, Math.floor(y0 * scaleY) - padPx);
-      const rx1 = Math.min(canvas.width, Math.ceil(x1 * scaleX) + padPx);
-      const ry1 = Math.min(canvas.height, Math.ceil(y1 * scaleY) + padPx);
-      const rw = rx1 - rx0;
-      const rh = ry1 - ry0;
-      if (rw < 4 || rh < 4) return null;
-
-      const ctx = canvas.getContext("2d", { willReadFrequently: true });
-      const imgData = ctx.getImageData(rx0, ry0, rw, rh).data;
-
-      // 1. Sample Background Color from outer 1px perimeter ring
-      const bgR = [], bgG = [], bgB = [];
-      const addBg = (px, py) => {
-        const idx = (py * rw + px) * 4;
-        if (imgData[idx + 3] < 200) return;
-        bgR.push(imgData[idx]);
-        bgG.push(imgData[idx + 1]);
-        bgB.push(imgData[idx + 2]);
-      };
-      for (let x = 0; x < rw; x += Math.max(1, Math.floor(rw / 40))) {
-        addBg(x, 0);
-        addBg(x, rh - 1);
-      }
-      for (let y = 1; y < rh - 1; y += Math.max(1, Math.floor(rh / 20))) {
-        addBg(0, y);
-        addBg(rw - 1, y);
-      }
-      if (bgR.length === 0) return null;
-
-      const median = (arr) => {
-        const s = arr.slice().sort((a, b) => a - b);
-        return s[Math.floor(s.length / 2)];
-      };
-
-      let bR = median(bgR);
-      let bG = median(bgG);
-      let bB = median(bgB);
-      // Snap near-pure-white background cleanly to #ffffff
-      if (bR > 246 && bG > 246 && bB > 246) {
-        bR = 255; bG = 255; bB = 255;
-      }
-
-      // 2. Sample Foreground Text Ink Color from interior pixels with highest contrast vs background
-      const inkPixels = [];
-      let totalInterior = 0;
-      const ix0 = Math.min(padPx, Math.floor(rw / 4));
-      const iy0 = Math.min(padPx, Math.floor(rh / 4));
-      const ix1 = Math.max(ix0 + 1, rw - ix0);
-      const iy1 = Math.max(iy0 + 1, rh - iy0);
-
-      for (let y = iy0; y < iy1; y++) {
-        for (let x = ix0; x < ix1; x++) {
-          totalInterior++;
-          const idx = (y * rw + x) * 4;
-          const r = imgData[idx];
-          const g = imgData[idx + 1];
-          const b = imgData[idx + 2];
-          const dist = Math.hypot(r - bR, g - bG, b - bB);
-          if (dist > 22) {
-            inkPixels.push({ r, g, b, dist });
-          }
-        }
-      }
-
-      const toHex = (r, g, b) => `#${[r, g, b].map(v => Math.max(0, Math.min(255, Math.round(v))).toString(16).padStart(2, "0")).join("")}`;
-      const bgHex = toHex(bR, bG, bB);
-      const bgRgb = [bR / 255, bG / 255, bB / 255];
-
-      if (inkPixels.length < 3) {
-        return { bgHex, bgRgb, fgHex: null, fgRgb: null, visualBold: false };
-      }
-
-      // Take top 12% highest-contrast core ink pixels (eliminates anti-aliased gray fringes!)
-      inkPixels.sort((a, b) => b.dist - a.dist);
-      const coreCount = Math.max(2, Math.floor(inkPixels.length * 0.12));
-      const core = inkPixels.slice(0, coreCount);
-
-      let fR = median(core.map(p => p.r));
-      let fG = median(core.map(p => p.g));
-      let fB = median(core.map(p => p.b));
-
-      // Clean snap for crisp black/white ink
-      const bgLuma = 0.299 * bR + 0.587 * bG + 0.114 * bB;
-      if (bgLuma > 180 && fR < 28 && fG < 28 && fB < 28) {
-        fR = 0; fG = 0; fB = 0;
-      } else if (bgLuma < 80 && fR > 232 && fG > 232 && fB > 232) {
-        fR = 255; fG = 255; fB = 255;
-      }
-
-      const fgHex = toHex(fR, fG, fB);
-      const fgRgb = [fR / 255, fG / 255, fB / 255];
-
-      // Estimate visual bold from ink density (only used if font metadata had no bold info)
-      const inkRatio = totalInterior > 0 ? (inkPixels.length / totalInterior) : 0;
-      const visualBold = inkRatio > 0.34;
-
-      return { bgHex, bgRgb, fgHex, fgRgb, visualBold };
-    } catch (err) {
-      console.warn("Canvas visual sampling skipped:", err);
-      return null;
-    }
-  }
-
   _calibrateLetterSpacing(span) {
     try {
       const text = span.original_text || span.text || "";
@@ -1158,15 +971,8 @@ export class InlineTextEditor {
 
     const scale = State.zoomScale;
     this._ensureGoogleFontLoaded(this.currentFont);
-    if (this.currentInpaintedBgUrl) {
-      this.activeBoxEl.style.backgroundColor = "transparent";
-      this.activeBoxEl.style.backgroundImage = `url(${this.currentInpaintedBgUrl})`;
-      this.activeBoxEl.style.backgroundSize = "100% 100%";
-      this.activeBoxEl.style.backgroundRepeat = "no-repeat";
-    } else {
-      this.activeBoxEl.style.backgroundImage = "none";
-      this.activeBoxEl.style.backgroundColor = this.currentBgColorHex || "#ffffff";
-    }
+    this.activeBoxEl.style.backgroundImage = "none";
+    this.activeBoxEl.style.backgroundColor = "rgba(37, 99, 235, 0.06)";
     const loadedFont = this.currentSpanData?.span?.loadedFontName;
     editableDiv.style.fontFamily = this._getSpanCssFontFamily(this.currentFont, loadedFont, this.userChangedFont);
     editableDiv.style.fontSize = `${this.currentFontSize * scale}px`;
@@ -1241,33 +1047,11 @@ export class InlineTextEditor {
     this.userChangedStyle = !!span.userChangedStyle;
     this.currentOpacity = span.opacity !== undefined ? span.opacity : 1.0;
     this.currentAngleDeg = span.angleDeg || 0;
-    this.currentInpaintedBgUrl = span.inpaintedBgUrl || this._createInpaintedBgDataUrl(pageIndex, span.bbox);
-    if (this.currentInpaintedBgUrl) {
-      span.inpaintedBgUrl = this.currentInpaintedBgUrl;
-    }
 
     // Use current replacement text if already edited, otherwise original text
     const textToShow = span.currentText !== undefined ? span.currentText : span.text;
 
-    // 1. Sample exact pixel colors (foreground ink & background) from rendered PDF canvas!
-    const sampled = (!span.currentColorHex || !span.bgColorHex)
-      ? this._sampleSpanVisualMetrics(pageIndex, span)
-      : null;
-
-    if (span.bgColorHex) {
-      this.currentBgColorHex = span.bgColorHex;
-      this.currentBgColorRgb = span.bgColorRgb || this._hexToRgbArray(span.bgColorHex);
-    } else if (sampled && sampled.bgHex) {
-      this.currentBgColorHex = sampled.bgHex;
-      this.currentBgColorRgb = sampled.bgRgb;
-      span.bgColorHex = sampled.bgHex;
-      span.bgColorRgb = sampled.bgRgb;
-    } else {
-      this.currentBgColorHex = "#ffffff";
-      this.currentBgColorRgb = [1.0, 1.0, 1.0];
-    }
-
-    // 2. Auto-detect exact original font (prioritize real embedded font name from commonObjs!)
+    // 1. Auto-detect exact original font (prioritize real embedded font name from commonObjs!)
     const flags = span.flags || 0;
     const isSerifFlag = (flags & 4) !== 0;
     const isMonoFlag = (flags & 1) !== 0 || (flags & 8) !== 0;
@@ -1284,37 +1068,24 @@ export class InlineTextEditor {
 
     const fontLower = (span.rawFontName || fontToUse || "").toLowerCase();
 
-    // 3. AUTOMATIC FONT SIZE: exact PDF font size rounded to 1 decimal place
-    const rawSize = span.currentFontSize || span.size || 12;
-    this.currentFontSize = Math.round(rawSize * 10) / 10;
+    // 2. AUTOMATIC FONT SIZE: preserve exact numeric PDF font size without rounding
+    const rawSize = span.currentFontSize !== undefined ? span.currentFontSize : (span.size || 12);
+    this.currentFontSize = Number(rawSize) || 12;
 
-    // 4. AUTOMATIC BOLD / ITALIC / UNDERLINE
+    // 3. AUTOMATIC BOLD / ITALIC / UNDERLINE
     const metaBold = ((flags & 16) !== 0 || (flags & 262144) !== 0 || /bold|black|heavy|semibold|demi|extrabold|700|800|900|[-,]bd\b|[-_]b\b/.test(fontLower));
-    const hasExplicitRegular = /regular|normal|light|thin|book|roman\b/i.test(fontLower) && !metaBold;
-    this.isBold = span.isBold !== undefined
-      ? span.isBold
-      : (metaBold || (!hasExplicitRegular && !span.rawFontName && sampled?.visualBold) || false);
+    this.isBold = span.isBold !== undefined ? span.isBold : metaBold;
     this.isItalic = span.isItalic !== undefined
       ? span.isItalic
       : ((flags & 2) !== 0 || (flags & 64) !== 0 || /italic|oblique|slant|[-,]it\b/.test(fontLower));
     this.isUnderline = span.isUnderline !== undefined ? span.isUnderline : false;
 
-    // 5. AUTOMATIC EXACT COLOR MATCHING (PDF operator color > Canvas pixel ink > fallback black)
+    // 4. AUTOMATIC EXACT COLOR MATCHING FROM PDF GRAPHICS STATE
     if (span.currentColorHex) {
       this.currentColorHex = span.currentColorHex;
       this.currentColorRgb = span.currentColorRgb || this._hexToRgbArray(span.currentColorHex);
-    } else if (span.hasOpColor) {
+    } else if (span.hasOpColor || span.color !== undefined) {
       const colorInt = span.color || 0;
-      const r = (colorInt >> 16) & 255;
-      const g = (colorInt >> 8) & 255;
-      const b = colorInt & 255;
-      this.currentColorHex = `#${[r, g, b].map(x => x.toString(16).padStart(2, "0")).join("")}`;
-      this.currentColorRgb = [r / 255, g / 255, b / 255];
-    } else if (sampled && sampled.fgHex) {
-      this.currentColorHex = sampled.fgHex;
-      this.currentColorRgb = sampled.fgRgb;
-    } else if (span.color) {
-      const colorInt = span.color;
       const r = (colorInt >> 16) & 255;
       const g = (colorInt >> 8) & 255;
       const b = colorInt & 255;
@@ -1475,14 +1246,7 @@ export class InlineTextEditor {
     box.style.height = `${height}px`;
     box.style.minHeight = `${height}px`;
     box.style.boxSizing = "border-box";
-    if (this.currentInpaintedBgUrl) {
-      box.style.backgroundColor = "transparent";
-      box.style.backgroundImage = `url(${this.currentInpaintedBgUrl})`;
-      box.style.backgroundSize = "100% 100%";
-      box.style.backgroundRepeat = "no-repeat";
-    } else {
-      box.style.background = this.currentBgColorHex || "#ffffff";
-    }
+    box.style.background = "rgba(37, 99, 235, 0.06)";
     box.style.border = "1.5px solid #2563eb";
     box.style.borderRadius = "2px";
     box.style.boxShadow = "0 1px 6px rgba(37, 99, 235, 0.22)";
@@ -1628,9 +1392,6 @@ export class InlineTextEditor {
     span.isUnderline = this.isUnderline;
     span.currentColorHex = this.currentColorHex;
     span.currentColorRgb = [...this.currentColorRgb];
-    span.bgColorHex = this.currentBgColorHex;
-    span.bgColorRgb = [...this.currentBgColorRgb];
-    span.inpaintedBgUrl = this.currentInpaintedBgUrl || span.inpaintedBgUrl || null;
     span.letterSpacing = this.currentLetterSpacing;
     span.currentAlignment = this.currentAlignment;
 
@@ -1656,9 +1417,6 @@ export class InlineTextEditor {
       flags: span.flags || 0,
       text_color: [...this.currentColorRgb],
       text_color_hex: this.currentColorHex,
-      bg_color: [...this.currentBgColorRgb],
-      bg_color_hex: this.currentBgColorHex,
-      inpainted_bg_url: span.inpaintedBgUrl || null,
       letter_spacing: this.currentLetterSpacing
     };
 
@@ -1895,9 +1653,7 @@ export class InlineTextEditor {
       cover.addEventListener("mousedown", (e) => e.stopPropagation());
     }
 
-    const isSuppressedOnCanvas = !!window.app?.renderer?.isSpanSuppressedOnCanvas?.(pageIndex, editItem.bbox);
-    const bgHex = editItem.bg_color_hex || origSpan.bgColorHex || "#ffffff";
-    const inpaintedBg = isSuppressedOnCanvas ? null : (editItem.inpainted_bg_url || origSpan.inpaintedBgUrl || this._createInpaintedBgDataUrl(pageIndex, editItem.bbox));
+    const isRenderedOnPdfCanvas = !!window.app?.renderer?.isSpanSuppressedOnCanvas?.(pageIndex, editItem.bbox);
     const fontSizePt = editItem.font_size || origSpan.size;
     const topCoord = (editItem.baseline_y !== undefined && editItem.baseline_y !== null)
       ? (editItem.baseline_y - fontSizePt * 0.85)
@@ -1910,18 +1666,8 @@ export class InlineTextEditor {
     cover.style.maxWidth = `calc(100% - ${x0 * scale + 4}px)`;
     cover.style.height = `${Math.max(origHeight, fontSizePt * 1.15 * scale)}px`;
     cover.style.minHeight = `${origHeight}px`;
-    if (isSuppressedOnCanvas) {
-      cover.style.backgroundColor = "transparent";
-      cover.style.backgroundImage = "none";
-    } else if (inpaintedBg) {
-      cover.style.backgroundColor = "transparent";
-      cover.style.backgroundImage = `url(${inpaintedBg})`;
-      cover.style.backgroundSize = "100% 100%";
-      cover.style.backgroundRepeat = "no-repeat";
-    } else {
-      cover.style.backgroundImage = "none";
-      cover.style.backgroundColor = bgHex;
-    }
+    cover.style.backgroundColor = "transparent";
+    cover.style.backgroundImage = "none";
     cover.style.zIndex = "6";
     cover.style.visibility = "visible";
     cover.title = `Edited: "${replacementText}" (Click to edit again)`;
@@ -1939,14 +1685,14 @@ export class InlineTextEditor {
       cover.style.textAlign = "left";
     }
 
-    // Use color from the edit item, not from current editor state
+    // Use color from the edit item, or transparent when the modified PDF itself is rendered by PDF.js on canvas
     const colorHex = editItem.text_color_hex || origSpan.currentColorHex || this._rgbArrayToHex(editItem.text_color) || "#000000";
     const letterSpacingVal = editItem.letter_spacing !== undefined ? editItem.letter_spacing : (origSpan.letterSpacing || 0);
 
     cover.innerHTML = "";
     const textEl = document.createElement("span");
     textEl.textContent = replacementText;
-    textEl.style.color = colorHex;
+    textEl.style.color = isRenderedOnPdfCanvas ? "transparent" : colorHex;
     textEl.style.fontSize = `${(editItem.font_size || origSpan.size) * scale}px`;
     textEl.style.fontFamily = this._getSpanCssFontFamily(
       editItem.font_name,

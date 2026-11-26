@@ -4,8 +4,8 @@
  * encrypted/restricted PDF tolerance, all annotations/edits/page ops, and Canvas-to-PDF fallback.
  */
 
-import { State } from "./state.js?v=5.1";
-import { editPageContentStream } from "./pdf-content-stream-editor.js?v=5.1";
+import { State } from "./state.js?v=5.2";
+import { editPageContentStream } from "./pdf-content-stream-editor.js?v=5.2";
 
 export class ExportClient {
   constructor() {
@@ -134,8 +134,8 @@ export class ExportClient {
     const filename = this._getDesiredFilename();
     const blob = new Blob([this.lastExportBytes], { type: "application/pdf" });
 
-    // High-Fidelity Flutter Bridge Integration for Android App
-    if (window.FlutterBridge) {
+    // Android WebView FlutterBridge Integration (no-op on browser/website)
+    if (typeof window !== "undefined" && window.FlutterBridge) {
       try {
         const reader = new FileReader();
         reader.onloadend = () => {
@@ -152,16 +152,15 @@ export class ExportClient {
       } catch (bridgeErr) {
         console.warn("FlutterBridge export error:", bridgeErr);
       }
-    }
 
-    // Direct HTTP POST to local loopback server if active
-    try {
-      fetch("/api/save?filename=" + encodeURIComponent(filename), {
-        method: "POST",
-        headers: { "Content-Type": "application/pdf" },
-        body: blob
-      }).catch(() => {});
-    } catch (_) {}
+      try {
+        fetch("/api/save?filename=" + encodeURIComponent(filename), {
+          method: "POST",
+          headers: { "Content-Type": "application/pdf" },
+          body: blob
+        }).catch(() => {});
+      } catch (_) {}
+    }
 
     // Try native Save As file picker when user clicks "Save As..."
     if (useSaveAsPicker && typeof window.showSaveFilePicker === "function") {
@@ -485,15 +484,34 @@ export class ExportClient {
       throw new Error("Loaded PDF has 0 pages");
     }
 
-    // Lazily embed standard fonts so we only embed what is used
+    // Lazily embed standard fonts and warn explicitly if a non-Standard custom font cannot be embedded without fontkit
     const fontCache = {};
+    this._lastExportWarnings = [];
     const getFont = async (fontName, isBold, isItalic) => {
-      const nameStr = String(fontName || "Helvetica").toLowerCase();
+      const rawName = String(fontName || "Helvetica").trim();
+      const nameStr = rawName.toLowerCase();
       let family = "Helvetica";
-      if (/times|roman|serif|georgia|cambria|garamond|palatino|tinos/i.test(nameStr)) {
+      let isExactStandard = /^(helvetica|arial|times|times-roman|courier)$/i.test(rawName);
+      if (/times|roman|tinos|timesnewroman/i.test(nameStr)) {
         family = "Times";
-      } else if (/courier|mono|consolas|jetbrains|fixed/i.test(nameStr)) {
+      } else if (/courier|cousine|couriernew/i.test(nameStr)) {
         family = "Courier";
+      } else if (/helvetica|arial|arimo/i.test(nameStr)) {
+        family = "Helvetica";
+      } else {
+        isExactStandard = false;
+        if (/serif|georgia|cambria|garamond|palatino|caladea|lora|merriweather/i.test(nameStr)) {
+          family = "Times";
+        } else if (/mono|consolas|jetbrains|fixed|fira/i.test(nameStr)) {
+          family = "Courier";
+        }
+      }
+
+      if (!isExactStandard && !pdfDoc.fontkit) {
+        const warnMsg = `Font "${rawName}" is not a PDF Standard-14 font and fontkit is unavailable; exported using closest standard ${family} font.`;
+        if (!this._lastExportWarnings.includes(warnMsg)) {
+          this._lastExportWarnings.push(warnMsg);
+        }
       }
 
       const key = `${family}_${isBold ? "B" : ""}_${isItalic ? "I" : ""}`;
@@ -627,52 +645,29 @@ export class ExportClient {
       }
     };
 
-    // 1. Apply Text Edits using true content-stream editing (preserves original background & embedded vector fonts)
+    // 1. Apply Text Edits using genuine content-stream editing (NO destructive background patches or whiteout rectangles)
     for (const edit of (State.pendingTextEdits || [])) {
       const page = pages[edit.page_number];
       if (!page || !Array.isArray(edit.bbox) || edit.bbox.length < 4) continue;
 
       const box = getPageBox(page);
       const [x0, y0, x1, y1] = edit.bbox.map(Number);
-      const pad = 1.0;
       const w = Math.max(x1 - x0, 8);
       const h = Math.max(y1 - y0, 8);
-      const rectY = box.y + box.height - y1 - pad;
 
       const csResult = editPageContentStream(pdfDoc, page, edit, box, window.PDFLib);
 
-      if (csResult.mode === "inplace") {
+      if (!csResult.handled) {
+        // Never draw a white/colored rectangle or patch over the original PDF background.
+        // Reject unsupported edits cleanly and preserve original document content.
+        const reason = csResult.reason || `Unsupported vector text edit for "${edit.original_text}".`;
+        this._lastExportWarnings.push(reason);
         continue;
       }
 
-      if (!csResult.handled) {
-        let patched = false;
-        if (edit.inpainted_bg_url) {
-          try {
-            const bgImg = await this._embedAnyImageData(pdfDoc, edit.inpainted_bg_url);
-            if (bgImg) {
-              page.drawImage(bgImg, {
-                x: box.x + x0 - pad,
-                y: rectY,
-                width: w + pad * 2,
-                height: h + pad * 2
-              });
-              patched = true;
-            }
-          } catch (_) {}
-        }
-        if (!patched) {
-          const bgFill = (edit.bg_color || edit.bg_color_hex)
-            ? this._parseRgb(edit.bg_color, edit.bg_color_hex || "#ffffff", rgb)
-            : rgb(1, 1, 1);
-          page.drawRectangle({
-            x: box.x + x0 - pad,
-            y: rectY,
-            width: w + pad * 2,
-            height: h + pad * 2,
-            color: bgFill
-          });
-        }
+      if (csResult.mode === "inplace") {
+        // Genuine in-place vector replacement in original embedded font + original graphics state!
+        continue;
       }
 
       if (edit.replacement_text && String(edit.replacement_text).length > 0) {
@@ -1130,6 +1125,9 @@ export class ExportClient {
     // Tier 1: Native Vector PDF-Lib Export
     try {
       exportResult = await this._exportWithPdfLib();
+      if (this._lastExportWarnings && this._lastExportWarnings.length > 0) {
+        warningMsg = this._lastExportWarnings.join(" ");
+      }
     } catch (vecErr) {
       console.warn("Vector PDF-Lib export hit compatibility issue, switching to high-res Canvas PDF fallback:", vecErr);
       warningMsg = "Document used special encryption or structure — exported cleanly using high-resolution compatibility mode.";
@@ -1151,7 +1149,11 @@ export class ExportClient {
     if (autoDownload) {
       this.hide();
       await this._downloadPreparedBytes(false);
-      State.emit("toast", { type: "success", message: "PDF successfully exported!" });
+      if (warningMsg) {
+        State.emit("toast", { type: "warning", message: warningMsg });
+      } else {
+        State.emit("toast", { type: "success", message: "PDF successfully exported!" });
+      }
       return;
     }
 

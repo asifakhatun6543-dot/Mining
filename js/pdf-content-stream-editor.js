@@ -1,13 +1,12 @@
 /**
- * OpenPDF Studio - True PDF Content-Stream Text Editor
+ * OpenPDF Studio - Genuine PDF Content-Stream Text Editor
  *
- * Performs genuine PDF content-stream text-object editing:
- * - Tracks graphics state (q/Q, cm) and text state (BT/ET, Tm, Td, TD, T*, Tf)
- * - Matches the exact text operator closest to the edited span's PDF coordinates
- * - Supports both literal (...) and hex <...> PDF strings in Tj, TJ, ', "
- * - Performs in-place vector replacement when styling/font is preserved and WinAnsi-safe
- * - Performs single-occurrence suppression (without drawing whiteout rectangles) when styling changes
- * - Preserves 100% of original backgrounds, gradients, images, watermarks, and unrelated objects
+ * Performs validated PDF content-stream text-object editing:
+ * - Inspects /Resources /Font dictionaries (/Subtype, /BaseFont, /Encoding, /ToUnicode, /FirstChar, /LastChar, /Widths)
+ * - Rejects unsafe edits on CID/Type0/Identity-H, Type3, or subset fonts missing required replacement glyphs
+ * - Preserves surrounding text, kerning numbers, and positioning operands on substring edits in Tj and TJ arrays
+ * - Never draws whiteout rectangles or background patches
+ * - Shared by both live PDF.js preview rendering and final PDF export
  */
 
 function escapePdfLiteralString(str) {
@@ -62,7 +61,6 @@ function decodePdfHexString(hexRaw) {
   for (let i = 0; i < padded.length; i += 2) {
     bytes.push(parseInt(padded.slice(i, i + 2), 16));
   }
-  // Check UTF-16BE BOM
   if (bytes.length >= 2 && bytes[0] === 0xfe && bytes[1] === 0xff) {
     let text = "";
     for (let i = 2; i + 1 < bytes.length; i += 2) {
@@ -98,9 +96,139 @@ function applyPoint(m, x, y) {
   ];
 }
 
+function isWinAnsiSafe(str) {
+  for (let i = 0; i < str.length; i++) {
+    const code = str.charCodeAt(i);
+    if (code === 10 || code === 13) return false;
+    if (code < 32 || (code > 126 && code < 160) || code > 255) {
+      return false;
+    }
+  }
+  return true;
+}
+
+/**
+ * Inspects a PDF page's /Resources /Font dictionary entry for encoding,
+ * subset coverage, CID/Type3 status, and character widths.
+ */
+export function inspectPageFontResource(pdfDoc, page, fontResourceName, pdfLib) {
+  const info = {
+    found: false,
+    fontResourceName: fontResourceName || null,
+    subtype: "",
+    baseFont: "",
+    cleanBaseFont: "",
+    isSubset: false,
+    encodingName: "",
+    hasDifferences: false,
+    hasToUnicode: false,
+    isCidFont: false,
+    isType3: false,
+    isStandardBase14: false,
+    firstChar: null,
+    lastChar: null,
+    widths: null
+  };
+
+  try {
+    const { PDFName, PDFDict, PDFArray, PDFNumber } = pdfLib || {};
+    if (!PDFName || !fontResourceName) return info;
+
+    const resources = page.node.Resources ? page.node.Resources() : null;
+    const fonts = resources ? resources.lookup(PDFName.of("Font")) : null;
+    if (!fonts || typeof fonts.lookup !== "function") return info;
+
+    const fontDict = fonts.lookup(PDFName.of(fontResourceName));
+    if (!fontDict || typeof fontDict.get !== "function") return info;
+
+    info.found = true;
+    const subtypeObj = fontDict.lookup(PDFName.of("Subtype"));
+    info.subtype = subtypeObj ? subtypeObj.toString() : "";
+    info.isCidFont = info.subtype === "/Type0";
+    info.isType3 = info.subtype === "/Type3";
+
+    const baseFontObj = fontDict.lookup(PDFName.of("BaseFont"));
+    info.baseFont = baseFontObj ? baseFontObj.toString().replace(/^\//, "") : "";
+    info.isSubset = /^[A-Z]{6}\+/.test(info.baseFont);
+    info.cleanBaseFont = info.baseFont.replace(/^[A-Z]{6}\+/, "");
+
+    info.isStandardBase14 = /^(Helvetica|Times-Roman|Times-Bold|Times-Italic|Times-BoldItalic|Courier|Symbol|ZapfDingbats)(-(Bold|Oblique|Italic|BoldOblique|BoldItalic))?$/i.test(info.cleanBaseFont);
+    info.hasToUnicode = !!fontDict.get(PDFName.of("ToUnicode"));
+
+    const encObj = fontDict.lookup(PDFName.of("Encoding"));
+    if (encObj) {
+      if (PDFDict && encObj instanceof PDFDict) {
+        const baseEnc = encObj.lookup(PDFName.of("BaseEncoding"));
+        info.encodingName = baseEnc ? baseEnc.toString() : "/CustomDict";
+        info.hasDifferences = !!encObj.get(PDFName.of("Differences"));
+      } else {
+        info.encodingName = encObj.toString();
+      }
+    }
+
+    if (info.encodingName === "/Identity-H" || info.encodingName === "/Identity-V") {
+      info.isCidFont = true;
+    }
+
+    const fcObj = fontDict.lookup(PDFName.of("FirstChar"));
+    const lcObj = fontDict.lookup(PDFName.of("LastChar"));
+    const widthsObj = fontDict.lookup(PDFName.of("Widths"));
+
+    if (PDFNumber && fcObj instanceof PDFNumber && lcObj instanceof PDFNumber && PDFArray && widthsObj instanceof PDFArray) {
+      info.firstChar = fcObj.asNumber();
+      info.lastChar = lcObj.asNumber();
+      info.widths = [];
+      for (let idx = 0; idx < widthsObj.size(); idx++) {
+        const w = widthsObj.lookup(idx);
+        info.widths.push(w && typeof w.asNumber === "function" ? w.asNumber() : 0);
+      }
+    }
+  } catch (_) {}
+
+  return info;
+}
+
+/**
+ * Validates whether replacementText can be safely encoded in the original font resource.
+ */
+function validateFontCoverage(fontInfo, originalText, replacementText, op) {
+  if (op.isCidLike || fontInfo.isCidFont) {
+    return { ok: false, reason: `Font "${fontInfo.cleanBaseFont || op.font || "CID"}" uses CID/Identity-H glyph mapping; in-place byte replacement is unsupported.` };
+  }
+  if (fontInfo.isType3) {
+    return { ok: false, reason: `Font "${fontInfo.cleanBaseFont || op.font || "Type3"}" is a Type3 bitmap/custom glyph font.` };
+  }
+  if (!isWinAnsiSafe(replacementText)) {
+    return { ok: false, reason: "Replacement text contains characters outside single-byte WinAnsi encoding." };
+  }
+  if (fontInfo.hasDifferences) {
+    // Allow characters already present in originalText, reject unverified new characters
+    for (let i = 0; i < replacementText.length; i++) {
+      const ch = replacementText[i];
+      if (!originalText.includes(ch) && ch !== " ") {
+        return { ok: false, reason: `Font "${fontInfo.cleanBaseFont || op.font}" uses a custom /Differences encoding.` };
+      }
+    }
+  }
+  if (fontInfo.isSubset && fontInfo.widths && fontInfo.firstChar !== null && fontInfo.lastChar !== null) {
+    for (let i = 0; i < replacementText.length; i++) {
+      const code = replacementText.charCodeAt(i);
+      if (code === 32) continue;
+      if (code < fontInfo.firstChar || code > fontInfo.lastChar) {
+        return { ok: false, reason: `Subset font "${fontInfo.cleanBaseFont}" lacks glyph for "${replacementText[i]}".` };
+      }
+      const w = fontInfo.widths[code - fontInfo.firstChar];
+      if (!w || w <= 0) {
+        return { ok: false, reason: `Subset font "${fontInfo.cleanBaseFont}" has zero width for "${replacementText[i]}".` };
+      }
+    }
+  }
+  return { ok: true };
+}
+
 /**
  * Scans a PDF content stream string and extracts all text-showing operators
- * along with their byte/char offsets, decoded text, and approximate PDF (x, y) position.
+ * along with offsets, decoded text, and PDF (x, y) coordinates.
  */
 export function scanContentStreamTextOps(contentStr) {
   const ops = [];
@@ -137,7 +265,6 @@ export function scanContentStreamTextOps(contentStr) {
 
     const ch = contentStr[i];
 
-    // 1. Literal string (...)
     if (ch === "(") {
       const start = i;
       i++;
@@ -152,9 +279,8 @@ export function scanContentStreamTextOps(contentStr) {
             i += 2;
             continue;
           }
-        } else if (c === "(") {
-          depth++;
-        } else if (c === ")") {
+        } else if (c === "(") depth++;
+        else if (c === ")") {
           depth--;
           if (depth === 0) {
             i++;
@@ -164,33 +290,19 @@ export function scanContentStreamTextOps(contentStr) {
         raw += c;
         i++;
       }
-      operandStack.push({
-        type: "literal",
-        raw,
-        start,
-        end: i,
-        text: unescapePdfLiteralString(raw)
-      });
+      operandStack.push({ type: "literal", raw, start, end: i, text: unescapePdfLiteralString(raw) });
       continue;
     }
 
-    // 2. Hex string <...> or Dict <<...>>
     if (ch === "<") {
       if (contentStr[i + 1] === "<") {
-        // Dictionary << ... >>
         const start = i;
         i += 2;
         let dictDepth = 1;
         while (i < len && dictDepth > 0) {
-          if (contentStr[i] === "<" && contentStr[i + 1] === "<") {
-            dictDepth++;
-            i += 2;
-          } else if (contentStr[i] === ">" && contentStr[i + 1] === ">") {
-            dictDepth--;
-            i += 2;
-          } else {
-            i++;
-          }
+          if (contentStr[i] === "<" && contentStr[i + 1] === "<") { dictDepth++; i += 2; }
+          else if (contentStr[i] === ">" && contentStr[i + 1] === ">") { dictDepth--; i += 2; }
+          else i++;
         }
         operandStack.push({ type: "dict", start, end: i });
         continue;
@@ -198,24 +310,14 @@ export function scanContentStreamTextOps(contentStr) {
         const start = i;
         i++;
         let hexRaw = "";
-        while (i < len && contentStr[i] !== ">") {
-          hexRaw += contentStr[i++];
-        }
+        while (i < len && contentStr[i] !== ">") hexRaw += contentStr[i++];
         if (i < len && contentStr[i] === ">") i++;
         const decoded = decodePdfHexString(hexRaw);
-        operandStack.push({
-          type: "hex",
-          raw: hexRaw,
-          start,
-          end: i,
-          text: decoded.text,
-          isCidLike: decoded.isCidLike
-        });
+        operandStack.push({ type: "hex", raw: hexRaw, start, end: i, text: decoded.text, isCidLike: decoded.isCidLike });
         continue;
       }
     }
 
-    // 3. Array [...]
     if (ch === "[") {
       const start = i;
       i++;
@@ -223,10 +325,7 @@ export function scanContentStreamTextOps(contentStr) {
       while (i < len) {
         skipWhitespaceAndComments();
         if (i >= len) break;
-        if (contentStr[i] === "]") {
-          i++;
-          break;
-        }
+        if (contentStr[i] === "]") { i++; break; }
         if (contentStr[i] === "(") {
           const sStart = i;
           i++;
@@ -236,19 +335,9 @@ export function scanContentStreamTextOps(contentStr) {
             const c = contentStr[i];
             if (c === "\\") {
               raw += c;
-              if (i + 1 < len) {
-                raw += contentStr[i + 1];
-                i += 2;
-                continue;
-              }
+              if (i + 1 < len) { raw += contentStr[i + 1]; i += 2; continue; }
             } else if (c === "(") depth++;
-            else if (c === ")") {
-              depth--;
-              if (depth === 0) {
-                i++;
-                break;
-              }
-            }
+            else if (c === ")") { depth--; if (depth === 0) { i++; break; } }
             raw += c;
             i++;
           }
@@ -258,36 +347,29 @@ export function scanContentStreamTextOps(contentStr) {
           i++;
           let hexRaw = "";
           while (i < len && contentStr[i] !== ">") hexRaw += contentStr[i++];
-          if (contentStr[i] === ">") i++;
+          if (i < len && contentStr[i] === ">") i++;
           const decoded = decodePdfHexString(hexRaw);
           items.push({ type: "hex", raw: hexRaw, start: hStart, end: i, text: decoded.text, isCidLike: decoded.isCidLike });
         } else {
-          // number inside TJ array (kerning)
           let numStr = "";
           while (i < len && !/[\s\[\]\(\)<>\/%]/.test(contentStr[i])) numStr += contentStr[i++];
           const num = parseFloat(numStr);
           if (!Number.isNaN(num)) items.push({ type: "num", value: num });
         }
       }
-      const combinedText = items
-        .filter(it => it.type === "literal" || it.type === "hex")
-        .map(it => it.text)
-        .join("");
-      const hasCid = items.some(it => it.isCidLike);
-      const hasHex = items.some(it => it.type === "hex");
+      const combinedText = items.filter(it => it.type === "literal" || it.type === "hex").map(it => it.text).join("");
       operandStack.push({
         type: "array",
         items,
         start,
         end: i,
         text: combinedText,
-        hasCid,
-        hasHex
+        hasCid: items.some(it => it.isCidLike),
+        hasHex: items.some(it => it.type === "hex")
       });
       continue;
     }
 
-    // 4. Name /...
     if (ch === "/") {
       const start = i;
       i++;
@@ -297,16 +379,10 @@ export function scanContentStreamTextOps(contentStr) {
       continue;
     }
 
-    // 5. Token (number or operator)
     const tokStart = i;
     let tok = "";
-    while (i < len && !/[\s\[\]\(\)<>\/%]/.test(contentStr[i])) {
-      tok += contentStr[i++];
-    }
-    if (!tok) {
-      i++;
-      continue;
-    }
+    while (i < len && !/[\s\[\]\(\)<>\/%]/.test(contentStr[i])) tok += contentStr[i++];
+    if (!tok) { i++; continue; }
 
     const numVal = Number(tok);
     if (!Number.isNaN(numVal) && /^-?(?:\d+\.?\d*|\.\d+)$/.test(tok)) {
@@ -314,14 +390,9 @@ export function scanContentStreamTextOps(contentStr) {
       continue;
     }
 
-    // Operator dispatch
-    if (tok === "q") {
-      ctmStack.push([...ctm]);
-      operandStack.length = 0;
-    } else if (tok === "Q") {
-      if (ctmStack.length > 0) ctm = ctmStack.pop();
-      operandStack.length = 0;
-    } else if (tok === "cm" && operandStack.length >= 6) {
+    if (tok === "q") { ctmStack.push([...ctm]); operandStack.length = 0; }
+    else if (tok === "Q") { if (ctmStack.length > 0) ctm = ctmStack.pop(); operandStack.length = 0; }
+    else if (tok === "cm" && operandStack.length >= 6) {
       const nums = operandStack.slice(-6).map(o => o.value || 0);
       ctm = multiplyMatrix(nums, ctm);
       operandStack.length = 0;
@@ -378,7 +449,6 @@ export function scanContentStreamTextOps(contentStr) {
       });
       operandStack.length = 0;
     } else if (tok === "BI") {
-      // Inline image: skip until ID ... EI
       const idIdx = contentStr.indexOf("ID", i);
       if (idIdx !== -1) {
         const eiIdx = contentStr.indexOf("EI", idIdx + 2);
@@ -393,34 +463,88 @@ export function scanContentStreamTextOps(contentStr) {
   return ops;
 }
 
-function isWinAnsiSafe(str) {
-  for (let i = 0; i < str.length; i++) {
-    const code = str.charCodeAt(i);
-    if (code === 10 || code === 13) return false; // multiline handled separately
-    if (code < 32 || (code > 126 && code < 160) || code > 255) {
-      return false;
+function encodeTokenLike(type, text) {
+  if (type === "hex") {
+    let hex = "";
+    for (let idx = 0; idx < text.length; idx++) {
+      hex += text.charCodeAt(idx).toString(16).padStart(2, "0").toUpperCase();
     }
+    return `<${hex}>`;
   }
-  return true;
+  return `(${escapePdfLiteralString(text)})`;
 }
 
 /**
- * Attempts genuine PDF content-stream editing on a page.
- * Returns { handled: true, mode: 'inplace' | 'suppressed' } or { handled: false, mode: 'none' }.
+ * Replaces ONLY a matching substring inside a TJ array, preserving kerning numbers and surrounding items.
+ */
+function replaceSubstringInTjArray(contentStr, op, originalText, replacementText) {
+  const items = op.arg.items || [];
+  let running = "";
+  const ranges = [];
+  for (const it of items) {
+    if (it.type === "literal" || it.type === "hex") {
+      const startPos = running.length;
+      running += it.text;
+      ranges.push({ item: it, startPos, endPos: running.length });
+    }
+  }
+  const matchIdx = running.indexOf(originalText);
+  if (matchIdx === -1) return null;
+  const matchEnd = matchIdx + originalText.length;
+
+  const patches = [];
+  let inserted = false;
+  for (const r of ranges) {
+    if (r.endPos <= matchIdx || r.startPos >= matchEnd) continue;
+    const localStart = Math.max(0, matchIdx - r.startPos);
+    const localEnd = Math.min(r.item.text.length, matchEnd - r.startPos);
+    const prefix = r.item.text.slice(0, localStart);
+    const suffix = r.item.text.slice(localEnd);
+    let newText = prefix;
+    if (!inserted) {
+      newText += replacementText;
+      inserted = true;
+    }
+    newText += suffix;
+    patches.push({
+      start: r.item.start,
+      end: r.item.end,
+      text: encodeTokenLike(r.item.type, newText)
+    });
+  }
+
+  if (patches.length === 0) return null;
+  patches.sort((a, b) => b.start - a.start);
+  let out = contentStr.slice(op.opStart, op.opEnd);
+  for (const p of patches) {
+    const relStart = p.start - op.opStart;
+    const relEnd = p.end - op.opStart;
+    out = out.slice(0, relStart) + p.text + out.slice(relEnd);
+  }
+  return out;
+}
+
+/**
+ * Performs validated PDF content-stream editing on a page.
+ * Returns { handled: true, mode: 'inplace' | 'suppressed', fontInfo }
+ * or { handled: false, mode: 'rejected', reason }.
  */
 export function editPageContentStream(pdfDoc, page, edit, pageBox, pdfLib) {
   try {
     const { PDFName, PDFArray, PDFRawStream, PDFRef, decodePDFRawStream } = pdfLib || {};
-    if (!PDFName || !decodePDFRawStream) return { handled: false, mode: "none" };
+    if (!PDFName || !decodePDFRawStream) {
+      return { handled: false, mode: "rejected", reason: "PDFLib stream decoder unavailable." };
+    }
 
     const originalText = String(edit.original_text || "").trim();
-    if (!originalText) return { handled: false, mode: "none" };
+    if (!originalText) {
+      return { handled: false, mode: "rejected", reason: "Original text is empty." };
+    }
 
     const [x0, y0, x1, y1] = edit.bbox.map(Number);
     const targetX = pageBox.x + x0;
     const targetY = pageBox.y + pageBox.height - (edit.baseline_y !== undefined && edit.baseline_y !== null ? Number(edit.baseline_y) : (y0 + (y1 - y0) * 0.82));
 
-    // Collect page content stream refs + Form XObject stream refs
     const streamEntries = [];
     const contentsRef = page.node.get(PDFName.of("Contents"));
     if (contentsRef) {
@@ -434,7 +558,6 @@ export function editPageContentStream(pdfDoc, page, edit, pageBox, pdfLib) {
       }
     }
 
-    // Also inspect Form XObjects if present
     try {
       const resources = page.node.Resources ? page.node.Resources() : null;
       const xObjects = resources ? resources.lookup(PDFName.of("XObject")) : null;
@@ -483,7 +606,6 @@ export function editPageContentStream(pdfDoc, page, edit, pageBox, pdfLib) {
           continue;
         }
 
-        // Handle spans merged by PDF.js from consecutive Tj/TJ operators on the same line
         if (originalText.startsWith(opTrim) || originalText.includes(opTrim)) {
           let combined = op.text;
           const extraOps = [];
@@ -508,41 +630,35 @@ export function editPageContentStream(pdfDoc, page, edit, pageBox, pdfLib) {
     }
 
     if (!bestMatch || bestScore > 250) {
-      return { handled: false, mode: "none" };
+      return { handled: false, mode: "rejected", reason: "No matching vector text operator found (document may be scanned or use non-standard layout)." };
     }
 
     const { entry, contentStr, op, extraOps, isExact } = bestMatch;
     const replacementText = String(edit.replacement_text ?? "");
-    const forceSuppress = !!edit.forceSuppress;
+    const fontInfo = inspectPageFontResource(pdfDoc, page, op.font, pdfLib);
 
-    const canDoInPlace =
-      !forceSuppress &&
+    // Validate in-place replacement compatibility against actual PDF font dictionary
+    const canAttemptInPlace =
+      !edit.forceSuppress &&
       !edit.user_changed_font &&
       !edit.is_bold &&
       !edit.is_italic &&
       !edit.is_underline &&
       (!edit.alignment || edit.alignment === "left") &&
-      isExact &&
-      !op.isCidLike &&
-      replacementText.length > 0 &&
-      isWinAnsiSafe(replacementText);
+      replacementText.length > 0;
+
+    if (canAttemptInPlace) {
+      const coverage = validateFontCoverage(fontInfo, originalText, replacementText, op);
+      if (!coverage.ok) {
+        return { handled: false, mode: "rejected", reason: coverage.reason, fontInfo };
+      }
+    }
 
     let replacementSegment = "";
     let mode = "suppressed";
 
-    const encodeReplacementToken = (text) => {
-      if (op.arg.type === "hex") {
-        let hex = "";
-        for (let idx = 0; idx < text.length; idx++) {
-          hex += text.charCodeAt(idx).toString(16).padStart(2, "0").toUpperCase();
-        }
-        return `<${hex}>`;
-      }
-      return `(${escapePdfLiteralString(text)})`;
-    };
-
-    if (canDoInPlace) {
-      const tok = encodeReplacementToken(replacementText);
+    if (canAttemptInPlace && isExact) {
+      const tok = encodeTokenLike(op.arg.type === "hex" ? "hex" : "literal", replacementText);
       const baseOp = op.op === "'" ? `${tok} '` : op.op === '"' ? `${tok} "` : `${tok} Tj`;
       if (edit.user_changed_style && op.font && Array.isArray(edit.text_color) && edit.text_color.length >= 3) {
         const [r, g, b] = edit.text_color.map(v => Math.max(0, Math.min(1, Number(v) || 0)).toFixed(3));
@@ -552,20 +668,43 @@ export function editPageContentStream(pdfDoc, page, edit, pageBox, pdfLib) {
         replacementSegment = baseOp;
       }
       mode = "inplace";
-    } else if (!forceSuppress && !isExact && !op.isCidLike && extraOps.length === 0 && (op.arg.type === "literal" || op.arg.type === "hex")) {
-      const idx = op.text.indexOf(originalText);
-      if (idx !== -1 && isWinAnsiSafe(replacementText) && !edit.user_changed_font && !edit.user_changed_style) {
-        const newFull = op.text.slice(0, idx) + replacementText + op.text.slice(idx + originalText.length);
-        replacementSegment = `${encodeReplacementToken(newFull)} ${op.op}`;
+    } else if (canAttemptInPlace && !isExact && extraOps.length === 0) {
+      // Substring replacement inside Tj or TJ array, preserving surrounding text & kerning operands
+      if (op.arg.type === "array") {
+        const patchedArrayOp = replaceSubstringInTjArray(contentStr, op, originalText, replacementText);
+        if (!patchedArrayOp) {
+          return { handled: false, mode: "rejected", reason: "Could not safely isolate substring in TJ array.", fontInfo };
+        }
+        replacementSegment = patchedArrayOp;
         mode = "inplace";
+      } else {
+        const idx = op.text.indexOf(originalText);
+        if (idx === -1) {
+          return { handled: false, mode: "rejected", reason: "Substring boundary not found in text operator.", fontInfo };
+        }
+        const newFull = op.text.slice(0, idx) + replacementText + op.text.slice(idx + originalText.length);
+        replacementSegment = `${encodeTokenLike(op.arg.type, newFull)} ${op.op}`;
+        mode = "inplace";
+      }
+    } else if (edit.user_changed_font || edit.is_bold || edit.is_italic || edit.is_underline || (edit.alignment && edit.alignment !== "left") || replacementText.length === 0 || edit.forceSuppress) {
+      // Intentional style/font override or deletion: suppress ONLY if full operator or safely split substring
+      if (!isExact && extraOps.length === 0) {
+        if (op.arg.type === "array") {
+          const patchedArrayOp = replaceSubstringInTjArray(contentStr, op, originalText, "");
+          if (!patchedArrayOp) {
+            return { handled: false, mode: "rejected", reason: "Cannot split TJ array substring for restyling without affecting surrounding text.", fontInfo };
+          }
+          replacementSegment = patchedArrayOp;
+        } else {
+          return { handled: false, mode: "rejected", reason: "Changing font/style on a partial substring of a single text operator is unsupported without altering surrounding characters.", fontInfo };
+        }
       } else {
         replacementSegment = "() Tj";
       }
     } else {
-      replacementSegment = "() Tj";
+      return { handled: false, mode: "rejected", reason: "Edit cannot be safely applied in-place.", fontInfo };
     }
 
-    // Apply replacement + clear any merged trailing operators in reverse offset order
     const patches = [{ start: op.opStart, end: op.opEnd, text: replacementSegment }];
     for (const ex of extraOps) {
       patches.push({ start: ex.opStart, end: ex.opEnd, text: "() Tj" });
@@ -589,19 +728,18 @@ export function editPageContentStream(pdfDoc, page, edit, pageBox, pdfLib) {
       entry.parent.set(entry.key, pdfDoc.context.register(newStream));
     }
 
-    return { handled: true, mode };
+    return { handled: true, mode, fontInfo };
   } catch (e) {
-    console.warn("Content-stream text edit fallback:", e);
-    return { handled: false, mode: "none" };
+    console.warn("Content-stream text edit rejected:", e);
+    return { handled: false, mode: "rejected", reason: e?.message || "Content-stream edit error." };
   }
 }
 
 /**
- * Produces a lightweight modified PDF byte array with original text for edited spans
- * suppressed in the target page's content stream, enabling transparent live-preview overlays
- * over the 100% genuine PDF background (gradients, images, watermarks, patterns).
+ * Applies validated text edits to a single page of pdfBytes using the exact same
+ * content-stream / export pipeline so PDF.js preview matches exported PDF output.
  */
-export async function suppressPageTextInPdfBytes(pdfBytes, pageIndex, edits, pdfLib) {
+export async function applyPageEditsForPreview(pdfBytes, pageIndex, edits, pdfLib, drawFallbackFn) {
   const { PDFDocument } = pdfLib || {};
   if (!PDFDocument || !pdfBytes || !edits || edits.length === 0) return null;
 
@@ -616,15 +754,24 @@ export async function suppressPageTextInPdfBytes(pdfBytes, pageIndex, edits, pdf
     if (crop && crop.width > 0 && crop.height > 0) box = crop;
   } catch (_) {}
 
-  const suppressedKeys = new Set();
+  const appliedKeys = new Set();
+  const warnings = [];
+
   for (const edit of edits) {
-    const res = editPageContentStream(pdfDoc, page, { ...edit, forceSuppress: true }, box, pdfLib);
-    if (res.handled) {
-      suppressedKeys.add(`${Math.round(edit.bbox[0])}_${Math.round(edit.bbox[1])}`);
+    const res = editPageContentStream(pdfDoc, page, edit, box, pdfLib);
+    if (!res.handled) {
+      warnings.push(res.reason || `Unsupported edit for "${edit.original_text}"`);
+      continue;
+    }
+    appliedKeys.add(`${Math.round(edit.bbox[0])}_${Math.round(edit.bbox[1])}`);
+    if (res.mode === "suppressed" && drawFallbackFn) {
+      await drawFallbackFn(pdfDoc, page, edit, box);
     }
   }
 
-  if (suppressedKeys.size === 0) return { bytes: null, suppressedKeys };
+  if (appliedKeys.size === 0) {
+    return { bytes: null, appliedKeys, warnings };
+  }
   const bytes = await pdfDoc.save();
-  return { bytes, suppressedKeys };
+  return { bytes, appliedKeys, warnings };
 }

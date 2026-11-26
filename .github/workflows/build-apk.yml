@@ -98,6 +98,7 @@ jobs:
           node --check js/text-editor.js
           node --check js/export-client.js
           node --check js/app.js
+          node scripts/sync-editor-assets.mjs --check
           node tests/pdf-text-editing.test.mjs
 
       - name: Build Fresh Android Release APKs (Universal & Split-ABI)

@@ -4,7 +4,8 @@
  * encrypted/restricted PDF tolerance, all annotations/edits/page ops, and Canvas-to-PDF fallback.
  */
 
-import { State } from "./state.js";
+import { State } from "./state.js?v=5.2";
+import { editPageContentStream } from "./pdf-content-stream-editor.js?v=5.2";
 
 export class ExportClient {
   constructor() {
@@ -133,6 +134,34 @@ export class ExportClient {
     const filename = this._getDesiredFilename();
     const blob = new Blob([this.lastExportBytes], { type: "application/pdf" });
 
+    // Android WebView FlutterBridge Integration (no-op on browser/website)
+    if (typeof window !== "undefined" && window.FlutterBridge) {
+      try {
+        const reader = new FileReader();
+        reader.onloadend = () => {
+          const res = reader.result;
+          const base64Data = (typeof res === "string" && res.includes(",")) ? res.split(",")[1] : res;
+          window.FlutterBridge.postMessage(JSON.stringify({
+            action: "export",
+            filename: filename,
+            base64: base64Data,
+            size: blob.size
+          }));
+        };
+        reader.readAsDataURL(blob);
+      } catch (bridgeErr) {
+        console.warn("FlutterBridge export error:", bridgeErr);
+      }
+
+      try {
+        fetch("/api/save?filename=" + encodeURIComponent(filename), {
+          method: "POST",
+          headers: { "Content-Type": "application/pdf" },
+          body: blob
+        }).catch(() => {});
+      } catch (_) {}
+    }
+
     // Try native Save As file picker when user clicks "Save As..."
     if (useSaveAsPicker && typeof window.showSaveFilePicker === "function") {
       try {
@@ -239,10 +268,108 @@ export class ExportClient {
     }
   }
 
+  _resolveCssFontFamily(fontKey, loadedFontName, userChangedFont) {
+    if (window.app?.textEditor?._getSpanCssFontFamily) {
+      return window.app.textEditor._getSpanCssFontFamily(fontKey, loadedFontName, userChangedFont);
+    }
+    const k = String(fontKey || "arial").toLowerCase();
+    let css = '"Arial", "Helvetica Neue", Helvetica, sans-serif';
+    if (/times|roman|tinos|serif|georgia|cambria|garamond|palatino/.test(k)) {
+      css = '"Times New Roman", Tinos, Georgia, serif';
+    } else if (/courier|mono|consolas|code/.test(k)) {
+      css = '"Courier New", Cousine, monospace';
+    } else if (fontKey) {
+      css = `"${fontKey}", Arial, sans-serif`;
+    }
+    if (!userChangedFont && loadedFontName) {
+      return `"${loadedFontName}", ${css}`;
+    }
+    return css;
+  }
+
+  _suppressOriginalTextInContentStream(pdfDoc, page, edit) {
+    try {
+      const { PDFName, PDFArray, PDFRawStream, PDFRef, decodePDFRawStream } = window.PDFLib || {};
+      if (!PDFName || !decodePDFRawStream) return false;
+      const originalText = (edit.original_text || "").trim();
+      if (!originalText) return false;
+
+      const contentsRef = page.node.get(PDFName.of("Contents"));
+      if (!contentsRef) return false;
+
+      const refs = [];
+      const resolved = pdfDoc.context.lookup(contentsRef);
+      if (resolved instanceof PDFArray) {
+        for (let i = 0; i < resolved.size(); i++) {
+          refs.push(resolved.get(i));
+        }
+      } else {
+        refs.push(contentsRef);
+      }
+
+      const escRegex = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+      const escapePdfStr = (s) => s.replace(/\\/g, "\\\\").replace(/\(/g, "\\(").replace(/\)/g, "\\)");
+      const escapedTarget = escapePdfStr(originalText);
+
+      for (const refOrStream of refs) {
+        const stream = pdfDoc.context.lookup(refOrStream);
+        if (!stream || !(stream instanceof PDFRawStream)) continue;
+
+        const decodedBytes = decodePDFRawStream(stream).decode();
+        let contentStr = "";
+        for (let i = 0; i < decodedBytes.length; i++) {
+          contentStr += String.fromCharCode(decodedBytes[i]);
+        }
+
+        let modified = false;
+        const tjRegex = new RegExp(`\\(${escRegex(escapedTarget)}\\)\\s*Tj`);
+        if (tjRegex.test(contentStr)) {
+          contentStr = contentStr.replace(tjRegex, "() Tj");
+          modified = true;
+        }
+
+        if (!modified && contentStr.includes("TJ")) {
+          contentStr = contentStr.replace(/\[([^\]]*)\]\s*TJ/g, (fullMatch, inner) => {
+            if (modified) return fullMatch;
+            const parts = [];
+            const strRe = /\(([^)\\]*(?:\\.[^)\\]*)*)\)/g;
+            let m;
+            while ((m = strRe.exec(inner)) !== null) {
+              parts.push(m[1].replace(/\\([()\\])/g, "$1"));
+            }
+            const joined = parts.join("");
+            if (joined.trim() === originalText || joined.includes(originalText)) {
+              modified = true;
+              return "() Tj";
+            }
+            return fullMatch;
+          });
+        }
+
+        if (modified) {
+          const outBytes = new Uint8Array(contentStr.length);
+          for (let i = 0; i < contentStr.length; i++) {
+            outBytes[i] = contentStr.charCodeAt(i) & 0xff;
+          }
+          const newStream = pdfDoc.context.stream(outBytes);
+          if (refOrStream instanceof PDFRef) {
+            pdfDoc.context.assign(refOrStream, newStream);
+          } else {
+            page.node.set(PDFName.of("Contents"), pdfDoc.context.register(newStream));
+          }
+          return true;
+        }
+      }
+    } catch (e) {
+      console.warn("Content stream text suppression skipped:", e);
+    }
+    return false;
+  }
+
   async _renderUnicodeTextToPngBytes(text, opts) {
-    const scale = 3;
+    const scale = 6;
     const fontSize = Math.max(6, opts.fontSize || 12);
-    const fontFamily = opts.fontFamily || "Arial, Helvetica, sans-serif";
+    const fontFamily = opts.cssFontFamily || this._resolveCssFontFamily(opts.fontFamily, opts.loadedFontName, opts.userChangedFont);
     const fontWeight = opts.isBold ? "700" : "400";
     const fontStyle = opts.isItalic ? "italic" : "normal";
     const color = opts.colorCss || "#000000";
@@ -258,8 +385,8 @@ export class ExportClient {
       const w = mctx.measureText(line || " ").width;
       if (w > maxW) maxW = w;
     }
-    const padX = 2;
-    const padY = 2;
+    const padX = 1;
+    const padY = 1;
     const cssW = Math.ceil(maxW + padX * 2);
     const cssH = Math.ceil(Math.max(opts.minHeight || lineHeight, lines.length * lineHeight) + padY * 2);
 
@@ -267,6 +394,8 @@ export class ExportClient {
     canvas.width = Math.max(4, Math.ceil(cssW * scale));
     canvas.height = Math.max(4, Math.ceil(cssH * scale));
     const ctx = canvas.getContext("2d");
+    ctx.imageSmoothingEnabled = true;
+    ctx.imageSmoothingQuality = "high";
     ctx.scale(scale, scale);
     ctx.font = `${fontStyle} ${fontWeight} ${fontSize}px ${fontFamily}`;
     ctx.fillStyle = color;
@@ -355,15 +484,34 @@ export class ExportClient {
       throw new Error("Loaded PDF has 0 pages");
     }
 
-    // Lazily embed standard fonts so we only embed what is used
+    // Lazily embed standard fonts and warn explicitly if a non-Standard custom font cannot be embedded without fontkit
     const fontCache = {};
+    this._lastExportWarnings = [];
     const getFont = async (fontName, isBold, isItalic) => {
-      const nameStr = String(fontName || "Helvetica").toLowerCase();
+      const rawName = String(fontName || "Helvetica").trim();
+      const nameStr = rawName.toLowerCase();
       let family = "Helvetica";
-      if (/times|roman|serif|georgia|cambria|garamond|palatino|tinos/i.test(nameStr)) {
+      let isExactStandard = /^(helvetica|arial|times|times-roman|courier)$/i.test(rawName);
+      if (/times|roman|tinos|timesnewroman/i.test(nameStr)) {
         family = "Times";
-      } else if (/courier|mono|consolas|jetbrains|fixed/i.test(nameStr)) {
+      } else if (/courier|cousine|couriernew/i.test(nameStr)) {
         family = "Courier";
+      } else if (/helvetica|arial|arimo/i.test(nameStr)) {
+        family = "Helvetica";
+      } else {
+        isExactStandard = false;
+        if (/serif|georgia|cambria|garamond|palatino|caladea|lora|merriweather/i.test(nameStr)) {
+          family = "Times";
+        } else if (/mono|consolas|jetbrains|fixed|fira/i.test(nameStr)) {
+          family = "Courier";
+        }
+      }
+
+      if (!isExactStandard && !pdfDoc.fontkit) {
+        const warnMsg = `Font "${rawName}" is not a PDF Standard-14 font and fontkit is unavailable; exported using closest standard ${family} font.`;
+        if (!this._lastExportWarnings.includes(warnMsg)) {
+          this._lastExportWarnings.push(warnMsg);
+        }
       }
 
       const key = `${family}_${isBold ? "B" : ""}_${isItalic ? "I" : ""}`;
@@ -414,12 +562,15 @@ export class ExportClient {
       const colorCss = this._colorToCss(opts.colorRgb, opts.colorHex);
       const isHandwriting = /caveat|dancing|vibes|script|cursive/i.test(String(fontName));
 
-      // Use high-DPI transparent PNG overlay if text has non-WinAnsi Unicode (Hindi, ₹, emojis, etc.) or script font
+      // Preserve crisp vector PDF text for all WinAnsi-encodable text!
+      // Only use high-DPI PNG overlay for handwriting scripts or non-WinAnsi Unicode (Hindi, Arabic, Emoji, ₹)
       const winAnsiTestStr = normalized.replace(/\n/g, "");
       if (isHandwriting || !this._canEncodeWinAnsi(font, winAnsiTestStr)) {
         const rendered = await this._renderUnicodeTextToPngBytes(text, {
           fontSize,
           fontFamily: fontName,
+          loadedFontName: opts.loadedFontName,
+          userChangedFont: opts.userChangedFont,
           isBold,
           isItalic,
           isUnderline,
@@ -459,16 +610,26 @@ export class ExportClient {
           } catch (_) {}
         }
 
-        // Baseline sits ~0.82 * fontSize below top of box
-        const baselineY = box.y + box.height - topYFromBoxTop - (i * lineHeight) - (fontSize * 0.84);
+        // Align to exact PDF baselineY when available
+        const baselineY = (opts.baselineY !== undefined && opts.baselineY !== null)
+          ? (box.y + box.height - opts.baselineY - (i * lineHeight))
+          : (box.y + box.height - topYFromBoxTop - (i * lineHeight) - (fontSize * 0.84));
 
-        page.drawText(line, {
+        const drawOpts = {
           x: lineX,
           y: baselineY,
           size: fontSize,
           font,
           color
-        });
+        };
+        if (opts.opacity !== undefined && opts.opacity !== null && opts.opacity < 1) {
+          drawOpts.opacity = Math.max(0.05, Math.min(1, Number(opts.opacity)));
+        }
+        if (opts.angleDeg && Math.abs(opts.angleDeg) > 0.25) {
+          drawOpts.rotate = degrees(-Number(opts.angleDeg));
+        }
+
+        page.drawText(line, drawOpts);
 
         if (isUnderline) {
           try {
@@ -484,33 +645,39 @@ export class ExportClient {
       }
     };
 
-    // 1. Apply Text Edits (whiteout original span + draw styled replacement)
+    // 1. Apply Text Edits using genuine content-stream editing (NO destructive background patches or whiteout rectangles)
     for (const edit of (State.pendingTextEdits || [])) {
       const page = pages[edit.page_number];
       if (!page || !Array.isArray(edit.bbox) || edit.bbox.length < 4) continue;
 
       const box = getPageBox(page);
       const [x0, y0, x1, y1] = edit.bbox.map(Number);
-      const pad = 1.5;
       const w = Math.max(x1 - x0, 8);
       const h = Math.max(y1 - y0, 8);
-      const rectY = box.y + box.height - y1 - pad;
 
-      // Cover original text seamlessly with exact sampled background color (defaults to white)
-      const bgFill = (edit.bg_color || edit.bg_color_hex)
-        ? this._parseRgb(edit.bg_color, edit.bg_color_hex || "#ffffff", rgb)
-        : rgb(1, 1, 1);
-      page.drawRectangle({
-        x: box.x + x0 - pad,
-        y: rectY,
-        width: w + pad * 2,
-        height: h + pad * 2,
-        color: bgFill
-      });
+      const csResult = editPageContentStream(pdfDoc, page, edit, box, window.PDFLib);
+
+      if (!csResult.handled) {
+        // Never draw a white/colored rectangle or patch over the original PDF background.
+        // Reject unsupported edits cleanly and preserve original document content.
+        const reason = csResult.reason || `Unsupported vector text edit for "${edit.original_text}".`;
+        this._lastExportWarnings.push(reason);
+        continue;
+      }
+
+      if (csResult.mode === "inplace") {
+        // Genuine in-place vector replacement in original embedded font + original graphics state!
+        continue;
+      }
 
       if (edit.replacement_text && String(edit.replacement_text).length > 0) {
         await drawSafeMultilineText(page, edit.replacement_text, x0, y0, box, {
           fontName: edit.font_name || edit.original_font || edit.font || "Helvetica",
+          loadedFontName: edit.loaded_font_name || "",
+          userChangedFont: !!edit.user_changed_font,
+          baselineY: edit.baseline_y,
+          angleDeg: edit.angle_deg || 0,
+          opacity: edit.opacity !== undefined ? edit.opacity : 1.0,
           fontSize: edit.font_size || Math.max(8, h * 0.82),
           isBold: !!edit.is_bold,
           isItalic: !!edit.is_italic,
@@ -934,14 +1101,18 @@ export class ExportClient {
       console.warn("Auto-commit active text edit warning:", e);
     }
 
-    const headingEl = this.modalEl.querySelector("#export-modal-heading");
-    if (headingEl) headingEl.textContent = saveAs ? "Save As PDF" : "Export & Download PDF";
+    if (!autoDownload) {
+      const headingEl = this.modalEl.querySelector("#export-modal-heading");
+      if (headingEl) headingEl.textContent = saveAs ? "Save As PDF" : "Export & Download PDF";
 
-    this.modalEl.querySelector("#export-loading-state").style.display = "flex";
-    this.modalEl.querySelector("#export-result-state").style.display = "none";
-    this.modalEl.querySelector("#export-download-btn").style.display = "none";
-    this.modalEl.querySelector("#export-save-as-btn").style.display = "none";
-    this.modalEl.style.display = "flex";
+      this.modalEl.querySelector("#export-loading-state").style.display = "flex";
+      this.modalEl.querySelector("#export-result-state").style.display = "none";
+      this.modalEl.querySelector("#export-download-btn").style.display = "none";
+      this.modalEl.querySelector("#export-save-as-btn").style.display = "none";
+      this.modalEl.style.display = "flex";
+    } else {
+      State.emit("toast", { type: "info", message: "Exporting modified PDF..." });
+    }
 
     // Pre-fill filename input cleanly
     const baseName = (State.filename || "document.pdf").replace(/\.pdf$/i, "");
@@ -954,6 +1125,9 @@ export class ExportClient {
     // Tier 1: Native Vector PDF-Lib Export
     try {
       exportResult = await this._exportWithPdfLib();
+      if (this._lastExportWarnings && this._lastExportWarnings.length > 0) {
+        warningMsg = this._lastExportWarnings.join(" ");
+      }
     } catch (vecErr) {
       console.warn("Vector PDF-Lib export hit compatibility issue, switching to high-res Canvas PDF fallback:", vecErr);
       warningMsg = "Document used special encryption or structure — exported cleanly using high-resolution compatibility mode.";
@@ -970,6 +1144,18 @@ export class ExportClient {
     }
 
     this.lastExportBytes = exportResult.bytes;
+
+    // Auto-trigger direct download for Done / Auto-download button without modal popup
+    if (autoDownload) {
+      this.hide();
+      await this._downloadPreparedBytes(false);
+      if (warningMsg) {
+        State.emit("toast", { type: "warning", message: warningMsg });
+      } else {
+        State.emit("toast", { type: "success", message: "PDF successfully exported!" });
+      }
+      return;
+    }
 
     // Populate modal stats
     this.modalEl.querySelector("#export-val-pagecount").textContent = `${exportResult.pageCount} ${exportResult.pageCount === 1 ? "Page" : "Pages"}`;

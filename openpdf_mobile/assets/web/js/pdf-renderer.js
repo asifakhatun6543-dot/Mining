@@ -3,7 +3,7 @@
  */
 
 import { State } from "./state.js";
-import { suppressPageTextInPdfBytes } from "./pdf-content-stream-editor.js?v=5.1";
+import { applyPageEditsForPreview } from "./pdf-content-stream-editor.js?v=5.2";
 
 // Configure PDF.js worker
 if (window.pdfjsLib) {
@@ -34,8 +34,48 @@ export class PDFRenderer {
       return true;
     }
     try {
-      const res = await suppressPageTextInPdfBytes(State.pdfBytes, pageIndex, pageEdits, window.PDFLib);
-      if (!res || !res.bytes || res.suppressedKeys.size === 0) return false;
+      const { StandardFonts, rgb, degrees } = window.PDFLib;
+      const drawFallbackFn = async (pdfDoc, page, edit, box) => {
+        if (!edit.replacement_text) return;
+        const nameStr = String(edit.font_name || "Helvetica").toLowerCase();
+        let stdFont = StandardFonts.Helvetica;
+        if (/times|roman|serif|georgia|cambria|garamond|palatino|tinos/i.test(nameStr)) {
+          stdFont = edit.is_bold && edit.is_italic ? StandardFonts.TimesRomanBoldItalic
+            : edit.is_bold ? StandardFonts.TimesRomanBold
+            : edit.is_italic ? StandardFonts.TimesRomanItalic : StandardFonts.TimesRoman;
+        } else if (/courier|mono|consolas|jetbrains|fixed/i.test(nameStr)) {
+          stdFont = edit.is_bold && edit.is_italic ? StandardFonts.CourierBoldOblique
+            : edit.is_bold ? StandardFonts.CourierBold
+            : edit.is_italic ? StandardFonts.CourierOblique : StandardFonts.Courier;
+        } else {
+          stdFont = edit.is_bold && edit.is_italic ? StandardFonts.HelveticaBoldOblique
+            : edit.is_bold ? StandardFonts.HelveticaBold
+            : edit.is_italic ? StandardFonts.HelveticaOblique : StandardFonts.Helvetica;
+        }
+        const font = await pdfDoc.embedFont(stdFont);
+        const [x0, y0, , y1] = edit.bbox.map(Number);
+        const fontSize = Math.max(5, Number(edit.font_size) || 12);
+        const baselineY = (edit.baseline_y !== undefined && edit.baseline_y !== null)
+          ? (box.y + box.height - Number(edit.baseline_y))
+          : (box.y + box.height - y0 - fontSize * 0.84);
+        const [r, g, b] = Array.isArray(edit.text_color) ? edit.text_color : [0, 0, 0];
+        const drawOpts = {
+          x: box.x + x0,
+          y: baselineY,
+          size: fontSize,
+          font,
+          color: rgb(r, g, b)
+        };
+        if (edit.opacity !== undefined && edit.opacity < 1) drawOpts.opacity = Math.max(0.05, Number(edit.opacity));
+        if (edit.angle_deg && Math.abs(edit.angle_deg) > 0.25) drawOpts.rotate = degrees(-Number(edit.angle_deg));
+        page.drawText(String(edit.replacement_text), drawOpts);
+      };
+
+      const res = await applyPageEditsForPreview(State.pdfBytes, pageIndex, pageEdits, window.PDFLib, drawFallbackFn);
+      if (res && res.warnings && res.warnings.length > 0) {
+        State.emit("toast", { type: "warning", message: res.warnings[0] });
+      }
+      if (!res || !res.bytes || res.appliedKeys.size === 0) return false;
 
       const tempDoc = await window.pdfjsLib.getDocument({ data: res.bytes }).promise;
       const pdfPage = await tempDoc.getPage(pageIndex + 1);
@@ -50,11 +90,11 @@ export class PDFRenderer {
       ctx.scale(dpr, dpr);
 
       await pdfPage.render({ canvasContext: ctx, viewport }).promise;
-      this.suppressedKeysByPage.set(pageIndex, res.suppressedKeys);
+      this.suppressedKeysByPage.set(pageIndex, res.appliedKeys);
       try { tempDoc.destroy(); } catch (_) {}
       return true;
     } catch (e) {
-      console.warn("Suppressed preview render fallback:", e);
+      console.warn("Unified preview render fallback:", e);
       return false;
     }
   }

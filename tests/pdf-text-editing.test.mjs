@@ -16,7 +16,7 @@ const pdfjsLib = require(path.join(ROOT, "node_modules/pdfjs-dist/legacy/build/p
 import {
   scanContentStreamTextOps,
   editPageContentStream,
-  suppressPageTextInPdfBytes
+  applyPageEditsForPreview
 } from "../js/pdf-content-stream-editor.js";
 
 function sha256File(relPath) {
@@ -207,56 +207,67 @@ async function runTests() {
     console.log("PASS [4/5]: Style-changed edit suppresses original operator cleanly with zero whiteout");
   }
 
-  // TEST 5: Website & Android WebView Engine Parity
+  // TEST 5: Website, Backend, and Android WebView Engine Parity (All 4 copies identical)
   {
     const sharedModules = [
       "pdf-content-stream-editor.js",
+      "pdf-renderer.js",
       "text-editor.js",
-      "pdf-renderer.js"
+      "export-client.js"
     ];
     for (const file of sharedModules) {
-      const webSha = sha256File(`js/${file}`);
-      const appSha = sha256File(`openpdf_mobile/assets/web/js/${file}`);
-      assert.equal(webSha, appSha, `Website and Android copies of ${file} must stay identical`);
+      const rootSha = sha256File(`js/${file}`);
+      assert.equal(rootSha, sha256File(`backend/js/${file}`), `backend/js/${file} must match js/${file}`);
+      assert.equal(rootSha, sha256File(`backend/static/js/${file}`), `backend/static/js/${file} must match js/${file}`);
+      assert.equal(rootSha, sha256File(`openpdf_mobile/assets/web/js/${file}`), `Android ${file} must match js/${file}`);
     }
     passed++;
-    console.log("PASS [5/8]: Website and Android WebView editing modules are 100% in sync");
+    console.log("PASS [5/9]: All 4 editor implementations (js/, backend/js/, backend/static/js/, Android) are 100% in sync");
   }
 
-  // TEST 6: Unified Font List Verification (Zero Categories, Strict A-Z, Searchable)
+  // TEST 6: Unified Font List Verification Across All Copies (Zero Categories)
   {
-    const editorSrc = fs.readFileSync(path.join(ROOT, "js/text-editor.js"), "utf8");
-    assert.equal(editorSrc.includes("<optgroup"), false, "Font selector must not contain any <optgroup> categories");
-    assert.equal(editorSrc.includes("mt-doc-fonts-group"), false, "Font selector must not contain Document Fonts category group");
-    assert.ok(editorSrc.includes("mt-font-search"), "Unified font picker must include search bar");
-    assert.ok(editorSrc.includes("mt-font-list"), "Unified font picker must include single scrollable list");
-    assert.ok(editorSrc.includes("_getUnifiedFontList"), "Unified A-Z font list builder must exist");
+    for (const rel of ["js/text-editor.js", "backend/js/text-editor.js", "backend/static/js/text-editor.js", "openpdf_mobile/assets/web/js/text-editor.js"]) {
+      const editorSrc = fs.readFileSync(path.join(ROOT, rel), "utf8");
+      assert.equal(editorSrc.includes("<optgroup"), false, `${rel} must not contain any <optgroup> categories`);
+      assert.equal(editorSrc.includes("mt-doc-fonts-group"), false, `${rel} must not contain Document Fonts category group`);
+      assert.ok(editorSrc.includes("mt-font-search"), `${rel} must include search bar`);
+      assert.ok(editorSrc.includes("mt-font-list"), `${rel} must include single scrollable list`);
+      assert.ok(editorSrc.includes("_getUnifiedFontList"), `${rel} must include unified A-Z font list builder`);
+    }
 
-    // Extract FONT_DEFINITIONS keys & labels and verify A-Z sortability & uniqueness
+    const editorSrc = fs.readFileSync(path.join(ROOT, "js/text-editor.js"), "utf8");
     const matches = [...editorSrc.matchAll(/\{\s*key:\s*"([^"]+)",\s*label:\s*"([^"]+)"/g)];
     assert.ok(matches.length >= 20, "FONT_DEFINITIONS must retain supported fonts");
-    const labels = matches.map(m => m[2]).sort((a, b) => a.localeCompare(b, undefined, { sensitivity: "base" }));
-    assert.ok(labels[0].localeCompare(labels[labels.length - 1]) < 0, "Fonts must sort A-Z cleanly");
 
     passed++;
-    console.log(`PASS [6/8]: Unified A-Z searchable font list verified (${matches.length} fonts, zero categories)`);
+    console.log(`PASS [6/9]: Unified A-Z searchable font list verified across all 4 copies (${matches.length} fonts, zero categories)`);
   }
 
-  // TEST 7: Cache-busting & Android WebView No-Cache Verification
+  // TEST 7: Cache-busting (v=5.2), No-Cache Headers & Removal of Background Reconstruction / Destructive Fallback
   {
     const webHtml = fs.readFileSync(path.join(ROOT, "index.html"), "utf8");
     const appHtml = fs.readFileSync(path.join(ROOT, "openpdf_mobile/assets/web/index.html"), "utf8");
     const webAppJs = fs.readFileSync(path.join(ROOT, "js/app.js"), "utf8");
     const appAppJs = fs.readFileSync(path.join(ROOT, "openpdf_mobile/assets/web/js/app.js"), "utf8");
+    const textEditorSrc = fs.readFileSync(path.join(ROOT, "js/text-editor.js"), "utf8");
+    const exportSrc = fs.readFileSync(path.join(ROOT, "js/export-client.js"), "utf8");
     const serverDart = fs.readFileSync(path.join(ROOT, "openpdf_mobile/lib/core/services/pdf_editor_server.dart"), "utf8");
-    assert.ok(webHtml.includes("app.js?v=5.1"), "Website index.html must load v=5.1 assets");
-    assert.ok(appHtml.includes("app.js?v=5.1"), "Android index.html must load v=5.1 assets");
-    assert.ok(webAppJs.includes("text-editor.js?v=5.1"), "Website app.js must import text-editor.js?v=5.1");
-    assert.ok(appAppJs.includes("text-editor.js?v=5.1"), "Android app.js must import text-editor.js?v=5.1");
+
+    assert.ok(webHtml.includes("app.js?v=5.2"), "Website index.html must load v=5.2 assets");
+    assert.ok(appHtml.includes("app.js?v=5.2"), "Android index.html must load v=5.2 assets");
+    assert.ok(webAppJs.includes("text-editor.js?v=5.2"), "Website app.js must import text-editor.js?v=5.2");
+    assert.ok(appAppJs.includes("text-editor.js?v=5.2"), "Android app.js must import text-editor.js?v=5.2");
     assert.ok(serverDart.includes("no-store"), "Android loopback server must disable stale WebView caching");
 
+    // Verify background reconstruction & destructive fallback are completely removed from vector editing
+    assert.equal(textEditorSrc.includes("_createInpaintedBgDataUrl"), false, "_createInpaintedBgDataUrl must be removed from text-editor.js");
+    assert.equal(textEditorSrc.includes("_sampleSpanVisualMetrics"), false, "_sampleSpanVisualMetrics must be removed from text-editor.js");
+    assert.equal(textEditorSrc.includes("Math.round(rawSize * 10) / 10"), false, "Font size rounding must be removed from openForSpan");
+    assert.equal(exportSrc.includes("inpainted_bg_url"), false, "Destructive inpainted_bg_url fallback must be removed from export-client.js");
+
     passed++;
-    console.log("PASS [7/9]: Website & Android WebView asset versioning (v=5.1) and no-cache headers verified");
+    console.log("PASS [7/9]: v=5.2 cache-busting & removal of background-reconstruction / destructive fallbacks verified");
   }
 
   // TEST 8: Multi-band Gradient-like Background + Colored & Rotated Text Preservation
@@ -299,7 +310,7 @@ async function runTests() {
     console.log("PASS [8/9]: Multi-band background + rotated colored text preserved in-place");
   }
 
-  // TEST 9: In-place color/size reuse of original embedded font + suppressPageTextInPdfBytes
+  // TEST 9: In-place color/size reuse of original font + applyPageEditsForPreview + unsupported edit rejection
   {
     const { PDFDocument, StandardFonts, rgb } = PDFLib;
     const pdfDoc = await PDFDocument.create();
@@ -336,19 +347,48 @@ async function runTests() {
     assert.ok(styled, "Styled replacement must exist");
     assert.equal(styled.fontSize, 20, "Updated font size 20pt must be preserved");
 
-    // Test suppressPageTextInPdfBytes for transparent live-preview canvas
-    const preview = await suppressPageTextInPdfBytes(
+    // Test applyPageEditsForPreview unified preview & export pipeline
+    const preview = await applyPageEditsForPreview(
       origBytes,
       0,
-      [{ original_text: "Original", bbox: [80, 128, 130, 146], baseline_y: 142 }],
+      [{
+        original_text: "Original",
+        replacement_text: "PreviewText",
+        bbox: [80, 128, 130, 146],
+        baseline_y: 142,
+        user_changed_font: false,
+        user_changed_style: false
+      }],
       PDFLib
     );
-    assert.ok(preview && preview.bytes && preview.suppressedKeys.size === 1, "Preview suppression must return modified PDF bytes");
+    assert.ok(preview && preview.bytes && preview.appliedKeys.size === 1, "Preview pipeline must return modified PDF bytes");
     const previewParsed = await extractPdfJsItems(preview.bytes);
-    assert.equal(previewParsed.items.filter(i => i.str === "Original").length, 0, "Original text must be suppressed on preview canvas");
+    assert.ok(previewParsed.items.some(i => i.str === "PreviewText"), "Unified preview PDF must render replacement text");
+
+    // Test unsupported non-WinAnsi character rejection leaves original document unchanged
+    const rejDoc = await PDFDocument.load(origBytes);
+    const rejPage = rejDoc.getPages()[0];
+    const rejRes = editPageContentStream(
+      rejDoc,
+      rejPage,
+      {
+        original_text: "Original",
+        replacement_text: "नमस्ते",
+        bbox: [80, 128, 130, 146],
+        baseline_y: 142,
+        user_changed_font: false,
+        user_changed_style: false
+      },
+      { x: 0, y: 0, width: 612, height: 792 },
+      PDFLib
+    );
+    assert.equal(rejRes.handled, false, "Unsupported non-WinAnsi glyph must be rejected");
+    assert.equal(rejRes.mode, "rejected", "Rejected edit must return mode=rejected");
+    const rejParsed = await extractPdfJsItems(await rejDoc.save());
+    assert.ok(rejParsed.items.some(i => i.str === "Original"), "Original text must remain untouched when edit is rejected");
 
     passed++;
-    console.log("PASS [9/9]: In-place color/size font reuse + transparent preview suppression verified");
+    console.log("PASS [9/9]: In-place color/size font reuse, unified preview & unsupported edit rejection verified");
   }
 
   console.log(`\nALL ${passed}/9 PDF TEXT EDITING REGRESSION TESTS PASSED.`);

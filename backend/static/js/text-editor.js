@@ -182,8 +182,15 @@ export class InlineTextEditor {
     this.currentBgColorHex = "#ffffff";
     this.currentBgColorRgb = [1.0, 1.0, 1.0];
     this.currentLetterSpacing = 0;
+    this.currentOpacity = 1.0;
+    this.currentAngleDeg = 0;
+    this.userChangedFont = false;
+    this.userChangedStyle = false;
     this.currentFitMode = "expand"; // Default to expand bounds rather than shrink font size
     this._loadedGoogleFonts = new Set();
+    this._measureCache = new Map();
+    this._documentFonts = [];
+    this.fontDropdownEl = null;
 
     this._createDOM();
     this._initEvents();
@@ -193,27 +200,164 @@ export class InlineTextEditor {
     return !!(this.activeBoxEl && this.currentSpanData);
   }
 
+  _getUnifiedFontList() {
+    const merged = [...FONT_DEFINITIONS, ...(this._documentFonts || [])];
+    const seen = new Set();
+    const unique = [];
+    for (const f of merged) {
+      if (!f || !f.key || !f.label) continue;
+      const norm = f.label.toLowerCase().replace(/[^a-z0-9]/g, "");
+      if (seen.has(norm) || seen.has(f.key)) continue;
+      seen.add(norm);
+      seen.add(f.key);
+      unique.push({
+        key: f.key,
+        label: f.label,
+        css: f.css || `"${f.label}", sans-serif`,
+        isDocumentFont: !!f.isDocumentFont
+      });
+    }
+    unique.sort((a, b) => a.label.localeCompare(b.label, undefined, { sensitivity: "base" }));
+    return unique;
+  }
+
+  _renderUnifiedFontList(filterQuery = "") {
+    const listEl = this.fontDropdownEl?.querySelector("#mt-font-list");
+    if (!listEl) return;
+
+    const q = (filterQuery || "").trim().toLowerCase();
+    const allFonts = this._getUnifiedFontList();
+    const filtered = q
+      ? allFonts.filter(f => f.label.toLowerCase().includes(q) || f.key.toLowerCase().includes(q))
+      : allFonts;
+
+    listEl.innerHTML = "";
+    if (filtered.length === 0) {
+      const empty = document.createElement("div");
+      empty.style.padding = "12px 10px";
+      empty.style.fontSize = "12px";
+      empty.style.color = "#64748b";
+      empty.style.textAlign = "center";
+      empty.textContent = "No matching fonts found";
+      listEl.appendChild(empty);
+      return;
+    }
+
+    const isDark = document.documentElement.classList.contains("dark") ||
+      document.body.classList.contains("dark-mode") ||
+      document.body.dataset.theme === "dark";
+
+    filtered.forEach(f => {
+      const isSelected = f.key === this.currentFont;
+      const item = document.createElement("button");
+      item.type = "button";
+      item.className = `unified-font-item${isSelected ? " selected" : ""}`;
+      item.dataset.fontKey = f.key;
+      item.style.cssText = `
+        width: 100%;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding: 7px 10px;
+        border: none;
+        border-radius: 6px;
+        background: ${isSelected ? (isDark ? "rgba(37, 99, 235, 0.25)" : "#eff6ff") : "transparent"};
+        color: ${isDark ? "#f1f5f9" : "#0f172a"};
+        font-size: 13px;
+        text-align: left;
+        cursor: pointer;
+        transition: background 0.12s ease;
+      `;
+
+      const check = document.createElement("span");
+      check.textContent = isSelected ? "✓" : "";
+      check.style.cssText = "width: 14px; font-weight: 800; color: #2563eb; flex-shrink: 0; font-size: 13px;";
+
+      const name = document.createElement("span");
+      name.textContent = f.label;
+      name.style.cssText = `flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-family: ${f.css}; font-weight: ${isSelected ? "700" : "500"};`;
+
+      item.appendChild(check);
+      item.appendChild(name);
+
+      item.addEventListener("mouseenter", () => {
+        if (!isSelected) item.style.background = isDark ? "rgba(255,255,255,0.08)" : "#f1f5f9";
+      });
+      item.addEventListener("mouseleave", () => {
+        if (!isSelected) item.style.background = "transparent";
+      });
+      item.addEventListener("click", (e) => {
+        e.stopPropagation();
+        this._setSelectedFont(f.key);
+        this.userChangedFont = true;
+        this.userChangedStyle = true;
+        this._closeFontDropdown();
+        this._updateFontStatusBadge();
+        this._updateEditableStyle();
+        this._checkTextOverflow();
+      });
+
+      listEl.appendChild(item);
+    });
+  }
+
+  _setSelectedFont(fontKey) {
+    this.currentFont = fontKey;
+    const allFonts = this._getUnifiedFontList();
+    const match = allFonts.find(f => f.key === fontKey);
+    const labelEl = this.miniToolbarEl?.querySelector("#mt-font-trigger-label");
+    if (labelEl) {
+      labelEl.textContent = match ? match.label : fontKey;
+    }
+  }
+
+  _openFontDropdown() {
+    if (!this.fontDropdownEl || !this.miniToolbarEl) return;
+    const trigger = this.miniToolbarEl.querySelector("#mt-font-trigger");
+    if (!trigger) return;
+
+    const isDark = document.documentElement.classList.contains("dark") ||
+      document.body.classList.contains("dark-mode") ||
+      document.body.dataset.theme === "dark";
+
+    this.fontDropdownEl.style.background = isDark ? "#0f172a" : "#ffffff";
+    this.fontDropdownEl.style.borderColor = isDark ? "rgba(255,255,255,0.14)" : "#cbd5e1";
+
+    const searchInput = this.fontDropdownEl.querySelector("#mt-font-search");
+    if (searchInput) {
+      searchInput.value = "";
+      searchInput.style.background = isDark ? "#1e293b" : "#f8fafc";
+      searchInput.style.color = isDark ? "#f8fafc" : "#0f172a";
+      searchInput.style.borderColor = isDark ? "rgba(255,255,255,0.14)" : "#cbd5e1";
+    }
+
+    this._renderUnifiedFontList("");
+
+    const rect = trigger.getBoundingClientRect();
+    this.fontDropdownEl.style.display = "flex";
+    this.fontDropdownEl.style.left = `${Math.max(8, Math.min(window.innerWidth - 252, rect.left))}px`;
+    this.fontDropdownEl.style.top = `${Math.min(window.innerHeight - 310, rect.bottom + 6)}px`;
+
+    const selectedItem = this.fontDropdownEl.querySelector(".unified-font-item.selected");
+    if (selectedItem) {
+      requestAnimationFrame(() => {
+        selectedItem.scrollIntoView({ block: "nearest", behavior: "smooth" });
+      });
+    }
+    setTimeout(() => searchInput?.focus(), 20);
+  }
+
+  _closeFontDropdown() {
+    if (this.fontDropdownEl) {
+      this.fontDropdownEl.style.display = "none";
+    }
+  }
+
   _createDOM() {
     // 1. Floating Mini-Toolbar
     this.miniToolbarEl = document.createElement("div");
     this.miniToolbarEl.className = "floating-mini-toolbar";
     this.miniToolbarEl.style.display = "none";
-
-    // Build categorized options for select
-    const groups = {};
-    FONT_DEFINITIONS.forEach(f => {
-      if (!groups[f.group]) groups[f.group] = [];
-      groups[f.group].push(f);
-    });
-
-    let fontOptionsHtml = `<optgroup id="mt-doc-fonts-group" label="Document Fonts" style="display: none;"></optgroup>`;
-    for (const [groupName, fonts] of Object.entries(groups)) {
-      fontOptionsHtml += `<optgroup label="${groupName}">`;
-      fonts.forEach(f => {
-        fontOptionsHtml += `<option value="${f.key}">${f.label}</option>`;
-      });
-      fontOptionsHtml += `</optgroup>`;
-    }
 
     this.miniToolbarEl.innerHTML = `
       <!-- Drag Handle -->
@@ -229,10 +373,11 @@ export class InlineTextEditor {
 
       <div class="mini-separator"></div>
 
-      <!-- Compact Font Family Dropdown -->
-      <select class="mini-select" id="mt-font-select" title="Font Family" style="max-width: 95px; height: 26px; font-size: 11.5px; padding: 0 4px;">
-        ${fontOptionsHtml}
-      </select>
+      <!-- Unified A-Z Searchable Font Trigger (No Categories) -->
+      <button type="button" class="mini-select" id="mt-font-trigger" title="Select Font Family" style="max-width: 118px; height: 26px; font-size: 11.5px; padding: 0 6px; display: inline-flex; align-items: center; justify-content: space-between; gap: 4px; cursor: pointer;">
+        <span id="mt-font-trigger-label" style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">Times New Roman</span>
+        <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="flex-shrink:0;"><polyline points="6 9 12 15 18 9"/></svg>
+      </button>
 
       <!-- Font Size Input -->
       <input type="number" class="mini-size-input" id="mt-font-size" value="12" min="4" max="144" step="0.5" title="Font Size (pt)" style="width: 38px; height: 26px; font-size: 11.5px; text-align: center; padding: 0 2px;">
@@ -268,6 +413,7 @@ export class InlineTextEditor {
       <button type="button" class="mini-btn" id="mt-more-btn" title="More formatting options" style="height: 26px; padding: 0 6px;">
         <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/><circle cx="5" cy="12" r="1"/></svg>
       </button>
+      <span id="mt-overflow-pill" style="display: none; font-size: 10px; font-weight: 700; color: #b45309; background: #fef3c7; border: 1px solid #f59e0b; border-radius: 4px; padding: 1px 5px; cursor: pointer;" title="Replacement text exceeds available width. Click to scale down.">⚠ Fit</span>
     `;
 
     // 2. More Options Dropdown Menu
@@ -304,10 +450,35 @@ export class InlineTextEditor {
           <option value="exact">Exact BBox</option>
         </select>
       </div>
+      <div id="mt-font-status" style="font-size: 10.5px; color: #334155; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px; padding: 4px 6px; line-height: 1.3;"></div>
     `;
 
     document.body.appendChild(this.miniToolbarEl);
     document.body.appendChild(this.moreMenuEl);
+
+    // 3. Unified Searchable A-Z Font Picker Popover (No Categories)
+    this.fontDropdownEl = document.createElement("div");
+    this.fontDropdownEl.id = "mt-font-dropdown";
+    this.fontDropdownEl.style.cssText = `
+      display: none;
+      position: fixed;
+      width: 244px;
+      background: #ffffff;
+      border: 1px solid #cbd5e1;
+      border-radius: 10px;
+      box-shadow: 0 10px 28px rgba(15, 23, 42, 0.2);
+      padding: 8px;
+      flex-direction: column;
+      gap: 6px;
+      z-index: 1300;
+    `;
+    this.fontDropdownEl.innerHTML = `
+      <input type="search" id="mt-font-search" placeholder="Search fonts..." autocomplete="off" spellcheck="false" style="width: 100%; box-sizing: border-box; padding: 6px 9px; border-radius: 7px; border: 1px solid #cbd5e1; font-size: 12.5px; outline: none;" />
+      <div id="mt-font-list" style="max-height: 240px; overflow-y: auto; scroll-behavior: smooth; display: flex; flex-direction: column; gap: 2px;"></div>
+    `;
+    this.fontDropdownEl.addEventListener("click", (e) => e.stopPropagation());
+    this.fontDropdownEl.addEventListener("pointerdown", (e) => e.stopPropagation());
+    document.body.appendChild(this.fontDropdownEl);
 
     this._bindMiniToolbarEvents();
   }
@@ -362,6 +533,7 @@ export class InlineTextEditor {
     boldBtn?.addEventListener("click", (e) => {
       e.stopPropagation();
       this.isBold = !this.isBold;
+      this.userChangedStyle = true;
       boldBtn.classList.toggle("active", this.isBold);
       updateStyleBtnState();
       this._updateEditableStyle();
@@ -371,6 +543,7 @@ export class InlineTextEditor {
     italicBtn?.addEventListener("click", (e) => {
       e.stopPropagation();
       this.isItalic = !this.isItalic;
+      this.userChangedStyle = true;
       italicBtn.classList.toggle("active", this.isItalic);
       updateStyleBtnState();
       this._updateEditableStyle();
@@ -380,23 +553,44 @@ export class InlineTextEditor {
     underlineBtn?.addEventListener("click", (e) => {
       e.stopPropagation();
       this.isUnderline = !this.isUnderline;
+      this.userChangedStyle = true;
       underlineBtn.classList.toggle("active", this.isUnderline);
       updateStyleBtnState();
       this._updateEditableStyle();
     });
 
-    // Font Family
-    const fontSelect = this.miniToolbarEl.querySelector("#mt-font-select");
-    fontSelect?.addEventListener("change", (e) => {
-      this.currentFont = e.target.value;
-      this._updateEditableStyle();
+    // Unified Searchable Font Picker Trigger & Search Input
+    const fontTrigger = this.miniToolbarEl.querySelector("#mt-font-trigger");
+    fontTrigger?.addEventListener("click", (e) => {
+      e.stopPropagation();
+      const isOpen = this.fontDropdownEl?.style.display === "flex";
+      if (isOpen) {
+        this._closeFontDropdown();
+      } else {
+        this._openFontDropdown();
+      }
+    });
+
+    const fontSearch = this.fontDropdownEl?.querySelector("#mt-font-search");
+    fontSearch?.addEventListener("input", (e) => {
+      this._renderUnifiedFontList(e.target.value);
+    });
+
+    document.addEventListener("click", (e) => {
+      if (this.fontDropdownEl && this.fontDropdownEl.style.display === "flex") {
+        if (!this.fontDropdownEl.contains(e.target) && e.target !== fontTrigger && !fontTrigger?.contains(e.target)) {
+          this._closeFontDropdown();
+        }
+      }
     });
 
     // Font Size
     const sizeInput = this.miniToolbarEl.querySelector("#mt-font-size");
     sizeInput?.addEventListener("input", (e) => {
       this.currentFontSize = parseFloat(e.target.value) || 12;
+      this.userChangedStyle = true;
       this._updateEditableStyle();
+      this._checkTextOverflow();
     });
 
     // Text Color
@@ -404,7 +598,15 @@ export class InlineTextEditor {
     colorPicker?.addEventListener("input", (e) => {
       this.currentColorHex = e.target.value;
       this.currentColorRgb = this._hexToRgbArray(e.target.value);
+      this.userChangedStyle = true;
       this._updateEditableStyle();
+    });
+
+    // Overflow "Fit" quick-action pill
+    const overflowPill = this.miniToolbarEl.querySelector("#mt-overflow-pill");
+    overflowPill?.addEventListener("click", (e) => {
+      e.stopPropagation();
+      this._fitFontSizeToAvailableWidth();
     });
 
     // More Options Menu Toggle
@@ -507,24 +709,20 @@ export class InlineTextEditor {
   }
 
   populateDocumentFonts(detectedFonts) {
-    const docGroup = this.miniToolbarEl.querySelector("#mt-doc-fonts-group");
-    if (!docGroup) return;
-
-    docGroup.innerHTML = "";
-    if (!detectedFonts || detectedFonts.length === 0) {
-      docGroup.style.display = "none";
-      return;
-    }
+    this._documentFonts = [];
+    if (!detectedFonts || detectedFonts.length === 0) return;
 
     const unique = [...new Set(detectedFonts)];
     unique.forEach(f => {
-      const clean = f.replace(/^[A-Z]{6}\+/, "").trim();
-      const opt = document.createElement("option");
-      opt.value = clean;
-      opt.textContent = `PDF Font: ${clean}`;
-      docGroup.appendChild(opt);
+      const clean = (f || "").replace(/^[A-Za-z0-9]{6}\+/, "").trim();
+      if (!clean) return;
+      this._documentFonts.push({
+        key: clean,
+        label: clean,
+        css: `"${clean}", sans-serif`,
+        isDocumentFont: true
+      });
     });
-    docGroup.style.display = "block";
   }
 
   _detectAndSelectFont(fontName, flags = 0) {
@@ -647,24 +845,19 @@ export class InlineTextEditor {
       }
     }
 
-    const fontSelect = this.miniToolbarEl.querySelector("#mt-font-select");
-    if (fontSelect) {
-      let optionExists = Array.from(fontSelect.options).some(opt => opt.value === matchedKey);
-      if (!optionExists && clean) {
-        const docGroup = this.miniToolbarEl.querySelector("#mt-doc-fonts-group");
-        if (docGroup) {
-          docGroup.style.display = "block";
-          const newOpt = document.createElement("option");
-          newOpt.value = clean;
-          newOpt.textContent = `PDF Font: ${clean}`;
-          docGroup.appendChild(newOpt);
-          matchedKey = clean;
-        }
-      }
-      fontSelect.value = matchedKey;
+    const unified = this._getUnifiedFontList();
+    const existsInUnified = unified.some(f => f.key === matchedKey);
+    if (!existsInUnified && clean) {
+      this._documentFonts.push({
+        key: clean,
+        label: clean,
+        css: `"${clean}", sans-serif`,
+        isDocumentFont: true
+      });
+      matchedKey = clean;
     }
 
-    this.currentFont = matchedKey;
+    this._setSelectedFont(matchedKey);
     return matchedKey;
   }
 
@@ -675,6 +868,14 @@ export class InlineTextEditor {
     const found = FONT_DEFINITIONS.find(f => f.key === fontKey);
     if (found) return found.css;
     return `"${fontKey}", Arimo, Arial, sans-serif`;
+  }
+
+  _getSpanCssFontFamily(fontKey, loadedFontName, userChangedFont) {
+    const baseCss = this._getCssFontFamily(fontKey);
+    if (!userChangedFont && loadedFontName) {
+      return `"${loadedFontName}", ${baseCss}`;
+    }
+    return baseCss;
   }
 
   _ensureGoogleFontLoaded(fontKey) {
@@ -736,126 +937,6 @@ export class InlineTextEditor {
     } catch (_) {}
   }
 
-  /**
-   * Pixel-accurate Canvas Visual Sampler:
-   * Extracts exact background color (bgHex) and foreground text ink color (fgHex)
-   * directly from the rendered PDF page canvas at span.bbox!
-   */
-  _sampleSpanVisualMetrics(pageIndex, span) {
-    try {
-      const canvas = document.getElementById(`page-canvas-${pageIndex}`);
-      if (!canvas || !canvas.width || !canvas.height) return null;
-
-      const pageDim = State.pageDimensions[pageIndex] || { width: 612, height: 792 };
-      const scaleX = canvas.width / pageDim.width;
-      const scaleY = canvas.height / pageDim.height;
-
-      const [x0, y0, x1, y1] = span.bbox;
-      const padPx = Math.max(2, Math.round(2 * scaleX));
-      const rx0 = Math.max(0, Math.floor(x0 * scaleX) - padPx);
-      const ry0 = Math.max(0, Math.floor(y0 * scaleY) - padPx);
-      const rx1 = Math.min(canvas.width, Math.ceil(x1 * scaleX) + padPx);
-      const ry1 = Math.min(canvas.height, Math.ceil(y1 * scaleY) + padPx);
-      const rw = rx1 - rx0;
-      const rh = ry1 - ry0;
-      if (rw < 4 || rh < 4) return null;
-
-      const ctx = canvas.getContext("2d", { willReadFrequently: true });
-      const imgData = ctx.getImageData(rx0, ry0, rw, rh).data;
-
-      // 1. Sample Background Color from outer 1px perimeter ring
-      const bgR = [], bgG = [], bgB = [];
-      const addBg = (px, py) => {
-        const idx = (py * rw + px) * 4;
-        if (imgData[idx + 3] < 200) return;
-        bgR.push(imgData[idx]);
-        bgG.push(imgData[idx + 1]);
-        bgB.push(imgData[idx + 2]);
-      };
-      for (let x = 0; x < rw; x += Math.max(1, Math.floor(rw / 40))) {
-        addBg(x, 0);
-        addBg(x, rh - 1);
-      }
-      for (let y = 1; y < rh - 1; y += Math.max(1, Math.floor(rh / 20))) {
-        addBg(0, y);
-        addBg(rw - 1, y);
-      }
-      if (bgR.length === 0) return null;
-
-      const median = (arr) => {
-        const s = arr.slice().sort((a, b) => a - b);
-        return s[Math.floor(s.length / 2)];
-      };
-
-      let bR = median(bgR);
-      let bG = median(bgG);
-      let bB = median(bgB);
-      // Snap near-pure-white background cleanly to #ffffff
-      if (bR > 246 && bG > 246 && bB > 246) {
-        bR = 255; bG = 255; bB = 255;
-      }
-
-      // 2. Sample Foreground Text Ink Color from interior pixels with highest contrast vs background
-      const inkPixels = [];
-      let totalInterior = 0;
-      const ix0 = Math.min(padPx, Math.floor(rw / 4));
-      const iy0 = Math.min(padPx, Math.floor(rh / 4));
-      const ix1 = Math.max(ix0 + 1, rw - ix0);
-      const iy1 = Math.max(iy0 + 1, rh - iy0);
-
-      for (let y = iy0; y < iy1; y++) {
-        for (let x = ix0; x < ix1; x++) {
-          totalInterior++;
-          const idx = (y * rw + x) * 4;
-          const r = imgData[idx];
-          const g = imgData[idx + 1];
-          const b = imgData[idx + 2];
-          const dist = Math.hypot(r - bR, g - bG, b - bB);
-          if (dist > 32) {
-            inkPixels.push({ r, g, b, dist });
-          }
-        }
-      }
-
-      const toHex = (r, g, b) => `#${[r, g, b].map(v => Math.max(0, Math.min(255, Math.round(v))).toString(16).padStart(2, "0")).join("")}`;
-      const bgHex = toHex(bR, bG, bB);
-      const bgRgb = [bR / 255, bG / 255, bB / 255];
-
-      if (inkPixels.length < 3) {
-        return { bgHex, bgRgb, fgHex: null, fgRgb: null, visualBold: false };
-      }
-
-      // Take top 20% highest-contrast core ink pixels (eliminates anti-aliased gray fringes!)
-      inkPixels.sort((a, b) => b.dist - a.dist);
-      const coreCount = Math.max(3, Math.floor(inkPixels.length * 0.22));
-      const core = inkPixels.slice(0, coreCount);
-
-      let fR = median(core.map(p => p.r));
-      let fG = median(core.map(p => p.g));
-      let fB = median(core.map(p => p.b));
-
-      // Clean snap for crisp black/white ink
-      const bgLuma = 0.299 * bR + 0.587 * bG + 0.114 * bB;
-      if (bgLuma > 180 && fR < 28 && fG < 28 && fB < 28) {
-        fR = 0; fG = 0; fB = 0;
-      } else if (bgLuma < 80 && fR > 232 && fG > 232 && fB > 232) {
-        fR = 255; fG = 255; fB = 255;
-      }
-
-      const fgHex = toHex(fR, fG, fB);
-      const fgRgb = [fR / 255, fG / 255, fB / 255];
-
-      // Estimate visual bold from ink density (only used if font metadata had no bold info)
-      const inkRatio = totalInterior > 0 ? (inkPixels.length / totalInterior) : 0;
-      const visualBold = inkRatio > 0.34;
-
-      return { bgHex, bgRgb, fgHex, fgRgb, visualBold };
-    } catch (err) {
-      console.warn("Canvas visual sampling skipped:", err);
-      return null;
-    }
-  }
-
   _calibrateLetterSpacing(span) {
     try {
       const text = span.original_text || span.text || "";
@@ -890,8 +971,10 @@ export class InlineTextEditor {
 
     const scale = State.zoomScale;
     this._ensureGoogleFontLoaded(this.currentFont);
-    this.activeBoxEl.style.background = this.currentBgColorHex || "#ffffff";
-    editableDiv.style.fontFamily = this._getCssFontFamily(this.currentFont);
+    this.activeBoxEl.style.backgroundImage = "none";
+    this.activeBoxEl.style.backgroundColor = "rgba(37, 99, 235, 0.06)";
+    const loadedFont = this.currentSpanData?.span?.loadedFontName;
+    editableDiv.style.fontFamily = this._getSpanCssFontFamily(this.currentFont, loadedFont, this.userChangedFont);
     editableDiv.style.fontSize = `${this.currentFontSize * scale}px`;
     editableDiv.style.fontWeight = this.isBold ? "bold" : "normal";
     editableDiv.style.fontStyle = this.isItalic ? "italic" : "normal";
@@ -960,29 +1043,15 @@ export class InlineTextEditor {
     this._openedAt = Date.now();
     this.currentSpanData = selectedData;
     const { pageIndex, span, element } = selectedData;
+    this.userChangedFont = !!span.userChangedFont;
+    this.userChangedStyle = !!span.userChangedStyle;
+    this.currentOpacity = span.opacity !== undefined ? span.opacity : 1.0;
+    this.currentAngleDeg = span.angleDeg || 0;
 
     // Use current replacement text if already edited, otherwise original text
     const textToShow = span.currentText !== undefined ? span.currentText : span.text;
 
-    // 1. Sample exact pixel colors (foreground ink & background) from rendered PDF canvas!
-    const sampled = (!span.currentColorHex || !span.bgColorHex)
-      ? this._sampleSpanVisualMetrics(pageIndex, span)
-      : null;
-
-    if (span.bgColorHex) {
-      this.currentBgColorHex = span.bgColorHex;
-      this.currentBgColorRgb = span.bgColorRgb || this._hexToRgbArray(span.bgColorHex);
-    } else if (sampled && sampled.bgHex) {
-      this.currentBgColorHex = sampled.bgHex;
-      this.currentBgColorRgb = sampled.bgRgb;
-      span.bgColorHex = sampled.bgHex;
-      span.bgColorRgb = sampled.bgRgb;
-    } else {
-      this.currentBgColorHex = "#ffffff";
-      this.currentBgColorRgb = [1.0, 1.0, 1.0];
-    }
-
-    // 2. Auto-detect exact original font (prioritize real embedded font name from commonObjs!)
+    // 1. Auto-detect exact original font (prioritize real embedded font name from commonObjs!)
     const flags = span.flags || 0;
     const isSerifFlag = (flags & 4) !== 0;
     const isMonoFlag = (flags & 1) !== 0 || (flags & 8) !== 0;
@@ -999,30 +1068,24 @@ export class InlineTextEditor {
 
     const fontLower = (span.rawFontName || fontToUse || "").toLowerCase();
 
-    // 3. AUTOMATIC FONT SIZE: exact PDF font size rounded to 1 decimal place
-    const rawSize = span.currentFontSize || span.size || 12;
-    this.currentFontSize = Math.round(rawSize * 10) / 10;
+    // 2. AUTOMATIC FONT SIZE: preserve exact numeric PDF font size without rounding
+    const rawSize = span.currentFontSize !== undefined ? span.currentFontSize : (span.size || 12);
+    this.currentFontSize = Number(rawSize) || 12;
 
-    // 4. AUTOMATIC BOLD / ITALIC / UNDERLINE
+    // 3. AUTOMATIC BOLD / ITALIC / UNDERLINE
     const metaBold = ((flags & 16) !== 0 || (flags & 262144) !== 0 || /bold|black|heavy|semibold|demi|extrabold|700|800|900|[-,]bd\b|[-_]b\b/.test(fontLower));
-    const hasExplicitRegular = /regular|normal|light|thin|book|roman\b/i.test(fontLower) && !metaBold;
-    this.isBold = span.isBold !== undefined
-      ? span.isBold
-      : (metaBold || (!hasExplicitRegular && !span.rawFontName && sampled?.visualBold) || false);
+    this.isBold = span.isBold !== undefined ? span.isBold : metaBold;
     this.isItalic = span.isItalic !== undefined
       ? span.isItalic
       : ((flags & 2) !== 0 || (flags & 64) !== 0 || /italic|oblique|slant|[-,]it\b/.test(fontLower));
     this.isUnderline = span.isUnderline !== undefined ? span.isUnderline : false;
 
-    // 5. AUTOMATIC EXACT COLOR MATCHING (Canvas pixel ink > PDF operator color > fallback black)
+    // 4. AUTOMATIC EXACT COLOR MATCHING FROM PDF GRAPHICS STATE
     if (span.currentColorHex) {
       this.currentColorHex = span.currentColorHex;
       this.currentColorRgb = span.currentColorRgb || this._hexToRgbArray(span.currentColorHex);
-    } else if (sampled && sampled.fgHex) {
-      this.currentColorHex = sampled.fgHex;
-      this.currentColorRgb = sampled.fgRgb;
-    } else if (span.color) {
-      const colorInt = span.color;
+    } else if (span.hasOpColor || span.color !== undefined) {
+      const colorInt = span.color || 0;
       const r = (colorInt >> 16) & 255;
       const g = (colorInt >> 8) & 255;
       const b = colorInt & 255;
@@ -1050,8 +1113,7 @@ export class InlineTextEditor {
     }
 
     // Update Mini-Toolbar controls
-    const fontSelect = this.miniToolbarEl.querySelector("#mt-font-select");
-    if (fontSelect) fontSelect.value = this.currentFont;
+    this._setSelectedFont(this.currentFont);
 
     const sizeInput = this.miniToolbarEl.querySelector("#mt-font-size");
     if (sizeInput) {
@@ -1075,6 +1137,84 @@ export class InlineTextEditor {
 
     // Build In-Place Bounding Box right over the text (Word-style)
     this._buildInPlaceBox(pageIndex, span, element, textToShow);
+    this._updateFontStatusBadge();
+    this._checkTextOverflow();
+  }
+
+  _updateFontStatusBadge() {
+    const statusEl = this.moreMenuEl?.querySelector("#mt-font-status");
+    if (!statusEl || !this.currentSpanData) return;
+    const { span } = this.currentSpanData;
+    const origName = span.rawFontName || span.font || "Unknown";
+    if (!this.userChangedFont && span.loadedFontName) {
+      const subsetNote = span.isSubset ? " • Subset (fallback if missing glyphs)" : "";
+      statusEl.innerHTML = `<strong style="color:#059669;">Original:</strong> ${origName} (Embedded${subsetNote})`;
+    } else if (this.userChangedFont) {
+      statusEl.innerHTML = `<strong style="color:#2563eb;">Custom:</strong> ${this.currentFont} (orig: ${origName})`;
+    } else {
+      statusEl.innerHTML = `<strong style="color:#d97706;">Fallback:</strong> ${this.currentFont} (orig: ${origName})`;
+    }
+  }
+
+  _checkTextOverflow() {
+    const pill = this.miniToolbarEl?.querySelector("#mt-overflow-pill");
+    if (!pill || !this.activeBoxEl || !this.currentSpanData) return;
+    const editableDiv = this.activeBoxEl.querySelector(".inplace-text-editable");
+    if (!editableDiv) return;
+
+    const { pageIndex, span } = this.currentSpanData;
+    const pageDim = State.pageDimensions[pageIndex] || { width: 612, height: 792 };
+    const text = editableDiv.innerText || "";
+    const [x0] = span.bbox;
+    const availW = Math.max(20, pageDim.width - x0 - 12);
+
+    const cacheKey = `${this.currentFont}|${this.currentFontSize}|${this.isBold}|${this.isItalic}|${text}`;
+    let measuredW = this._measureCache.get(cacheKey);
+    if (measuredW === undefined) {
+      const c = document.createElement("canvas");
+      const ctx = c.getContext("2d");
+      const wt = this.isBold ? "bold" : "normal";
+      const st = this.isItalic ? "italic" : "normal";
+      ctx.font = `${st} ${wt} ${this.currentFontSize}px ${this._getSpanCssFontFamily(this.currentFont, span.loadedFontName, this.userChangedFont)}`;
+      measuredW = Math.max(...text.split("\n").map(line => ctx.measureText(line || " ").width));
+      if (this._measureCache.size > 200) this._measureCache.clear();
+      this._measureCache.set(cacheKey, measuredW);
+    }
+
+    if (measuredW > availW) {
+      pill.style.display = "inline-block";
+      this.activeBoxEl.style.borderColor = "#f59e0b";
+    } else {
+      pill.style.display = "none";
+      this.activeBoxEl.style.borderColor = "#2563eb";
+    }
+  }
+
+  _fitFontSizeToAvailableWidth() {
+    if (!this.activeBoxEl || !this.currentSpanData) return;
+    const editableDiv = this.activeBoxEl.querySelector(".inplace-text-editable");
+    if (!editableDiv) return;
+    const { pageIndex, span } = this.currentSpanData;
+    const pageDim = State.pageDimensions[pageIndex] || { width: 612, height: 792 };
+    const availW = Math.max(20, pageDim.width - span.bbox[0] - 12);
+    const text = editableDiv.innerText || "";
+
+    const c = document.createElement("canvas");
+    const ctx = c.getContext("2d");
+    const wt = this.isBold ? "bold" : "normal";
+    const st = this.isItalic ? "italic" : "normal";
+    ctx.font = `${st} ${wt} ${this.currentFontSize}px ${this._getSpanCssFontFamily(this.currentFont, span.loadedFontName, this.userChangedFont)}`;
+    const measuredW = Math.max(...text.split("\n").map(line => ctx.measureText(line || " ").width), 1);
+
+    if (measuredW > availW) {
+      const nextSize = Math.max(5, Math.floor((this.currentFontSize * (availW / measuredW)) * 2) / 2);
+      this.currentFontSize = nextSize;
+      this.userChangedStyle = true;
+      const sizeInput = this.miniToolbarEl.querySelector("#mt-font-size");
+      if (sizeInput) sizeInput.value = nextSize;
+      this._updateEditableStyle();
+      this._checkTextOverflow();
+    }
   }
 
   _buildInPlaceBox(pageIndex, span, originalHighlightEl, textToShow) {
@@ -1098,19 +1238,19 @@ export class InlineTextEditor {
     const box = document.createElement("div");
     box.className = "inplace-text-box word-style-editor";
     box.style.position = "absolute";
-    box.style.left = `${(x0 - 1) * scale}px`;
-    box.style.top = `${(y0 - 1) * scale}px`;
-    box.style.minWidth = `${width + 2 * scale}px`;
+    box.style.left = `${x0 * scale}px`;
+    box.style.top = `${y0 * scale}px`;
+    box.style.minWidth = `${width}px`;
     box.style.width = "max-content";
-    box.style.maxWidth = `calc(100% - ${(x0 - 1) * scale + 6}px)`;
-    box.style.height = `${height + 2 * scale}px`;
-    box.style.minHeight = `${height + 2 * scale}px`;
+    box.style.maxWidth = `calc(100% - ${x0 * scale + 4}px)`;
+    box.style.height = `${height}px`;
+    box.style.minHeight = `${height}px`;
     box.style.boxSizing = "border-box";
-    box.style.background = this.currentBgColorHex || "#ffffff";
+    box.style.background = "rgba(37, 99, 235, 0.06)";
     box.style.border = "1.5px solid #2563eb";
     box.style.borderRadius = "2px";
     box.style.boxShadow = "0 1px 6px rgba(37, 99, 235, 0.22)";
-    box.style.padding = "0 1px";
+    box.style.padding = "0";
     box.style.display = "inline-flex";
     box.style.alignItems = "center";
     box.style.zIndex = "80";
@@ -1140,6 +1280,7 @@ export class InlineTextEditor {
 
     editableDiv.addEventListener("input", () => {
       this._positionMiniToolbar(box);
+      this._checkTextOverflow();
     });
 
     setTimeout(() => {
@@ -1241,14 +1382,16 @@ export class InlineTextEditor {
     span.original_text = span.original_text || span.text;
     span.currentText = replacementText;
     span.currentFont = this.currentFont;
+    span.userChangedFont = !!this.userChangedFont;
+    span.userChangedStyle = !!this.userChangedStyle;
+    span.opacity = this.currentOpacity;
+    span.angleDeg = this.currentAngleDeg;
     span.currentFontSize = this.currentFontSize;
     span.isBold = this.isBold;
     span.isItalic = this.isItalic;
     span.isUnderline = this.isUnderline;
     span.currentColorHex = this.currentColorHex;
     span.currentColorRgb = [...this.currentColorRgb];
-    span.bgColorHex = this.currentBgColorHex;
-    span.bgColorRgb = [...this.currentBgColorRgb];
     span.letterSpacing = this.currentLetterSpacing;
     span.currentAlignment = this.currentAlignment;
 
@@ -1257,8 +1400,14 @@ export class InlineTextEditor {
       original_text: span.original_text,
       replacement_text: replacementText,
       bbox: [...span.bbox],
+      baseline_y: span.baselineY,
       font_name: this.currentFont,
       original_font: span.rawFontName || span.font,
+      loaded_font_name: span.loadedFontName || "",
+      user_changed_font: !!this.userChangedFont,
+      user_changed_style: !!this.userChangedStyle,
+      opacity: this.currentOpacity !== undefined ? this.currentOpacity : 1.0,
+      angle_deg: this.currentAngleDeg || 0,
       font_size: this.currentFontSize,
       fit_mode: this.currentFitMode,
       alignment: this.currentAlignment,
@@ -1268,8 +1417,6 @@ export class InlineTextEditor {
       flags: span.flags || 0,
       text_color: [...this.currentColorRgb],
       text_color_hex: this.currentColorHex,
-      bg_color: [...this.currentBgColorRgb],
-      bg_color_hex: this.currentBgColorHex,
       letter_spacing: this.currentLetterSpacing
     };
 
@@ -1321,6 +1468,9 @@ export class InlineTextEditor {
           span.currentAlignment = previousAlignment;
           this._renderVisualTextReplacement(pageIndex, span, previousText, span._origHighlightEl, previousEditCopy);
         }
+        window.app?.renderer?.renderPageWithSuppressedEdits?.(pageIndex).then((ok) => {
+          if (ok) this.reRenderPageEdits(pageIndex);
+        });
         this.hide();
       },
       redo: () => {
@@ -1335,11 +1485,17 @@ export class InlineTextEditor {
         span.currentColorRgb = editItem.text_color;
         span.currentAlignment = editItem.alignment;
         this._renderVisualTextReplacement(pageIndex, span, replacementText, span._origHighlightEl, editItem);
+        window.app?.renderer?.renderPageWithSuppressedEdits?.(pageIndex).then((ok) => {
+          if (ok) this.reRenderPageEdits(pageIndex);
+        });
         this.hide();
       }
     });
 
     this._renderVisualTextReplacement(pageIndex, span, replacementText, span._origHighlightEl, editItem);
+    window.app?.renderer?.renderPageWithSuppressedEdits?.(pageIndex).then((ok) => {
+      if (ok) this.reRenderPageEdits(pageIndex);
+    });
     this.hide();
   }
 
@@ -1497,50 +1653,60 @@ export class InlineTextEditor {
       cover.addEventListener("mousedown", (e) => e.stopPropagation());
     }
 
-    const bgHex = editItem.bg_color_hex || origSpan.bgColorHex || "#ffffff";
+    const isRenderedOnPdfCanvas = !!window.app?.renderer?.isSpanSuppressedOnCanvas?.(pageIndex, editItem.bbox);
+    const fontSizePt = editItem.font_size || origSpan.size;
+    const topCoord = (editItem.baseline_y !== undefined && editItem.baseline_y !== null)
+      ? (editItem.baseline_y - fontSizePt * 0.85)
+      : y0;
     cover.style.position = "absolute";
-    cover.style.left = `${(x0 - 1) * scale}px`;
-    cover.style.top = `${(y0 - 1) * scale}px`;
-    cover.style.minWidth = `${origWidth + 2 * scale}px`;
+    cover.style.left = `${x0 * scale}px`;
+    cover.style.top = `${topCoord * scale}px`;
+    cover.style.minWidth = `${origWidth}px`;
     cover.style.width = "max-content";
-    cover.style.maxWidth = `calc(100% - ${(x0 - 1) * scale + 10}px)`;
-    cover.style.height = `${origHeight + 2 * scale}px`;
-    cover.style.minHeight = `${origHeight + 2 * scale}px`;
-    cover.style.background = bgHex;
+    cover.style.maxWidth = `calc(100% - ${x0 * scale + 4}px)`;
+    cover.style.height = `${Math.max(origHeight, fontSizePt * 1.15 * scale)}px`;
+    cover.style.minHeight = `${origHeight}px`;
+    cover.style.backgroundColor = "transparent";
+    cover.style.backgroundImage = "none";
     cover.style.zIndex = "6";
     cover.style.visibility = "visible";
     cover.title = `Edited: "${replacementText}" (Click to edit again)`;
-    cover.style.display = "inline-flex";
-    cover.style.alignItems = "center";
-    cover.style.padding = "0 1px";
+    cover.style.display = "block";
+    cover.style.padding = "0";
     cover.style.cursor = "pointer";
     cover.style.pointerEvents = "auto";
     cover.style.overflow = "visible";
 
     if (editItem.alignment === "center") {
-      cover.style.justifyContent = "center";
+      cover.style.textAlign = "center";
     } else if (editItem.alignment === "right") {
-      cover.style.justifyContent = "flex-end";
+      cover.style.textAlign = "right";
     } else {
-      cover.style.justifyContent = "flex-start";
+      cover.style.textAlign = "left";
     }
 
-    // Use color from the edit item, not from current editor state
+    // Use color from the edit item, or transparent when the modified PDF itself is rendered by PDF.js on canvas
     const colorHex = editItem.text_color_hex || origSpan.currentColorHex || this._rgbArrayToHex(editItem.text_color) || "#000000";
     const letterSpacingVal = editItem.letter_spacing !== undefined ? editItem.letter_spacing : (origSpan.letterSpacing || 0);
 
     cover.innerHTML = "";
     const textEl = document.createElement("span");
     textEl.textContent = replacementText;
-    textEl.style.color = colorHex;
+    textEl.style.color = isRenderedOnPdfCanvas ? "transparent" : colorHex;
     textEl.style.fontSize = `${(editItem.font_size || origSpan.size) * scale}px`;
-    textEl.style.fontFamily = this._getCssFontFamily(editItem.font_name);
+    textEl.style.fontFamily = this._getSpanCssFontFamily(
+      editItem.font_name,
+      editItem.loaded_font_name || origSpan.loadedFontName,
+      editItem.user_changed_font
+    );
     textEl.style.fontWeight = editItem.is_bold ? "bold" : "normal";
     textEl.style.fontStyle = editItem.is_italic ? "italic" : "normal";
     textEl.style.textDecoration = editItem.is_underline ? "underline" : "none";
     textEl.style.letterSpacing = letterSpacingVal ? `${letterSpacingVal * scale}px` : "normal";
     textEl.style.whiteSpace = "pre";
-    textEl.style.lineHeight = "1.05";
+    textEl.style.lineHeight = "1";
+    textEl.style.webkitFontSmoothing = "antialiased";
+    textEl.style.textRendering = "optimizeLegibility";
     textEl.style.pointerEvents = "none"; // Text inside cover shouldn't eat clicks
 
     cover.appendChild(textEl);
