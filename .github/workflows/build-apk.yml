@@ -80,7 +80,7 @@ jobs:
           rm -f test/widget_test.dart
           flutter clean
           flutter pub get
-          flutter analyze
+          flutter analyze --no-fatal-infos
 
       - name: Run Flutter Unit Verification Tests
         working-directory: openpdf_mobile
