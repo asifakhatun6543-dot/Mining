@@ -543,12 +543,11 @@ export class ExportClient {
       const color = this._parseRgb(opts.colorRgb, opts.colorHex, rgb);
       const colorCss = this._colorToCss(opts.colorRgb, opts.colorHex);
       const isHandwriting = /caveat|dancing|vibes|script|cursive/i.test(String(fontName));
-      const isStandardPdfFont = /^(helvetica|arial|times|times-roman|courier)$/i.test(String(fontName).trim());
-      const useExactEmbeddedOrCustomFont = (!opts.userChangedFont && !!opts.loadedFontName) || !isStandardPdfFont;
 
-      // Use 6x ultra-crisp transparent PNG overlay for Unicode, custom/embedded fonts, or script fonts
+      // Preserve crisp vector PDF text for all WinAnsi-encodable text!
+      // Only use high-DPI PNG overlay for handwriting scripts or non-WinAnsi Unicode (Hindi, Arabic, Emoji, ₹)
       const winAnsiTestStr = normalized.replace(/\n/g, "");
-      if (isHandwriting || useExactEmbeddedOrCustomFont || !this._canEncodeWinAnsi(font, winAnsiTestStr)) {
+      if (isHandwriting || !this._canEncodeWinAnsi(font, winAnsiTestStr)) {
         const rendered = await this._renderUnicodeTextToPngBytes(text, {
           fontSize,
           fontFamily: fontName,

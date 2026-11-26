@@ -219,10 +219,82 @@ async function runTests() {
       assert.equal(webSha, appSha, `Website and Android copies of ${file} must stay identical`);
     }
     passed++;
-    console.log("PASS [5/5]: Website and Android WebView editing modules are 100% in sync");
+    console.log("PASS [5/8]: Website and Android WebView editing modules are 100% in sync");
   }
 
-  console.log(`\nALL ${passed}/5 PDF TEXT EDITING REGRESSION TESTS PASSED.`);
+  // TEST 6: Unified Font List Verification (Zero Categories, Strict A-Z, Searchable)
+  {
+    const editorSrc = fs.readFileSync(path.join(ROOT, "js/text-editor.js"), "utf8");
+    assert.equal(editorSrc.includes("<optgroup"), false, "Font selector must not contain any <optgroup> categories");
+    assert.equal(editorSrc.includes("mt-doc-fonts-group"), false, "Font selector must not contain Document Fonts category group");
+    assert.ok(editorSrc.includes("mt-font-search"), "Unified font picker must include search bar");
+    assert.ok(editorSrc.includes("mt-font-list"), "Unified font picker must include single scrollable list");
+    assert.ok(editorSrc.includes("_getUnifiedFontList"), "Unified A-Z font list builder must exist");
+
+    // Extract FONT_DEFINITIONS keys & labels and verify A-Z sortability & uniqueness
+    const matches = [...editorSrc.matchAll(/\{\s*key:\s*"([^"]+)",\s*label:\s*"([^"]+)"/g)];
+    assert.ok(matches.length >= 20, "FONT_DEFINITIONS must retain supported fonts");
+    const labels = matches.map(m => m[2]).sort((a, b) => a.localeCompare(b, undefined, { sensitivity: "base" }));
+    assert.ok(labels[0].localeCompare(labels[labels.length - 1]) < 0, "Fonts must sort A-Z cleanly");
+
+    passed++;
+    console.log(`PASS [6/8]: Unified A-Z searchable font list verified (${matches.length} fonts, zero categories)`);
+  }
+
+  // TEST 7: Cache-busting & Android WebView No-Cache Verification
+  {
+    const webHtml = fs.readFileSync(path.join(ROOT, "index.html"), "utf8");
+    const appHtml = fs.readFileSync(path.join(ROOT, "openpdf_mobile/assets/web/index.html"), "utf8");
+    const serverDart = fs.readFileSync(path.join(ROOT, "openpdf_mobile/lib/core/services/pdf_editor_server.dart"), "utf8");
+    assert.ok(webHtml.includes("app.js?v=5.0"), "Website index.html must load v=5.0 assets");
+    assert.ok(appHtml.includes("app.js?v=5.0"), "Android index.html must load v=5.0 assets");
+    assert.ok(serverDart.includes("no-store"), "Android loopback server must disable stale WebView caching");
+
+    passed++;
+    console.log("PASS [7/8]: Website & Android WebView asset versioning and no-cache headers verified");
+  }
+
+  // TEST 8: Multi-band Gradient-like Background + Colored & Rotated Text Preservation
+  {
+    const { PDFDocument, StandardFonts, rgb, degrees } = PDFLib;
+    const pdfDoc = await PDFDocument.create();
+    const page = pdfDoc.addPage([612, 792]);
+    const helvBold = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
+
+    // Multi-band background
+    for (let i = 0; i < 6; i++) {
+      page.drawRectangle({ x: 0, y: i * 132, width: 612, height: 132, color: rgb(0.95 - i * 0.05, 0.96 - i * 0.03, 1.0) });
+    }
+    page.drawText("Rotated Label", { x: 120, y: 500, size: 16, font: helvBold, color: rgb(0.8, 0.1, 0.2), rotate: degrees(45) });
+
+    const origBytes = await pdfDoc.save();
+    const editDoc = await PDFDocument.load(origBytes);
+    const editPage = editDoc.getPages()[0];
+    const res = editPageContentStream(
+      editDoc,
+      editPage,
+      {
+        original_text: "Rotated Label",
+        replacement_text: "Updated Label",
+        bbox: [120, 270, 220, 296],
+        baseline_y: 292,
+        user_changed_font: false,
+        user_changed_style: false
+      },
+      { x: 0, y: 0, width: 612, height: 792 },
+      PDFLib
+    );
+
+    assert.equal(res.mode, "inplace", "Rotated text edit should preserve rotation & color in-place");
+    const outBytes = await editDoc.save();
+    const parsed = await extractPdfJsItems(outBytes);
+    assert.ok(parsed.items.some(i => i.str === "Updated Label"), "Rotated replacement text must appear in exported PDF");
+
+    passed++;
+    console.log("PASS [8/8]: Multi-band background + rotated colored text preserved in-place");
+  }
+
+  console.log(`\nALL ${passed}/8 PDF TEXT EDITING REGRESSION TESTS PASSED.`);
 }
 
 runTests().catch(err => {

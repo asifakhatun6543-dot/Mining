@@ -189,6 +189,8 @@ export class InlineTextEditor {
     this.currentFitMode = "expand"; // Default to expand bounds rather than shrink font size
     this._loadedGoogleFonts = new Set();
     this._measureCache = new Map();
+    this._documentFonts = [];
+    this.fontDropdownEl = null;
 
     this._createDOM();
     this._initEvents();
@@ -198,27 +200,164 @@ export class InlineTextEditor {
     return !!(this.activeBoxEl && this.currentSpanData);
   }
 
+  _getUnifiedFontList() {
+    const merged = [...FONT_DEFINITIONS, ...(this._documentFonts || [])];
+    const seen = new Set();
+    const unique = [];
+    for (const f of merged) {
+      if (!f || !f.key || !f.label) continue;
+      const norm = f.label.toLowerCase().replace(/[^a-z0-9]/g, "");
+      if (seen.has(norm) || seen.has(f.key)) continue;
+      seen.add(norm);
+      seen.add(f.key);
+      unique.push({
+        key: f.key,
+        label: f.label,
+        css: f.css || `"${f.label}", sans-serif`,
+        isDocumentFont: !!f.isDocumentFont
+      });
+    }
+    unique.sort((a, b) => a.label.localeCompare(b.label, undefined, { sensitivity: "base" }));
+    return unique;
+  }
+
+  _renderUnifiedFontList(filterQuery = "") {
+    const listEl = this.fontDropdownEl?.querySelector("#mt-font-list");
+    if (!listEl) return;
+
+    const q = (filterQuery || "").trim().toLowerCase();
+    const allFonts = this._getUnifiedFontList();
+    const filtered = q
+      ? allFonts.filter(f => f.label.toLowerCase().includes(q) || f.key.toLowerCase().includes(q))
+      : allFonts;
+
+    listEl.innerHTML = "";
+    if (filtered.length === 0) {
+      const empty = document.createElement("div");
+      empty.style.padding = "12px 10px";
+      empty.style.fontSize = "12px";
+      empty.style.color = "#64748b";
+      empty.style.textAlign = "center";
+      empty.textContent = "No matching fonts found";
+      listEl.appendChild(empty);
+      return;
+    }
+
+    const isDark = document.documentElement.classList.contains("dark") ||
+      document.body.classList.contains("dark-mode") ||
+      document.body.dataset.theme === "dark";
+
+    filtered.forEach(f => {
+      const isSelected = f.key === this.currentFont;
+      const item = document.createElement("button");
+      item.type = "button";
+      item.className = `unified-font-item${isSelected ? " selected" : ""}`;
+      item.dataset.fontKey = f.key;
+      item.style.cssText = `
+        width: 100%;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding: 7px 10px;
+        border: none;
+        border-radius: 6px;
+        background: ${isSelected ? (isDark ? "rgba(37, 99, 235, 0.25)" : "#eff6ff") : "transparent"};
+        color: ${isDark ? "#f1f5f9" : "#0f172a"};
+        font-size: 13px;
+        text-align: left;
+        cursor: pointer;
+        transition: background 0.12s ease;
+      `;
+
+      const check = document.createElement("span");
+      check.textContent = isSelected ? "✓" : "";
+      check.style.cssText = "width: 14px; font-weight: 800; color: #2563eb; flex-shrink: 0; font-size: 13px;";
+
+      const name = document.createElement("span");
+      name.textContent = f.label;
+      name.style.cssText = `flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-family: ${f.css}; font-weight: ${isSelected ? "700" : "500"};`;
+
+      item.appendChild(check);
+      item.appendChild(name);
+
+      item.addEventListener("mouseenter", () => {
+        if (!isSelected) item.style.background = isDark ? "rgba(255,255,255,0.08)" : "#f1f5f9";
+      });
+      item.addEventListener("mouseleave", () => {
+        if (!isSelected) item.style.background = "transparent";
+      });
+      item.addEventListener("click", (e) => {
+        e.stopPropagation();
+        this._setSelectedFont(f.key);
+        this.userChangedFont = true;
+        this.userChangedStyle = true;
+        this._closeFontDropdown();
+        this._updateFontStatusBadge();
+        this._updateEditableStyle();
+        this._checkTextOverflow();
+      });
+
+      listEl.appendChild(item);
+    });
+  }
+
+  _setSelectedFont(fontKey) {
+    this.currentFont = fontKey;
+    const allFonts = this._getUnifiedFontList();
+    const match = allFonts.find(f => f.key === fontKey);
+    const labelEl = this.miniToolbarEl?.querySelector("#mt-font-trigger-label");
+    if (labelEl) {
+      labelEl.textContent = match ? match.label : fontKey;
+    }
+  }
+
+  _openFontDropdown() {
+    if (!this.fontDropdownEl || !this.miniToolbarEl) return;
+    const trigger = this.miniToolbarEl.querySelector("#mt-font-trigger");
+    if (!trigger) return;
+
+    const isDark = document.documentElement.classList.contains("dark") ||
+      document.body.classList.contains("dark-mode") ||
+      document.body.dataset.theme === "dark";
+
+    this.fontDropdownEl.style.background = isDark ? "#0f172a" : "#ffffff";
+    this.fontDropdownEl.style.borderColor = isDark ? "rgba(255,255,255,0.14)" : "#cbd5e1";
+
+    const searchInput = this.fontDropdownEl.querySelector("#mt-font-search");
+    if (searchInput) {
+      searchInput.value = "";
+      searchInput.style.background = isDark ? "#1e293b" : "#f8fafc";
+      searchInput.style.color = isDark ? "#f8fafc" : "#0f172a";
+      searchInput.style.borderColor = isDark ? "rgba(255,255,255,0.14)" : "#cbd5e1";
+    }
+
+    this._renderUnifiedFontList("");
+
+    const rect = trigger.getBoundingClientRect();
+    this.fontDropdownEl.style.display = "flex";
+    this.fontDropdownEl.style.left = `${Math.max(8, Math.min(window.innerWidth - 252, rect.left))}px`;
+    this.fontDropdownEl.style.top = `${Math.min(window.innerHeight - 310, rect.bottom + 6)}px`;
+
+    const selectedItem = this.fontDropdownEl.querySelector(".unified-font-item.selected");
+    if (selectedItem) {
+      requestAnimationFrame(() => {
+        selectedItem.scrollIntoView({ block: "nearest", behavior: "smooth" });
+      });
+    }
+    setTimeout(() => searchInput?.focus(), 20);
+  }
+
+  _closeFontDropdown() {
+    if (this.fontDropdownEl) {
+      this.fontDropdownEl.style.display = "none";
+    }
+  }
+
   _createDOM() {
     // 1. Floating Mini-Toolbar
     this.miniToolbarEl = document.createElement("div");
     this.miniToolbarEl.className = "floating-mini-toolbar";
     this.miniToolbarEl.style.display = "none";
-
-    // Build categorized options for select
-    const groups = {};
-    FONT_DEFINITIONS.forEach(f => {
-      if (!groups[f.group]) groups[f.group] = [];
-      groups[f.group].push(f);
-    });
-
-    let fontOptionsHtml = `<optgroup id="mt-doc-fonts-group" label="Document Fonts" style="display: none;"></optgroup>`;
-    for (const [groupName, fonts] of Object.entries(groups)) {
-      fontOptionsHtml += `<optgroup label="${groupName}">`;
-      fonts.forEach(f => {
-        fontOptionsHtml += `<option value="${f.key}">${f.label}</option>`;
-      });
-      fontOptionsHtml += `</optgroup>`;
-    }
 
     this.miniToolbarEl.innerHTML = `
       <!-- Drag Handle -->
@@ -234,10 +373,11 @@ export class InlineTextEditor {
 
       <div class="mini-separator"></div>
 
-      <!-- Compact Font Family Dropdown -->
-      <select class="mini-select" id="mt-font-select" title="Font Family" style="max-width: 95px; height: 26px; font-size: 11.5px; padding: 0 4px;">
-        ${fontOptionsHtml}
-      </select>
+      <!-- Unified A-Z Searchable Font Trigger (No Categories) -->
+      <button type="button" class="mini-select" id="mt-font-trigger" title="Select Font Family" style="max-width: 118px; height: 26px; font-size: 11.5px; padding: 0 6px; display: inline-flex; align-items: center; justify-content: space-between; gap: 4px; cursor: pointer;">
+        <span id="mt-font-trigger-label" style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">Times New Roman</span>
+        <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="flex-shrink:0;"><polyline points="6 9 12 15 18 9"/></svg>
+      </button>
 
       <!-- Font Size Input -->
       <input type="number" class="mini-size-input" id="mt-font-size" value="12" min="4" max="144" step="0.5" title="Font Size (pt)" style="width: 38px; height: 26px; font-size: 11.5px; text-align: center; padding: 0 2px;">
@@ -315,6 +455,30 @@ export class InlineTextEditor {
 
     document.body.appendChild(this.miniToolbarEl);
     document.body.appendChild(this.moreMenuEl);
+
+    // 3. Unified Searchable A-Z Font Picker Popover (No Categories)
+    this.fontDropdownEl = document.createElement("div");
+    this.fontDropdownEl.id = "mt-font-dropdown";
+    this.fontDropdownEl.style.cssText = `
+      display: none;
+      position: fixed;
+      width: 244px;
+      background: #ffffff;
+      border: 1px solid #cbd5e1;
+      border-radius: 10px;
+      box-shadow: 0 10px 28px rgba(15, 23, 42, 0.2);
+      padding: 8px;
+      flex-direction: column;
+      gap: 6px;
+      z-index: 1300;
+    `;
+    this.fontDropdownEl.innerHTML = `
+      <input type="search" id="mt-font-search" placeholder="Search fonts..." autocomplete="off" spellcheck="false" style="width: 100%; box-sizing: border-box; padding: 6px 9px; border-radius: 7px; border: 1px solid #cbd5e1; font-size: 12.5px; outline: none;" />
+      <div id="mt-font-list" style="max-height: 240px; overflow-y: auto; scroll-behavior: smooth; display: flex; flex-direction: column; gap: 2px;"></div>
+    `;
+    this.fontDropdownEl.addEventListener("click", (e) => e.stopPropagation());
+    this.fontDropdownEl.addEventListener("pointerdown", (e) => e.stopPropagation());
+    document.body.appendChild(this.fontDropdownEl);
 
     this._bindMiniToolbarEvents();
   }
@@ -395,14 +559,29 @@ export class InlineTextEditor {
       this._updateEditableStyle();
     });
 
-    // Font Family
-    const fontSelect = this.miniToolbarEl.querySelector("#mt-font-select");
-    fontSelect?.addEventListener("change", (e) => {
-      this.currentFont = e.target.value;
-      this.userChangedFont = true;
-      this.userChangedStyle = true;
-      this._updateFontStatusBadge();
-      this._updateEditableStyle();
+    // Unified Searchable Font Picker Trigger & Search Input
+    const fontTrigger = this.miniToolbarEl.querySelector("#mt-font-trigger");
+    fontTrigger?.addEventListener("click", (e) => {
+      e.stopPropagation();
+      const isOpen = this.fontDropdownEl?.style.display === "flex";
+      if (isOpen) {
+        this._closeFontDropdown();
+      } else {
+        this._openFontDropdown();
+      }
+    });
+
+    const fontSearch = this.fontDropdownEl?.querySelector("#mt-font-search");
+    fontSearch?.addEventListener("input", (e) => {
+      this._renderUnifiedFontList(e.target.value);
+    });
+
+    document.addEventListener("click", (e) => {
+      if (this.fontDropdownEl && this.fontDropdownEl.style.display === "flex") {
+        if (!this.fontDropdownEl.contains(e.target) && e.target !== fontTrigger && !fontTrigger?.contains(e.target)) {
+          this._closeFontDropdown();
+        }
+      }
     });
 
     // Font Size
@@ -530,24 +709,20 @@ export class InlineTextEditor {
   }
 
   populateDocumentFonts(detectedFonts) {
-    const docGroup = this.miniToolbarEl.querySelector("#mt-doc-fonts-group");
-    if (!docGroup) return;
-
-    docGroup.innerHTML = "";
-    if (!detectedFonts || detectedFonts.length === 0) {
-      docGroup.style.display = "none";
-      return;
-    }
+    this._documentFonts = [];
+    if (!detectedFonts || detectedFonts.length === 0) return;
 
     const unique = [...new Set(detectedFonts)];
     unique.forEach(f => {
-      const clean = f.replace(/^[A-Z]{6}\+/, "").trim();
-      const opt = document.createElement("option");
-      opt.value = clean;
-      opt.textContent = `PDF Font: ${clean}`;
-      docGroup.appendChild(opt);
+      const clean = (f || "").replace(/^[A-Za-z0-9]{6}\+/, "").trim();
+      if (!clean) return;
+      this._documentFonts.push({
+        key: clean,
+        label: clean,
+        css: `"${clean}", sans-serif`,
+        isDocumentFont: true
+      });
     });
-    docGroup.style.display = "block";
   }
 
   _detectAndSelectFont(fontName, flags = 0) {
@@ -670,24 +845,19 @@ export class InlineTextEditor {
       }
     }
 
-    const fontSelect = this.miniToolbarEl.querySelector("#mt-font-select");
-    if (fontSelect) {
-      let optionExists = Array.from(fontSelect.options).some(opt => opt.value === matchedKey);
-      if (!optionExists && clean) {
-        const docGroup = this.miniToolbarEl.querySelector("#mt-doc-fonts-group");
-        if (docGroup) {
-          docGroup.style.display = "block";
-          const newOpt = document.createElement("option");
-          newOpt.value = clean;
-          newOpt.textContent = `PDF Font: ${clean}`;
-          docGroup.appendChild(newOpt);
-          matchedKey = clean;
-        }
-      }
-      fontSelect.value = matchedKey;
+    const unified = this._getUnifiedFontList();
+    const existsInUnified = unified.some(f => f.key === matchedKey);
+    if (!existsInUnified && clean) {
+      this._documentFonts.push({
+        key: clean,
+        label: clean,
+        css: `"${clean}", sans-serif`,
+        isDocumentFont: true
+      });
+      matchedKey = clean;
     }
 
-    this.currentFont = matchedKey;
+    this._setSelectedFont(matchedKey);
     return matchedKey;
   }
 
@@ -1129,10 +1299,17 @@ export class InlineTextEditor {
       : ((flags & 2) !== 0 || (flags & 64) !== 0 || /italic|oblique|slant|[-,]it\b/.test(fontLower));
     this.isUnderline = span.isUnderline !== undefined ? span.isUnderline : false;
 
-    // 5. AUTOMATIC EXACT COLOR MATCHING (Canvas pixel ink > PDF operator color > fallback black)
+    // 5. AUTOMATIC EXACT COLOR MATCHING (PDF operator color > Canvas pixel ink > fallback black)
     if (span.currentColorHex) {
       this.currentColorHex = span.currentColorHex;
       this.currentColorRgb = span.currentColorRgb || this._hexToRgbArray(span.currentColorHex);
+    } else if (span.hasOpColor) {
+      const colorInt = span.color || 0;
+      const r = (colorInt >> 16) & 255;
+      const g = (colorInt >> 8) & 255;
+      const b = colorInt & 255;
+      this.currentColorHex = `#${[r, g, b].map(x => x.toString(16).padStart(2, "0")).join("")}`;
+      this.currentColorRgb = [r / 255, g / 255, b / 255];
     } else if (sampled && sampled.fgHex) {
       this.currentColorHex = sampled.fgHex;
       this.currentColorRgb = sampled.fgRgb;
@@ -1165,8 +1342,7 @@ export class InlineTextEditor {
     }
 
     // Update Mini-Toolbar controls
-    const fontSelect = this.miniToolbarEl.querySelector("#mt-font-select");
-    if (fontSelect) fontSelect.value = this.currentFont;
+    this._setSelectedFont(this.currentFont);
 
     const sizeInput = this.miniToolbarEl.querySelector("#mt-font-size");
     if (sizeInput) {
