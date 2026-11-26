@@ -1710,6 +1710,9 @@ export class InlineTextEditor {
           span.currentAlignment = previousAlignment;
           this._renderVisualTextReplacement(pageIndex, span, previousText, span._origHighlightEl, previousEditCopy);
         }
+        window.app?.renderer?.renderPageWithSuppressedEdits?.(pageIndex).then((ok) => {
+          if (ok) this.reRenderPageEdits(pageIndex);
+        });
         this.hide();
       },
       redo: () => {
@@ -1724,11 +1727,17 @@ export class InlineTextEditor {
         span.currentColorRgb = editItem.text_color;
         span.currentAlignment = editItem.alignment;
         this._renderVisualTextReplacement(pageIndex, span, replacementText, span._origHighlightEl, editItem);
+        window.app?.renderer?.renderPageWithSuppressedEdits?.(pageIndex).then((ok) => {
+          if (ok) this.reRenderPageEdits(pageIndex);
+        });
         this.hide();
       }
     });
 
     this._renderVisualTextReplacement(pageIndex, span, replacementText, span._origHighlightEl, editItem);
+    window.app?.renderer?.renderPageWithSuppressedEdits?.(pageIndex).then((ok) => {
+      if (ok) this.reRenderPageEdits(pageIndex);
+    });
     this.hide();
   }
 
@@ -1886,17 +1895,25 @@ export class InlineTextEditor {
       cover.addEventListener("mousedown", (e) => e.stopPropagation());
     }
 
+    const isSuppressedOnCanvas = !!window.app?.renderer?.isSpanSuppressedOnCanvas?.(pageIndex, editItem.bbox);
     const bgHex = editItem.bg_color_hex || origSpan.bgColorHex || "#ffffff";
-    const inpaintedBg = editItem.inpainted_bg_url || origSpan.inpaintedBgUrl || this._createInpaintedBgDataUrl(pageIndex, editItem.bbox);
+    const inpaintedBg = isSuppressedOnCanvas ? null : (editItem.inpainted_bg_url || origSpan.inpaintedBgUrl || this._createInpaintedBgDataUrl(pageIndex, editItem.bbox));
+    const fontSizePt = editItem.font_size || origSpan.size;
+    const topCoord = (editItem.baseline_y !== undefined && editItem.baseline_y !== null)
+      ? (editItem.baseline_y - fontSizePt * 0.85)
+      : y0;
     cover.style.position = "absolute";
     cover.style.left = `${x0 * scale}px`;
-    cover.style.top = `${y0 * scale}px`;
+    cover.style.top = `${topCoord * scale}px`;
     cover.style.minWidth = `${origWidth}px`;
     cover.style.width = "max-content";
     cover.style.maxWidth = `calc(100% - ${x0 * scale + 4}px)`;
-    cover.style.height = `${origHeight}px`;
+    cover.style.height = `${Math.max(origHeight, fontSizePt * 1.15 * scale)}px`;
     cover.style.minHeight = `${origHeight}px`;
-    if (inpaintedBg) {
+    if (isSuppressedOnCanvas) {
+      cover.style.backgroundColor = "transparent";
+      cover.style.backgroundImage = "none";
+    } else if (inpaintedBg) {
       cover.style.backgroundColor = "transparent";
       cover.style.backgroundImage = `url(${inpaintedBg})`;
       cover.style.backgroundSize = "100% 100%";
@@ -1908,19 +1925,18 @@ export class InlineTextEditor {
     cover.style.zIndex = "6";
     cover.style.visibility = "visible";
     cover.title = `Edited: "${replacementText}" (Click to edit again)`;
-    cover.style.display = "inline-flex";
-    cover.style.alignItems = "center";
+    cover.style.display = "block";
     cover.style.padding = "0";
     cover.style.cursor = "pointer";
     cover.style.pointerEvents = "auto";
     cover.style.overflow = "visible";
 
     if (editItem.alignment === "center") {
-      cover.style.justifyContent = "center";
+      cover.style.textAlign = "center";
     } else if (editItem.alignment === "right") {
-      cover.style.justifyContent = "flex-end";
+      cover.style.textAlign = "right";
     } else {
-      cover.style.justifyContent = "flex-start";
+      cover.style.textAlign = "left";
     }
 
     // Use color from the edit item, not from current editor state

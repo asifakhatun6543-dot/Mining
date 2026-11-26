@@ -3,6 +3,7 @@
  */
 
 import { State } from "./state.js";
+import { suppressPageTextInPdfBytes } from "./pdf-content-stream-editor.js?v=5.1";
 
 // Configure PDF.js worker
 if (window.pdfjsLib) {
@@ -15,6 +16,47 @@ export class PDFRenderer {
     this.thumbnailsContainer = thumbnailsContainer;
     this.renderedPages = new Map();
     this.renderTasks = new Map();
+    this.suppressedKeysByPage = new Map();
+  }
+
+  isSpanSuppressedOnCanvas(pageIndex, bbox) {
+    const set = this.suppressedKeysByPage.get(pageIndex);
+    if (!set || !Array.isArray(bbox)) return false;
+    return set.has(`${Math.round(bbox[0])}_${Math.round(bbox[1])}`);
+  }
+
+  async renderPageWithSuppressedEdits(pageIndex) {
+    if (!State.pdfBytes || !window.PDFLib || !window.pdfjsLib) return false;
+    const pageEdits = (State.pendingTextEdits || []).filter(e => e.page_number === pageIndex);
+    if (pageEdits.length === 0) {
+      this.suppressedKeysByPage.delete(pageIndex);
+      await this.renderPage(pageIndex);
+      return true;
+    }
+    try {
+      const res = await suppressPageTextInPdfBytes(State.pdfBytes, pageIndex, pageEdits, window.PDFLib);
+      if (!res || !res.bytes || res.suppressedKeys.size === 0) return false;
+
+      const tempDoc = await window.pdfjsLib.getDocument({ data: res.bytes }).promise;
+      const pdfPage = await tempDoc.getPage(pageIndex + 1);
+      const viewport = pdfPage.getViewport({ scale: State.zoomScale });
+      const dpr = Math.min(3, Math.max(window.devicePixelRatio || 1, 2));
+
+      const canvas = document.getElementById(`page-canvas-${pageIndex}`);
+      if (!canvas) return false;
+      canvas.width = Math.floor(viewport.width * dpr);
+      canvas.height = Math.floor(viewport.height * dpr);
+      const ctx = canvas.getContext("2d");
+      ctx.scale(dpr, dpr);
+
+      await pdfPage.render({ canvasContext: ctx, viewport }).promise;
+      this.suppressedKeysByPage.set(pageIndex, res.suppressedKeys);
+      try { tempDoc.destroy(); } catch (_) {}
+      return true;
+    } catch (e) {
+      console.warn("Suppressed preview render fallback:", e);
+      return false;
+    }
   }
 
   async renderDocument() {

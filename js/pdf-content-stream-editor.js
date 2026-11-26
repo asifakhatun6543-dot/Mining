@@ -465,21 +465,44 @@ export function editPageContentStream(pdfDoc, page, edit, pageBox, pdfLib) {
       }
 
       const ops = scanContentStreamTextOps(contentStr);
-      for (const op of ops) {
+      for (let oi = 0; oi < ops.length; oi++) {
+        const op = ops[oi];
         const opTrim = op.text.trim();
         if (!opTrim) continue;
 
         const isExact = opTrim === originalText;
         const isSubstring = !isExact && opTrim.includes(originalText);
-        if (!isExact && !isSubstring) continue;
+        if (isExact || isSubstring) {
+          const dist = Math.hypot(op.x - targetX, op.y - targetY);
+          const penalty = isExact ? 0 : 40;
+          const score = dist + penalty;
+          if (score < bestScore) {
+            bestScore = score;
+            bestMatch = { entry, contentStr, op, extraOps: [], isExact };
+          }
+          continue;
+        }
 
-        const dist = Math.hypot(op.x - targetX, op.y - targetY);
-        // Prefer exact match and closest spatial coordinate
-        const penalty = isExact ? 0 : 40;
-        const score = dist + penalty;
-        if (score < bestScore) {
-          bestScore = score;
-          bestMatch = { entry, contentStr, op, isExact };
+        // Handle spans merged by PDF.js from consecutive Tj/TJ operators on the same line
+        if (originalText.startsWith(opTrim) || originalText.includes(opTrim)) {
+          let combined = op.text;
+          const extraOps = [];
+          for (let oj = oi + 1; oj < Math.min(ops.length, oi + 8); oj++) {
+            const nextOp = ops[oj];
+            if (Math.abs(nextOp.y - op.y) > 6) break;
+            combined += nextOp.text;
+            extraOps.push(nextOp);
+            const combTrim = combined.trim();
+            if (combTrim === originalText || combTrim.includes(originalText)) {
+              const dist = Math.hypot(op.x - targetX, op.y - targetY);
+              const score = dist + 10;
+              if (score < bestScore) {
+                bestScore = score;
+                bestMatch = { entry, contentStr, op, extraOps, isExact: combTrim === originalText };
+              }
+              break;
+            }
+          }
         }
       }
     }
@@ -488,13 +511,17 @@ export function editPageContentStream(pdfDoc, page, edit, pageBox, pdfLib) {
       return { handled: false, mode: "none" };
     }
 
-    const { entry, contentStr, op, isExact } = bestMatch;
+    const { entry, contentStr, op, extraOps, isExact } = bestMatch;
     const replacementText = String(edit.replacement_text ?? "");
+    const forceSuppress = !!edit.forceSuppress;
 
-    // Determine if we can do true in-place vector replacement in the original embedded font
     const canDoInPlace =
+      !forceSuppress &&
       !edit.user_changed_font &&
-      !edit.user_changed_style &&
+      !edit.is_bold &&
+      !edit.is_italic &&
+      !edit.is_underline &&
+      (!edit.alignment || edit.alignment === "left") &&
       isExact &&
       !op.isCidLike &&
       replacementText.length > 0 &&
@@ -516,12 +543,16 @@ export function editPageContentStream(pdfDoc, page, edit, pageBox, pdfLib) {
 
     if (canDoInPlace) {
       const tok = encodeReplacementToken(replacementText);
-      if (op.op === "'") replacementSegment = `${tok} '`;
-      else if (op.op === '"') replacementSegment = `${tok} "`;
-      else replacementSegment = `${tok} Tj`;
+      const baseOp = op.op === "'" ? `${tok} '` : op.op === '"' ? `${tok} "` : `${tok} Tj`;
+      if (edit.user_changed_style && op.font && Array.isArray(edit.text_color) && edit.text_color.length >= 3) {
+        const [r, g, b] = edit.text_color.map(v => Math.max(0, Math.min(1, Number(v) || 0)).toFixed(3));
+        const sz = Math.max(4, Number(edit.font_size) || op.fontSize || 12);
+        replacementSegment = `q ${r} ${g} ${b} rg /${op.font} ${sz} Tf ${baseOp} Q`;
+      } else {
+        replacementSegment = baseOp;
+      }
       mode = "inplace";
-    } else if (!isExact && !op.isCidLike && (op.arg.type === "literal" || op.arg.type === "hex")) {
-      // Substring edit inside a larger Tj: replace ONLY the edited portion
+    } else if (!forceSuppress && !isExact && !op.isCidLike && extraOps.length === 0 && (op.arg.type === "literal" || op.arg.type === "hex")) {
       const idx = op.text.indexOf(originalText);
       if (idx !== -1 && isWinAnsiSafe(replacementText) && !edit.user_changed_font && !edit.user_changed_style) {
         const newFull = op.text.slice(0, idx) + replacementText + op.text.slice(idx + originalText.length);
@@ -534,10 +565,17 @@ export function editPageContentStream(pdfDoc, page, edit, pageBox, pdfLib) {
       replacementSegment = "() Tj";
     }
 
-    const updatedStr =
-      contentStr.slice(0, op.opStart) +
-      replacementSegment +
-      contentStr.slice(op.opEnd);
+    // Apply replacement + clear any merged trailing operators in reverse offset order
+    const patches = [{ start: op.opStart, end: op.opEnd, text: replacementSegment }];
+    for (const ex of extraOps) {
+      patches.push({ start: ex.opStart, end: ex.opEnd, text: "() Tj" });
+    }
+    patches.sort((a, b) => b.start - a.start);
+
+    let updatedStr = contentStr;
+    for (const p of patches) {
+      updatedStr = updatedStr.slice(0, p.start) + p.text + updatedStr.slice(p.end);
+    }
 
     const outBytes = new Uint8Array(updatedStr.length);
     for (let k = 0; k < updatedStr.length; k++) {
@@ -556,4 +594,37 @@ export function editPageContentStream(pdfDoc, page, edit, pageBox, pdfLib) {
     console.warn("Content-stream text edit fallback:", e);
     return { handled: false, mode: "none" };
   }
+}
+
+/**
+ * Produces a lightweight modified PDF byte array with original text for edited spans
+ * suppressed in the target page's content stream, enabling transparent live-preview overlays
+ * over the 100% genuine PDF background (gradients, images, watermarks, patterns).
+ */
+export async function suppressPageTextInPdfBytes(pdfBytes, pageIndex, edits, pdfLib) {
+  const { PDFDocument } = pdfLib || {};
+  if (!PDFDocument || !pdfBytes || !edits || edits.length === 0) return null;
+
+  const pdfDoc = await PDFDocument.load(pdfBytes, { ignoreEncryption: true });
+  const page = pdfDoc.getPages()[pageIndex];
+  if (!page) return null;
+
+  const size = page.getSize();
+  let box = { x: 0, y: 0, width: size.width, height: size.height };
+  try {
+    const crop = page.getCropBox();
+    if (crop && crop.width > 0 && crop.height > 0) box = crop;
+  } catch (_) {}
+
+  const suppressedKeys = new Set();
+  for (const edit of edits) {
+    const res = editPageContentStream(pdfDoc, page, { ...edit, forceSuppress: true }, box, pdfLib);
+    if (res.handled) {
+      suppressedKeys.add(`${Math.round(edit.bbox[0])}_${Math.round(edit.bbox[1])}`);
+    }
+  }
+
+  if (suppressedKeys.size === 0) return { bytes: null, suppressedKeys };
+  const bytes = await pdfDoc.save();
+  return { bytes, suppressedKeys };
 }

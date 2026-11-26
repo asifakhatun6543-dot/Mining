@@ -15,7 +15,8 @@ const pdfjsLib = require(path.join(ROOT, "node_modules/pdfjs-dist/legacy/build/p
 
 import {
   scanContentStreamTextOps,
-  editPageContentStream
+  editPageContentStream,
+  suppressPageTextInPdfBytes
 } from "../js/pdf-content-stream-editor.js";
 
 function sha256File(relPath) {
@@ -245,13 +246,17 @@ async function runTests() {
   {
     const webHtml = fs.readFileSync(path.join(ROOT, "index.html"), "utf8");
     const appHtml = fs.readFileSync(path.join(ROOT, "openpdf_mobile/assets/web/index.html"), "utf8");
+    const webAppJs = fs.readFileSync(path.join(ROOT, "js/app.js"), "utf8");
+    const appAppJs = fs.readFileSync(path.join(ROOT, "openpdf_mobile/assets/web/js/app.js"), "utf8");
     const serverDart = fs.readFileSync(path.join(ROOT, "openpdf_mobile/lib/core/services/pdf_editor_server.dart"), "utf8");
-    assert.ok(webHtml.includes("app.js?v=5.0"), "Website index.html must load v=5.0 assets");
-    assert.ok(appHtml.includes("app.js?v=5.0"), "Android index.html must load v=5.0 assets");
+    assert.ok(webHtml.includes("app.js?v=5.1"), "Website index.html must load v=5.1 assets");
+    assert.ok(appHtml.includes("app.js?v=5.1"), "Android index.html must load v=5.1 assets");
+    assert.ok(webAppJs.includes("text-editor.js?v=5.1"), "Website app.js must import text-editor.js?v=5.1");
+    assert.ok(appAppJs.includes("text-editor.js?v=5.1"), "Android app.js must import text-editor.js?v=5.1");
     assert.ok(serverDart.includes("no-store"), "Android loopback server must disable stale WebView caching");
 
     passed++;
-    console.log("PASS [7/8]: Website & Android WebView asset versioning and no-cache headers verified");
+    console.log("PASS [7/9]: Website & Android WebView asset versioning (v=5.1) and no-cache headers verified");
   }
 
   // TEST 8: Multi-band Gradient-like Background + Colored & Rotated Text Preservation
@@ -291,10 +296,62 @@ async function runTests() {
     assert.ok(parsed.items.some(i => i.str === "Updated Label"), "Rotated replacement text must appear in exported PDF");
 
     passed++;
-    console.log("PASS [8/8]: Multi-band background + rotated colored text preserved in-place");
+    console.log("PASS [8/9]: Multi-band background + rotated colored text preserved in-place");
   }
 
-  console.log(`\nALL ${passed}/8 PDF TEXT EDITING REGRESSION TESTS PASSED.`);
+  // TEST 9: In-place color/size reuse of original embedded font + suppressPageTextInPdfBytes
+  {
+    const { PDFDocument, StandardFonts, rgb } = PDFLib;
+    const pdfDoc = await PDFDocument.create();
+    const page = pdfDoc.addPage([612, 792]);
+    const times = await pdfDoc.embedFont(StandardFonts.TimesRoman);
+
+    page.drawText("Original", { x: 80, y: 650, size: 14, font: times, color: rgb(0, 0, 0) });
+    const origBytes = await pdfDoc.save();
+
+    // Test in-place color/size edit reusing original /F1 font
+    const editDoc = await PDFDocument.load(origBytes);
+    const editPage = editDoc.getPages()[0];
+    const res = editPageContentStream(
+      editDoc,
+      editPage,
+      {
+        original_text: "Original",
+        replacement_text: "Styled",
+        bbox: [80, 128, 130, 146],
+        baseline_y: 142,
+        user_changed_font: false,
+        user_changed_style: true,
+        font_size: 20,
+        text_color: [0.9, 0.1, 0.2]
+      },
+      { x: 0, y: 0, width: 612, height: 792 },
+      PDFLib
+    );
+
+    assert.equal(res.mode, "inplace", "Color/size-only change without changing font must reuse original font in-place");
+    const outBytes = await editDoc.save();
+    const parsed = await extractPdfJsItems(outBytes);
+    const styled = parsed.items.find(i => i.str === "Styled");
+    assert.ok(styled, "Styled replacement must exist");
+    assert.equal(styled.fontSize, 20, "Updated font size 20pt must be preserved");
+
+    // Test suppressPageTextInPdfBytes for transparent live-preview canvas
+    const preview = await suppressPageTextInPdfBytes(
+      origBytes,
+      0,
+      [{ original_text: "Original", bbox: [80, 128, 130, 146], baseline_y: 142 }],
+      PDFLib
+    );
+    assert.ok(preview && preview.bytes && preview.suppressedKeys.size === 1, "Preview suppression must return modified PDF bytes");
+    const previewParsed = await extractPdfJsItems(preview.bytes);
+    assert.equal(previewParsed.items.filter(i => i.str === "Original").length, 0, "Original text must be suppressed on preview canvas");
+
+    passed++;
+    console.log("PASS [9/9]: In-place color/size font reuse + transparent preview suppression verified");
+  }
+
+  console.log(`\nALL ${passed}/9 PDF TEXT EDITING REGRESSION TESTS PASSED.`);
 }
 
 runTests().catch(err => {
