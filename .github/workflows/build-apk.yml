@@ -5,6 +5,10 @@ on:
     branches: [ main ]
   workflow_dispatch:
 
+concurrency:
+  group: release-build-${{ github.ref }}
+  cancel-in-progress: true
+
 permissions:
   contents: write
 
@@ -16,21 +20,39 @@ jobs:
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
-      - name: Extract App Version and Build Number
+      - name: Extract App Version, Build Number, and Release Eligibility
         id: version
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           VERSION_LINE=$(grep -E '^version:' openpdf_mobile/pubspec.yaml | awk '{print $2}')
           APP_VERSION=$(echo "$VERSION_LINE" | cut -d'+' -f1)
           BUILD_NUMBER=$(echo "$VERSION_LINE" | cut -d'+' -f2)
           if [ -z "$BUILD_NUMBER" ] || [ "$BUILD_NUMBER" = "$APP_VERSION" ]; then
-            BUILD_NUMBER="${{ github.run_number }}"
+            echo "ERROR: pubspec.yaml must specify version+buildNumber (e.g. 2.0.1+11)"
+            exit 1
           fi
-          RELEASE_TAG="v${APP_VERSION}-build.${BUILD_NUMBER}"
+          RELEASE_TAG="v${APP_VERSION}"
+          BUILD_TIMESTAMP=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+
+          # Check if this release tag already exists so we never overwrite an existing release
+          if gh release view "$RELEASE_TAG" --repo "${{ github.repository }}" >/dev/null 2>&1; then
+            SHOULD_PUBLISH="false"
+            echo "Release ${RELEASE_TAG} already exists; skipping release overwrite."
+          else
+            SHOULD_PUBLISH="true"
+            echo "New release tag ${RELEASE_TAG} will be created at commit ${GITHUB_SHA}."
+          fi
+
           echo "app_version=${APP_VERSION}" >> "$GITHUB_OUTPUT"
           echo "build_number=${BUILD_NUMBER}" >> "$GITHUB_OUTPUT"
           echo "tag=${RELEASE_TAG}" >> "$GITHUB_OUTPUT"
-          echo "Detected version: ${APP_VERSION} (build ${BUILD_NUMBER}) -> tag ${RELEASE_TAG}"
+          echo "build_timestamp=${BUILD_TIMESTAMP}" >> "$GITHUB_OUTPUT"
+          echo "should_publish=${SHOULD_PUBLISH}" >> "$GITHUB_OUTPUT"
+          echo "Version: ${APP_VERSION} | Build: ${BUILD_NUMBER} | Commit: ${GITHUB_SHA} | Time: ${BUILD_TIMESTAMP}"
 
       - name: Set up Java JDK 17
         uses: actions/setup-java@v4
@@ -51,18 +73,18 @@ jobs:
           yes | sdkmanager --licenses || true
           sdkmanager "platforms;android-35" "build-tools;35.0.0" || true
 
-      - name: Clean and Install Dependencies
+      - name: Clean Stale Outputs and Install Dependencies
         working-directory: openpdf_mobile
         run: |
+          rm -rf build/ ../output_apk/ /tmp/universal_apk/ /tmp/verify_release/
           rm -f test/widget_test.dart
           flutter clean
           flutter pub get
-          flutter analyze || true
+          flutter analyze
 
-      - name: Run Unit Verification Tests
+      - name: Run Flutter Unit Verification Tests
         working-directory: openpdf_mobile
         run: flutter test test/unit/
-        continue-on-error: true
 
       - name: Set up Node.js for PDF Editing Regression Tests
         uses: actions/setup-node@v4
@@ -78,48 +100,63 @@ jobs:
           node --check js/app.js
           node tests/pdf-text-editing.test.mjs
 
-      - name: Build Android Release APK (Universal & Split-ABI)
+      - name: Build Fresh Android Release APKs (Universal & Split-ABI)
         working-directory: openpdf_mobile
         run: |
+          DART_DEFINES="--dart-define=APP_VERSION=${{ steps.version.outputs.app_version }} --dart-define=APP_BUILD_NUMBER=${{ steps.version.outputs.build_number }} --dart-define=EDITOR_VERSION=5.0 --dart-define=GIT_COMMIT_SHA=${{ github.sha }} --dart-define=BUILD_TIMESTAMP=${{ steps.version.outputs.build_timestamp }}"
+
           # 1. Build Universal APK
-          flutter build apk --release --no-tree-shake-icons --android-skip-build-dependency-validation
+          flutter build apk --release --no-tree-shake-icons --android-skip-build-dependency-validation $DART_DEFINES
 
           mkdir -p /tmp/universal_apk
           cp build/app/outputs/flutter-apk/app-release.apk /tmp/universal_apk/PDF-Studio-Release.apk
 
-          # 2. Build Split-ABI APKs (Optional architecture-specific APKs)
-          flutter build apk --release --split-per-abi --no-tree-shake-icons --android-skip-build-dependency-validation || true
+          # 2. Build Split-ABI APKs
+          flutter build apk --release --split-per-abi --no-tree-shake-icons --android-skip-build-dependency-validation $DART_DEFINES
 
-      - name: Verify Generated APKs and Compute SHA-256 Checksums
+      - name: Verify APK Integrity, Version Metadata, Checksums & Freshness
         id: apks
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           mkdir -p output_apk
-
-          if [ ! -s /tmp/universal_apk/PDF-Studio-Release.apk ]; then
-            echo "ERROR: Universal Release APK was not generated or is empty!"
-            exit 1
-          fi
           cp /tmp/universal_apk/PDF-Studio-Release.apk output_apk/PDF-Studio-Release.apk
-
-          if [ ! -s openpdf_mobile/build/app/outputs/flutter-apk/app-arm64-v8a-release.apk ]; then
-            echo "ERROR: ARM64 Split-ABI APK was not generated or is empty!"
-            exit 1
-          fi
           cp openpdf_mobile/build/app/outputs/flutter-apk/app-arm64-v8a-release.apk output_apk/PDF-Studio-arm64.apk
-
-          if [ ! -s openpdf_mobile/build/app/outputs/flutter-apk/app-armeabi-v7a-release.apk ]; then
-            echo "ERROR: ARM32 Split-ABI APK was not generated or is empty!"
-            exit 1
-          fi
           cp openpdf_mobile/build/app/outputs/flutter-apk/app-armeabi-v7a-release.apk output_apk/PDF-Studio-arm32.apk
 
           for f in output_apk/*.apk; do
+            if [ ! -s "$f" ]; then
+              echo "ERROR: $f is missing or empty!"
+              exit 1
+            fi
             python3 -m zipfile -t "$f"
           done
+
+          # Verify actual versionCode, versionName, and package inside compiled Universal APK
+          AAPT2=$(find "$ANDROID_SDK_ROOT/build-tools" -name aapt2 2>/dev/null | sort -V | tail -n 1)
+          if [ -n "$AAPT2" ]; then
+            BADGING=$("$AAPT2" dump badging output_apk/PDF-Studio-Release.apk | head -n 5)
+            echo "$BADGING"
+            echo "$BADGING" | grep -q "name='com.openpdf.studio'"
+            echo "$BADGING" | grep -q "versionCode='${{ steps.version.outputs.build_number }}'"
+            echo "$BADGING" | grep -q "versionName='${{ steps.version.outputs.app_version }}'"
+          fi
 
           SHA_UNI=$(sha256sum output_apk/PDF-Studio-Release.apk | awk '{print $1}')
           SHA_ARM64=$(sha256sum output_apk/PDF-Studio-arm64.apk | awk '{print $1}')
           SHA_ARM32=$(sha256sum output_apk/PDF-Studio-arm32.apk | awk '{print $1}')
+
+          # Compare against previous release Universal APK to guarantee a fresh build
+          mkdir -p /tmp/prev_release
+          if gh release download --repo "${{ github.repository }}" --pattern "PDF-Studio-Release.apk" --dir /tmp/prev_release --clobber 2>/dev/null; then
+            PREV_SHA=$(sha256sum /tmp/prev_release/PDF-Studio-Release.apk | awk '{print $1}')
+            echo "Previous Release SHA-256: ${PREV_SHA}"
+            echo "New Build SHA-256:        ${SHA_UNI}"
+            if [ "$SHA_UNI" = "$PREV_SHA" ] && [ "${{ steps.version.outputs.should_publish }}" = "true" ]; then
+              echo "ERROR: Newly built APK is identical to previous release despite version bump!"
+              exit 1
+            fi
+          fi
 
           SIZE_UNI=$(ls -lh output_apk/PDF-Studio-Release.apk | awk '{print $5}')
           SIZE_ARM64=$(ls -lh output_apk/PDF-Studio-arm64.apk | awk '{print $5}')
@@ -132,28 +169,34 @@ jobs:
           echo "size_arm64=${SIZE_ARM64}" >> "$GITHUB_OUTPUT"
           echo "size_arm32=${SIZE_ARM32}" >> "$GITHUB_OUTPUT"
 
-          echo "Prepared APK files (strictly 3 assets):"
           ls -lh output_apk/
           sha256sum output_apk/*.apk
 
       - name: Upload Release APK as Workflow Artifact (Backup)
         uses: actions/upload-artifact@v4
         with:
-          name: PDF-Studio-Release-APK
+          name: PDF-Studio-Release-APK-${{ steps.version.outputs.tag }}
           path: output_apk/*.apk
           retention-days: 30
 
-      - name: Publish GitHub Release with Direct APK Download
+      - name: Publish New GitHub Release
+        if: steps.version.outputs.should_publish == 'true'
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ steps.version.outputs.tag }}
-          name: "PDF 🫰 Studio v${{ steps.version.outputs.app_version }} (Build ${{ steps.version.outputs.build_number }})"
-          allowUpdates: true
+          target_commitish: ${{ github.sha }}
+          name: "PDF 🫰 Studio ${{ steps.version.outputs.tag }} (Build ${{ steps.version.outputs.build_number }})"
+          allowUpdates: false
+          make_latest: true
           generate_release_notes: true
           draft: false
           prerelease: false
           body: |
-            ## PDF 🫰 Studio — Android Release v${{ steps.version.outputs.app_version }} (Build ${{ steps.version.outputs.build_number }})
+            ## PDF 🫰 Studio — Android Release ${{ steps.version.outputs.tag }} (Build ${{ steps.version.outputs.build_number }})
+
+            - **Source Commit:** `${{ github.sha }}`
+            - **Build Timestamp:** `${{ steps.version.outputs.build_timestamp }}`
+            - **PDF Editor Engine:** `v5.0`
 
             ### Direct APK Downloads
             - **[PDF-Studio-Release.apk](https://github.com/${{ github.repository }}/releases/download/${{ steps.version.outputs.tag }}/PDF-Studio-Release.apk)** (${{ steps.apks.outputs.size_uni }}) — **Universal APK** (Android 7.0+ / API 24+, supports `arm64-v8a`, `armeabi-v7a`, `x86_64`)
@@ -165,7 +208,7 @@ jobs:
             - `PDF-Studio-arm64.apk`: `${{ steps.apks.outputs.sha_arm64 }}`
             - `PDF-Studio-arm32.apk`: `${{ steps.apks.outputs.sha_arm32 }}`
 
-            **Latest Universal APK URL:**
+            **Always-Latest Direct Download URL:**
             `https://github.com/${{ github.repository }}/releases/latest/download/PDF-Studio-Release.apk`
           files: |
             output_apk/PDF-Studio-Release.apk
@@ -174,19 +217,13 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Verify Uploaded Release Assets, SHA-256 Checksums, and Clean Obsolete Duplicates
+      - name: Verify Published Release Assets and SHA-256 Checksums
+        if: steps.version.outputs.should_publish == 'true'
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           TAG="${{ steps.version.outputs.tag }}"
           REPO="${{ github.repository }}"
-
-          # 1. Remove any obsolete assets from the current release if present
-          for OBSOLETE in OpenPDF-Studio-Release.apk PDF-Studio-Universal.apk PDF-WITH-LOVE-Release.apk PDF-WITH-LOVE-arm64-v8a.apk PDF-WITH-LOVE-armeabi-v7a.apk PDF-WITH-LOVE-x86_64.apk; do
-            gh release delete-asset "$TAG" "$OBSOLETE" --repo "$REPO" --yes 2>/dev/null || true
-          done
-
-          # 2. Verify all 3 expected APK assets exist on the release and match local SHA-256
           mkdir -p /tmp/verify_release
           for APK in PDF-Studio-Release.apk PDF-Studio-arm64.apk PDF-Studio-arm32.apk; do
             gh release download "$TAG" --repo "$REPO" --pattern "$APK" --dir /tmp/verify_release --clobber
@@ -198,21 +235,3 @@ jobs:
               exit 1
             fi
           done
-
-          # 3. Verify identical obsolete duplicates on legacy v2.0.0 release and remove them
-          if gh release view v2.0.0 --repo "$REPO" >/dev/null 2>&1; then
-            mkdir -p /tmp/verify_v2
-            gh release download v2.0.0 --repo "$REPO" --pattern "PDF-Studio-Release.apk" --dir /tmp/verify_v2 --clobber 2>/dev/null || true
-            if [ -f /tmp/verify_v2/PDF-Studio-Release.apk ]; then
-              BASE_SHA=$(sha256sum /tmp/verify_v2/PDF-Studio-Release.apk | awk '{print $1}')
-              for OBSOLETE in OpenPDF-Studio-Release.apk PDF-Studio-Universal.apk; do
-                if gh release download v2.0.0 --repo "$REPO" --pattern "$OBSOLETE" --dir /tmp/verify_v2 --clobber 2>/dev/null; then
-                  OBS_SHA=$(sha256sum "/tmp/verify_v2/${OBSOLETE}" | awk '{print $1}')
-                  if [ "$OBS_SHA" = "$BASE_SHA" ]; then
-                    echo "Verified ${OBSOLETE} on v2.0.0 is identical (${OBS_SHA}). Removing obsolete asset..."
-                    gh release delete-asset v2.0.0 "$OBSOLETE" --repo "$REPO" --yes
-                  fi
-                fi
-              done
-            fi
-          fi

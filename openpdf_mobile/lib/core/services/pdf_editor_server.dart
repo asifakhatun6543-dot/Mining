@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:io';
 import 'package:flutter/services.dart';
+import '../constants/build_info.dart';
 
 /// Local on-device loopback server providing zero-latency offline file serving
 /// and secure bidirectional bridge for the 100% exact website PDF editor.
@@ -86,11 +87,13 @@ class PdfEditorServer {
         return;
       }
 
-      // 3. Health check endpoint
-      if (path == '/api/health') {
+      // 3. Health & Build Diagnostics endpoint
+      if (path == '/api/health' || path == '/api/version') {
         response.statusCode = HttpStatus.ok;
         response.headers.contentType = ContentType.json;
-        response.write('{"status":"ok","engine":"OpenPDF Native Loopback","version":"4.1"}');
+        response.write(
+          '{"status":"ok","engine":"OpenPDF Native Loopback","appVersion":"${BuildInfo.appVersion}","buildNumber":"${BuildInfo.buildNumber}","editorVersion":"${BuildInfo.editorVersion}","commitSha":"${BuildInfo.shortCommitSha}","buildTimestamp":"${BuildInfo.buildTimestamp}"}',
+        );
         await response.close();
         return;
       }

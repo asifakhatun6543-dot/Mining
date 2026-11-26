@@ -1,5 +1,6 @@
 ﻿import 'package:flutter/material.dart';
 import '../../../core/constants/app_colors.dart';
+import '../../../core/constants/build_info.dart';
 import '../../../core/services/history_service.dart';
 import '../../../core/services/theme_service.dart';
 import '../../../core/services/cloud_storage_service.dart';
@@ -630,7 +631,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         onTap: () => showLicensePage(
                           context: context,
                           applicationName: 'PDF WITH LOVE',
-                          applicationVersion: '2.0.0 (Build 10)',
+                          applicationVersion: BuildInfo.fullVersion,
                           applicationLegalese: 'Copyright © 2026 RS7 Private Limited. All rights reserved.',
                         ),
                       ),
@@ -807,9 +808,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
                           title: 'About PDF WITH LOVE',
                           content:
                               'PDF WITH LOVE™\n'
-                              'Version 2.0.0 (Build 10)\n\n'
+                              'Version ${BuildInfo.fullVersion}\n\n'
                               'Crafted with passion by RS7 Private Limited.\n\n'
                               'Our mission is to empower professionals, students, and businesses with 100% free, private, high-performance document tools without subscriptions or server tracking.\n\n'
+                              '--- Build Information ---\n'
+                              '${BuildInfo.diagnosticsSummary}\n\n'
                               'Built with Love ❤️ by RS7 Private Limited.',
                         ),
                       ),
@@ -863,7 +866,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       ),
                       const SizedBox(height: 8),
                       Text(
-                        'Version 2.0.0 (Build 10)',
+                        'Version ${BuildInfo.fullVersion}',
                         style: TextStyle(
                           fontSize: 11,
                           fontWeight: FontWeight.w500,
