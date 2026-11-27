@@ -1048,8 +1048,8 @@ export class InlineTextEditor {
       if (this.activeBoxEl.contains(e.target) || 
           this.miniToolbarEl.contains(e.target) || 
           this.moreMenuEl.contains(e.target)) return;
-      // Don't close if clicking on a text span highlight (will open a new editor)
-      if (e.target.closest(".text-span-highlight")) return;
+      // Don't close if clicking on a text span highlight or zoom controls
+      if (e.target.closest(".text-span-highlight") || e.target.closest(".floating-bottom-pill")) return;
       // Auto-apply the current edit when clicking away
       this.applyEdit();
     });
