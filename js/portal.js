@@ -4,7 +4,7 @@
  */
 
 import { AdvancedToolsManager, formatBytes } from "./portal-advanced-tools.js?v=5.3";
-import { MobileLiquidNavController, RecentHistoryManager } from "./mobile-liquid-nav.js?v=4.1";
+import { MobileLiquidNavController, RecentHistoryManager } from "./mobile-liquid-nav.js?v=5.3";
 
 if (typeof window !== "undefined") {
   window.MobileLiquidNavController = MobileLiquidNavController;

@@ -986,32 +986,34 @@ class OpenPDFStudioApp {
       this.selectionManager.updateSelectionOverlays(State.activeTool);
       this.toolbar.renderAnnotationsOnPage(State.currentPage);
 
-      // Concurrently query backend to enrich if available
-      (async () => {
-        try {
-          const controller = new AbortController();
-          const timer = setTimeout(() => controller.abort(), 2500);
-          const formData = new FormData();
-          formData.append("file", file);
-          const apiRes = await fetch(getApiUrl("/api/documents/analyze"), {
-            method: "POST",
-            body: formData,
-            signal: controller.signal
-          });
-          clearTimeout(timer);
-          if (apiRes.ok) {
-            const analysisData = await apiRes.json();
-            if (analysisData && analysisData.pages && analysisData.pages.length > 0) {
-              analysisData.pages.forEach((p, idx) => {
-                this.selectionManager.setPageAnalysis(idx, p);
-              });
-              this.selectionManager.updateSelectionOverlays(State.activeTool);
+      // Concurrently query backend to enrich only if client-side extraction found no digital text
+      if (docInfo.is_scanned) {
+        (async () => {
+          try {
+            const controller = new AbortController();
+            const timer = setTimeout(() => controller.abort(), 2500);
+            const formData = new FormData();
+            formData.append("file", file);
+            const apiRes = await fetch(getApiUrl("/api/documents/analyze"), {
+              method: "POST",
+              body: formData,
+              signal: controller.signal
+            });
+            clearTimeout(timer);
+            if (apiRes.ok) {
+              const analysisData = await apiRes.json();
+              if (analysisData && analysisData.pages && analysisData.pages.length > 0) {
+                analysisData.pages.forEach((p, idx) => {
+                  this.selectionManager.setPageAnalysis(idx, p);
+                });
+                this.selectionManager.updateSelectionOverlays(State.activeTool);
+              }
             }
+          } catch (_) {
+            // Gracefully continue with client-side extraction
           }
-        } catch (_) {
-          // Gracefully continue with client-side extraction
-        }
-      })();
+        })();
+      }
 
       this._updateLoadingProgress("Ready! Opening document in editor...", 100);
       setTimeout(() => {

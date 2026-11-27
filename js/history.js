@@ -2,7 +2,7 @@
  * OpenPDF Studio - Command Pattern Undo / Redo Manager
  */
 
-import { State } from "./state.js";
+import { State } from "./state.js?v=5.3";
 
 export const HistoryManager = {
   undoStack: [],

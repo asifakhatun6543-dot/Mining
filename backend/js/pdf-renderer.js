@@ -2,7 +2,7 @@
  * OpenPDF Studio - PDF.js Rendering Engine
  */
 
-import { State } from "./state.js";
+import { State } from "./state.js?v=5.3";
 import { applyPageEditsForPreview } from "./pdf-content-stream-editor.js?v=5.3";
 
 // Configure PDF.js worker

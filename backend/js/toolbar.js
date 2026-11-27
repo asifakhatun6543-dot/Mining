@@ -3,8 +3,8 @@
  * Full touch & mouse pointer support for all annotation tools
  */
 
-import { State } from "./state.js";
-import { HistoryManager } from "./history.js";
+import { State } from "./state.js?v=5.3";
+import { HistoryManager } from "./history.js?v=5.3";
 
 export class ToolbarManager {
   constructor() {

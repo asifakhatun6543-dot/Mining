@@ -11,8 +11,8 @@
  * 6. True command-pattern Undo and Redo with complete visual DOM & state reversal.
  */
 
-import { State } from "./state.js";
-import { HistoryManager } from "./history.js";
+import { State } from "./state.js?v=5.3";
+import { HistoryManager } from "./history.js?v=5.3";
 
 export const FONT_DEFINITIONS = [
   // Standard & System (with metric-compatible cross-platform web fonts for Android/iOS/Linux)
@@ -845,26 +845,34 @@ export class InlineTextEditor {
       else if (/inter/.test(normClean)) matchedKey = "inter";
       else if (/roboto/.test(normClean)) matchedKey = "roboto";
       else if (/lato/.test(normClean)) matchedKey = "lato";
-      else if (isMono) matchedKey = "courier";
+    }
+
+    const unified = this._getUnifiedFontList();
+    if (!matchedKey && clean && !/^(unknown|standardbase14|g_d\d+_f\d+)$/i.test(normClean)) {
+      const displayLabel = clean.replace(/[-_,](Regular|Bold|Italic|Oblique|Medium|SemiBold|Light|MT|PSMT)+$/i, "").trim() || clean;
+      const customKey = displayLabel.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") || clean;
+      const existingCustom = unified.find(f => f.key === customKey);
+      if (existingCustom) {
+        matchedKey = existingCustom.key;
+      } else {
+        this._documentFonts.push({
+          key: customKey,
+          label: displayLabel,
+          css: `"${displayLabel}", "${clean}", ${isMono ? "monospace" : (isSerif ? "serif" : "sans-serif")}`,
+          isDocumentFont: true
+        });
+        matchedKey = customKey;
+      }
+    }
+
+    if (!matchedKey) {
+      if (isMono) matchedKey = "courier";
       else if (isSerif) matchedKey = "times-roman";
       else {
-        // If document uses serif fonts, prefer Times New Roman for ambiguous text
         const docFonts = State.documentInfo?.detected_fonts || [];
         const hasSerifInDoc = docFonts.some(f => /times|roman|serif|georgia|cambria|tinos/i.test(f));
         matchedKey = hasSerifInDoc ? "times-roman" : "arial";
       }
-    }
-
-    const unified = this._getUnifiedFontList();
-    const existsInUnified = unified.some(f => f.key === matchedKey);
-    if (!existsInUnified && clean) {
-      this._documentFonts.push({
-        key: clean,
-        label: clean,
-        css: `"${clean}", sans-serif`,
-        isDocumentFont: true
-      });
-      matchedKey = clean;
     }
 
     this._setSelectedFont(matchedKey);

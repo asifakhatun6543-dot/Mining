@@ -2,7 +2,7 @@
  * OpenPDF Studio - Text Selection & Coordinate Mapping
  */
 
-import { State } from "./state.js";
+import { State } from "./state.js?v=5.3";
 
 export class TextSelectionManager {
   constructor() {

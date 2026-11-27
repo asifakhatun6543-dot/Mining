@@ -4,7 +4,7 @@
  * Provides 4 Core Tabs: Home, All Tools, Chat AI, History.
  */
 
-import { formatBytes } from "./portal-advanced-tools.js?v=4.0";
+import { formatBytes } from "./portal-advanced-tools.js?v=5.3";
 
 // ============================================================================
 // 1. RECENT DOCUMENTS HISTORY MANAGER (localStorage backed)

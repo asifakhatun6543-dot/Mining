@@ -2,8 +2,8 @@
  * OpenPDF Studio - Scanned Document & OCR Interactive Editor
  */
 
-import { State, getApiUrl } from "./state.js";
-import { HistoryManager } from "./history.js";
+import { State, getApiUrl } from "./state.js?v=5.3";
+import { HistoryManager } from "./history.js?v=5.3";
 
 export class ScannedEditor {
   constructor() {

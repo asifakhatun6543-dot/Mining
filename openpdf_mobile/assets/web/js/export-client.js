@@ -4,8 +4,8 @@
  * encrypted/restricted PDF tolerance, all annotations/edits/page ops, and Canvas-to-PDF fallback.
  */
 
-import { State } from "./state.js?v=5.2";
-import { editPageContentStream } from "./pdf-content-stream-editor.js?v=5.2";
+import { State } from "./state.js?v=5.3";
+import { editPageContentStream } from "./pdf-content-stream-editor.js?v=5.3";
 
 export class ExportClient {
   constructor() {

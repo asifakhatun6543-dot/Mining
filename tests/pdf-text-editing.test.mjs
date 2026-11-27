@@ -260,6 +260,13 @@ async function runTests() {
     assert.ok(appAppJs.includes("text-editor.js?v=5.3"), "Android app.js must import text-editor.js?v=5.3");
     assert.ok(serverDart.includes("no-store"), "Android loopback server must disable stale WebView caching");
 
+    // Verify zero duplicate State / HistoryManager ES module singletons across js/
+    for (const file of fs.readdirSync(path.join(ROOT, "js")).filter(f => f.endsWith(".js"))) {
+      const src = fs.readFileSync(path.join(ROOT, "js", file), "utf8");
+      const badImports = src.match(/from\s+["']\.\/(state|history|pdf-content-stream-editor|pdf-renderer|text-editor|export-client|portal-advanced-tools|mobile-liquid-nav)\.js(?:\?v=(?!5\.3\b)[^"']*)?["']/g);
+      assert.equal(badImports, null, `${file} has mismatched module cache-buster: ${badImports}`);
+    }
+
     // Verify background reconstruction & destructive fallback are completely removed from vector editing
     assert.equal(textEditorSrc.includes("_createInpaintedBgDataUrl"), false, "_createInpaintedBgDataUrl must be removed from text-editor.js");
     assert.equal(textEditorSrc.includes("_sampleSpanVisualMetrics"), false, "_sampleSpanVisualMetrics must be removed from text-editor.js");
