@@ -75,17 +75,27 @@ export class PDFRenderer {
       if (res && res.warnings && res.warnings.length > 0) {
         State.emit("toast", { type: "warning", message: res.warnings[0] });
       }
-      if (!res || !res.bytes || res.appliedKeys.size === 0) return false;
+      if (!res || !res.bytes || res.appliedKeys.size === 0) {
+        this.suppressedKeysByPage.delete(pageIndex);
+        return false;
+      }
 
       const tempDoc = await window.pdfjsLib.getDocument({ data: res.bytes }).promise;
       const pdfPage = await tempDoc.getPage(pageIndex + 1);
       const viewport = pdfPage.getViewport({ scale: State.zoomScale });
       const dpr = Math.min(3, Math.max(window.devicePixelRatio || 1, 2));
 
+      const pageContainer = document.getElementById(`page-container-${pageIndex}`);
       const canvas = document.getElementById(`page-canvas-${pageIndex}`);
       if (!canvas) return false;
+      if (pageContainer) {
+        pageContainer.style.width = `${viewport.width}px`;
+        pageContainer.style.height = `${viewport.height}px`;
+      }
       canvas.width = Math.floor(viewport.width * dpr);
       canvas.height = Math.floor(viewport.height * dpr);
+      canvas.style.width = `${viewport.width}px`;
+      canvas.style.height = `${viewport.height}px`;
       const ctx = canvas.getContext("2d");
       ctx.scale(dpr, dpr);
 
@@ -208,6 +218,11 @@ export class PDFRenderer {
         viewport: viewport,
         textDivs: []
       });
+    }
+
+    // Keep modified PDF preview synced on zoom / re-render
+    if ((State.pendingTextEdits || []).some(e => e.page_number === pageIndex) && window.PDFLib) {
+      await this.renderPageWithSuppressedEdits(pageIndex);
     }
 
     State.emit("pageRendered", { pageIndex, viewport });

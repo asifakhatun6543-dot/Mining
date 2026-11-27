@@ -1428,75 +1428,98 @@ export class InlineTextEditor {
       span._origHighlightEl = originalHighlightEl;
     }
 
-    HistoryManager.record({
-      type: "text_edit",
-      description: `Edit: "${previousText.substring(0, 20)}" → "${replacementText.substring(0, 20)}"`,
-      undo: () => {
-        if (isFirstEdit) {
-          // Completely remove the edit
-          State.removeTextEdit(editItem);
-          span.currentText = span.original_text;
-          delete span.currentFont;
-          delete span.currentFontSize;
-          delete span.isBold;
-          delete span.isItalic;
-          delete span.isUnderline;
-          delete span.currentColorHex;
-          delete span.currentColorRgb;
-          delete span.currentAlignment;
+    const prevState = {
+      previousText,
+      previousFont,
+      previousFontSize,
+      previousBold,
+      previousItalic,
+      previousUnderline,
+      previousColorHex,
+      previousColorRgb,
+      previousAlignment
+    };
 
-          // Remove the visual cover
-          if (span._coverEl) {
-            span._coverEl.remove();
-            span._coverEl = null;
-          }
-          // Restore original highlight visibility
-          if (span._origHighlightEl) {
-            span._origHighlightEl.style.display = "";
-          }
-        } else {
-          // Restore to previous edit state
-          State.updateTextEdit(editItem, previousEditCopy);
-          span.currentText = previousText;
-          span.currentFont = previousFont;
-          span.currentFontSize = previousFontSize;
-          span.isBold = previousBold;
-          span.isItalic = previousItalic;
-          span.isUnderline = previousUnderline;
-          span.currentColorHex = previousColorHex;
-          span.currentColorRgb = previousColorRgb;
-          span.currentAlignment = previousAlignment;
-          this._renderVisualTextReplacement(pageIndex, span, previousText, span._origHighlightEl, previousEditCopy);
+    const restorePreviousState = () => {
+      if (isFirstEdit) {
+        State.removeTextEdit(editItem);
+        span.currentText = span.original_text;
+        delete span.currentFont;
+        delete span.currentFontSize;
+        delete span.isBold;
+        delete span.isItalic;
+        delete span.isUnderline;
+        delete span.currentColorHex;
+        delete span.currentColorRgb;
+        delete span.currentAlignment;
+        if (span._coverEl) {
+          span._coverEl.remove();
+          span._coverEl = null;
         }
-        window.app?.renderer?.renderPageWithSuppressedEdits?.(pageIndex).then((ok) => {
-          if (ok) this.reRenderPageEdits(pageIndex);
-        });
-        this.hide();
-      },
-      redo: () => {
-        State.addTextEdit(editItem);
-        span.currentText = replacementText;
-        span.currentFont = editItem.font_name;
-        span.currentFontSize = editItem.font_size;
-        span.isBold = editItem.is_bold;
-        span.isItalic = editItem.is_italic;
-        span.isUnderline = editItem.is_underline;
-        span.currentColorHex = editItem.text_color_hex;
-        span.currentColorRgb = editItem.text_color;
-        span.currentAlignment = editItem.alignment;
-        this._renderVisualTextReplacement(pageIndex, span, replacementText, span._origHighlightEl, editItem);
-        window.app?.renderer?.renderPageWithSuppressedEdits?.(pageIndex).then((ok) => {
-          if (ok) this.reRenderPageEdits(pageIndex);
-        });
-        this.hide();
+        if (span._origHighlightEl) {
+          span._origHighlightEl.style.display = "";
+        }
+      } else {
+        State.updateTextEdit(editItem, previousEditCopy);
+        span.currentText = prevState.previousText;
+        span.currentFont = prevState.previousFont;
+        span.currentFontSize = prevState.previousFontSize;
+        span.isBold = prevState.previousBold;
+        span.isItalic = prevState.previousItalic;
+        span.isUnderline = prevState.previousUnderline;
+        span.currentColorHex = prevState.previousColorHex;
+        span.currentColorRgb = prevState.previousColorRgb;
+        span.currentAlignment = prevState.previousAlignment;
       }
-    });
+    };
 
-    this._renderVisualTextReplacement(pageIndex, span, replacementText, span._origHighlightEl, editItem);
-    window.app?.renderer?.renderPageWithSuppressedEdits?.(pageIndex).then((ok) => {
-      if (ok) this.reRenderPageEdits(pageIndex);
-    });
     this.hide();
+
+    const renderer = window.app?.renderer;
+    if (renderer && typeof renderer.renderPageWithSuppressedEdits === "function") {
+      renderer.renderPageWithSuppressedEdits(pageIndex).then((ok) => {
+        const appliedOnCanvas = !!ok && !!renderer.isSpanSuppressedOnCanvas?.(pageIndex, editItem.bbox);
+        if (!appliedOnCanvas) {
+          restorePreviousState();
+          renderer.renderPageWithSuppressedEdits(pageIndex).then((rOk) => {
+            if (rOk) this.reRenderPageEdits(pageIndex);
+          });
+          return;
+        }
+
+        HistoryManager.record({
+          type: "text_edit",
+          description: `Edit: "${previousText.substring(0, 20)}" → "${replacementText.substring(0, 20)}"`,
+          undo: () => {
+            restorePreviousState();
+            renderer.renderPageWithSuppressedEdits(pageIndex).then((rOk) => {
+              if (rOk) this.reRenderPageEdits(pageIndex);
+            });
+            this.hide();
+          },
+          redo: () => {
+            State.addTextEdit(editItem);
+            span.currentText = replacementText;
+            span.currentFont = editItem.font_name;
+            span.currentFontSize = editItem.font_size;
+            span.isBold = editItem.is_bold;
+            span.isItalic = editItem.is_italic;
+            span.isUnderline = editItem.is_underline;
+            span.currentColorHex = editItem.text_color_hex;
+            span.currentColorRgb = editItem.text_color;
+            span.currentAlignment = editItem.alignment;
+            renderer.renderPageWithSuppressedEdits(pageIndex).then((rOk) => {
+              if (rOk) this.reRenderPageEdits(pageIndex);
+            });
+            this.hide();
+          }
+        });
+
+        this.reRenderPageEdits(pageIndex);
+      });
+    } else {
+      this._renderVisualTextReplacement(pageIndex, span, replacementText, span._origHighlightEl, editItem);
+    }
   }
 
   applyDelete() {
@@ -1509,53 +1532,78 @@ export class InlineTextEditor {
       Math.abs(e.bbox[0] - span.bbox[0]) < 1 &&
       Math.abs(e.bbox[1] - span.bbox[1]) < 1
     );
+    const previousEditCopy = previousEdit ? { ...previousEdit } : null;
 
     const deleteItem = {
       page_number: pageIndex,
       original_text: span.original_text || span.text,
       replacement_text: "",
       bbox: span.bbox,
+      baseline_y: span.baselineY,
       font_name: this.currentFont,
       font_size: this.currentFontSize,
-      alignment: this.currentAlignment,
-      bg_color: [...this.currentBgColorRgb],
-      bg_color_hex: this.currentBgColorHex
+      alignment: this.currentAlignment
     };
 
     State.addTextEdit(deleteItem);
     span.currentText = "";
 
     const originalHighlightEl = span._origHighlightEl || (element && !element.classList.contains("edited-text-overlay") ? element : null);
+    if (!span._origHighlightEl && originalHighlightEl) {
+      span._origHighlightEl = originalHighlightEl;
+    }
 
-    HistoryManager.record({
-      type: "text_delete",
-      description: `Delete: "${previousText}"`,
-      undo: () => {
-        if (!previousEdit) {
-          State.removeTextEdit(deleteItem);
-          span.currentText = span.original_text;
-          if (span._coverEl) {
-            span._coverEl.remove();
-            span._coverEl = null;
-          }
-          if (originalHighlightEl) originalHighlightEl.style.display = "block";
-        } else {
-          State.updateTextEdit(deleteItem, previousEdit);
-          span.currentText = previousText;
-          this._renderVisualTextReplacement(pageIndex, span, previousText, originalHighlightEl, previousEdit);
+    const restoreDelete = () => {
+      if (!previousEditCopy) {
+        State.removeTextEdit(deleteItem);
+        span.currentText = span.original_text;
+        if (span._coverEl) {
+          span._coverEl.remove();
+          span._coverEl = null;
         }
-        this.hide();
-      },
-      redo: () => {
-        State.addTextEdit(deleteItem);
-        span.currentText = "";
-        this._renderVisualTextReplacement(pageIndex, span, "", originalHighlightEl, deleteItem);
-        this.hide();
+        if (originalHighlightEl) originalHighlightEl.style.display = "";
+      } else {
+        State.updateTextEdit(deleteItem, previousEditCopy);
+        span.currentText = previousText;
       }
-    });
+    };
 
-    this._renderVisualTextReplacement(pageIndex, span, "", originalHighlightEl, deleteItem);
     this.hide();
+
+    const renderer = window.app?.renderer;
+    if (renderer && typeof renderer.renderPageWithSuppressedEdits === "function") {
+      renderer.renderPageWithSuppressedEdits(pageIndex).then((ok) => {
+        const appliedOnCanvas = !!ok && !!renderer.isSpanSuppressedOnCanvas?.(pageIndex, deleteItem.bbox);
+        if (!appliedOnCanvas) {
+          restoreDelete();
+          return;
+        }
+
+        HistoryManager.record({
+          type: "text_delete",
+          description: `Delete: "${previousText}"`,
+          undo: () => {
+            restoreDelete();
+            renderer.renderPageWithSuppressedEdits(pageIndex).then((rOk) => {
+              if (rOk) this.reRenderPageEdits(pageIndex);
+            });
+            this.hide();
+          },
+          redo: () => {
+            State.addTextEdit(deleteItem);
+            span.currentText = "";
+            renderer.renderPageWithSuppressedEdits(pageIndex).then((rOk) => {
+              if (rOk) this.reRenderPageEdits(pageIndex);
+            });
+            this.hide();
+          }
+        });
+
+        this.reRenderPageEdits(pageIndex);
+      });
+    } else {
+      this._renderVisualTextReplacement(pageIndex, span, "", originalHighlightEl, deleteItem);
+    }
   }
 
   quickRedactSpan(selectedData, isWhiteout = false) {
@@ -1685,14 +1733,13 @@ export class InlineTextEditor {
       cover.style.textAlign = "left";
     }
 
-    // Use color from the edit item, or transparent when the modified PDF itself is rendered by PDF.js on canvas
-    const colorHex = editItem.text_color_hex || origSpan.currentColorHex || this._rgbArrayToHex(editItem.text_color) || "#000000";
+    // Modified PDF text is rendered directly by PDF.js on the canvas; keep hit-target text transparent so duplicate text is never drawn.
     const letterSpacingVal = editItem.letter_spacing !== undefined ? editItem.letter_spacing : (origSpan.letterSpacing || 0);
 
     cover.innerHTML = "";
     const textEl = document.createElement("span");
     textEl.textContent = replacementText;
-    textEl.style.color = isRenderedOnPdfCanvas ? "transparent" : colorHex;
+    textEl.style.color = "transparent";
     textEl.style.fontSize = `${(editItem.font_size || origSpan.size) * scale}px`;
     textEl.style.fontFamily = this._getSpanCssFontFamily(
       editItem.font_name,
