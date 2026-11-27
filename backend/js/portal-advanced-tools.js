@@ -12,7 +12,7 @@ import {
   convertPdfToPptx,
   convertPptxToPdf,
   validateConvertedOutput
-} from "./conversion-engine.js?v=5.2";
+} from "./conversion-engine.js?v=5.3";
 
 // Ensure PDF.js worker is always configured even before editor loads
 if (typeof window !== "undefined" && window.pdfjsLib && !window.pdfjsLib.GlobalWorkerOptions.workerSrc) {

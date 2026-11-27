@@ -254,10 +254,10 @@ async function runTests() {
     const exportSrc = fs.readFileSync(path.join(ROOT, "js/export-client.js"), "utf8");
     const serverDart = fs.readFileSync(path.join(ROOT, "openpdf_mobile/lib/core/services/pdf_editor_server.dart"), "utf8");
 
-    assert.ok(webHtml.includes("app.js?v=5.2"), "Website index.html must load v=5.2 assets");
-    assert.ok(appHtml.includes("app.js?v=5.2"), "Android index.html must load v=5.2 assets");
-    assert.ok(webAppJs.includes("text-editor.js?v=5.2"), "Website app.js must import text-editor.js?v=5.2");
-    assert.ok(appAppJs.includes("text-editor.js?v=5.2"), "Android app.js must import text-editor.js?v=5.2");
+    assert.ok(webHtml.includes("app.js?v=5.3"), "Website index.html must load v=5.3 assets");
+    assert.ok(appHtml.includes("app.js?v=5.3"), "Android index.html must load v=5.3 assets");
+    assert.ok(webAppJs.includes("text-editor.js?v=5.3"), "Website app.js must import text-editor.js?v=5.3");
+    assert.ok(appAppJs.includes("text-editor.js?v=5.3"), "Android app.js must import text-editor.js?v=5.3");
     assert.ok(serverDart.includes("no-store"), "Android loopback server must disable stale WebView caching");
 
     // Verify background reconstruction & destructive fallback are completely removed from vector editing

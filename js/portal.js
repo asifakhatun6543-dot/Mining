@@ -3,7 +3,7 @@
  * Powered by PDF-Lib, PDF.js, and HTML5 Canvas
  */
 
-import { AdvancedToolsManager, formatBytes } from "./portal-advanced-tools.js?v=4.1";
+import { AdvancedToolsManager, formatBytes } from "./portal-advanced-tools.js?v=5.3";
 import { MobileLiquidNavController, RecentHistoryManager } from "./mobile-liquid-nav.js?v=4.1";
 
 if (typeof window !== "undefined") {

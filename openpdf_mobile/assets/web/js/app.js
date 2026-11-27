@@ -2,14 +2,14 @@
  * OpenPDF Studio - Main Application Controller
  */
 
-import { State, getApiUrl } from "./state.js?v=5.2";
-import { HistoryManager } from "./history.js?v=5.2";
-import { PDFRenderer } from "./pdf-renderer.js?v=5.2";
-import { TextSelectionManager } from "./text-selection.js?v=5.2";
-import { InlineTextEditor } from "./text-editor.js?v=5.2";
-import { ScannedEditor } from "./scanned-editor.js?v=5.2";
-import { ToolbarManager } from "./toolbar.js?v=5.2";
-import { ExportClient } from "./export-client.js?v=5.2";
+import { State, getApiUrl } from "./state.js?v=5.3";
+import { HistoryManager } from "./history.js?v=5.3";
+import { PDFRenderer } from "./pdf-renderer.js?v=5.3";
+import { TextSelectionManager } from "./text-selection.js?v=5.3";
+import { InlineTextEditor } from "./text-editor.js?v=5.3";
+import { ScannedEditor } from "./scanned-editor.js?v=5.3";
+import { ToolbarManager } from "./toolbar.js?v=5.3";
+import { ExportClient } from "./export-client.js?v=5.3";
 
 class OpenPDFStudioApp {
   constructor() {

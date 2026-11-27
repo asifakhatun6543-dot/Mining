@@ -3,7 +3,7 @@
  */
 
 import { State } from "./state.js";
-import { applyPageEditsForPreview } from "./pdf-content-stream-editor.js?v=5.2";
+import { applyPageEditsForPreview } from "./pdf-content-stream-editor.js?v=5.3";
 
 // Configure PDF.js worker
 if (window.pdfjsLib) {
