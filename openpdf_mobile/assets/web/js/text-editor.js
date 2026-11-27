@@ -1028,8 +1028,10 @@ export class InlineTextEditor {
     State.subscribe("zoomChanged", () => {
       if (this.activeBoxEl && this.currentSpanData) {
         const { pageIndex, span } = this.currentSpanData;
-        const textToShow = span.currentText !== undefined ? span.currentText : span.text;
-        this._buildInPlaceBox(pageIndex, span, span._origHighlightEl, textToShow);
+        const liveDiv = this.activeBoxEl.querySelector(".inplace-text-editable");
+        const textToShow = liveDiv ? liveDiv.innerText : (span.currentText !== undefined ? span.currentText : span.text);
+        const savedRect = this.customBoxRect ? { ...this.customBoxRect } : null;
+        this._buildInPlaceBox(pageIndex, span, span._origHighlightEl, textToShow, savedRect);
       }
       for (let p = 0; p < State.pageCount; p++) {
         this.reRenderPageEdits(p);
@@ -1262,7 +1264,7 @@ export class InlineTextEditor {
     }
   }
 
-  _buildInPlaceBox(pageIndex, span, originalHighlightEl, textToShow) {
+  _buildInPlaceBox(pageIndex, span, originalHighlightEl, textToShow, preservedRect = null) {
     if (this.activeBoxEl) {
       this.activeBoxEl.remove();
       this.activeBoxEl = null;
@@ -1276,16 +1278,20 @@ export class InlineTextEditor {
     }
 
     const scale = State.zoomScale;
-    const [x0, y0, x1, y1] = span.bbox;
-    const width = Math.max(16, (x1 - x0) * scale);
-    const height = Math.max(12, (y1 - y0) * scale);
-
-    this.customBoxRect = {
-      x0, y0, x1, y1,
+    const baseRect = preservedRect || {
+      x0: span.bbox[0],
+      y0: span.bbox[1],
+      x1: span.bbox[2],
+      y1: span.bbox[3],
       hasCustomWidth: false,
       hasCustomHeight: false,
       moved: false
     };
+    const { x0, y0, x1, y1 } = baseRect;
+    const width = Math.max(16, (x1 - x0) * scale);
+    const height = Math.max(12, (y1 - y0) * scale);
+
+    this.customBoxRect = { ...baseRect };
     this._clearCommitError();
 
     const box = document.createElement("div");
@@ -1294,8 +1300,8 @@ export class InlineTextEditor {
     box.style.left = `${x0 * scale}px`;
     box.style.top = `${y0 * scale}px`;
     box.style.minWidth = `${width}px`;
-    box.style.width = "max-content";
-    box.style.maxWidth = `calc(100% - ${x0 * scale + 4}px)`;
+    box.style.width = baseRect.hasCustomWidth ? `${width}px` : "max-content";
+    box.style.maxWidth = baseRect.hasCustomWidth ? `${width}px` : `calc(100% - ${x0 * scale + 4}px)`;
     box.style.height = `${height}px`;
     box.style.minHeight = `${height}px`;
     box.style.boxSizing = "border-box";
@@ -1313,8 +1319,8 @@ export class InlineTextEditor {
     editableDiv.contentEditable = "true";
     editableDiv.spellcheck = false;
     editableDiv.innerText = textToShow;
-    editableDiv.style.whiteSpace = "pre";
-    editableDiv.style.wordBreak = "normal";
+    editableDiv.style.whiteSpace = baseRect.hasCustomWidth ? "pre-wrap" : "pre";
+    editableDiv.style.wordBreak = baseRect.hasCustomWidth ? "break-word" : "normal";
     editableDiv.style.minWidth = `${width}px`;
     editableDiv.style.width = "100%";
     editableDiv.style.outline = "none";
@@ -1335,9 +1341,22 @@ export class InlineTextEditor {
       handle.dataset.handle = dir;
       handle.title = `Resize (${dir.toUpperCase()})`;
 
+      // Prevent accidental page scrolling on Android/mobile while touching/dragging a resize handle
+      handle.addEventListener("touchstart", (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+      }, { passive: false });
+      handle.addEventListener("touchmove", (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+      }, { passive: false });
+
       handle.addEventListener("pointerdown", (e) => {
         e.preventDefault();
         e.stopPropagation();
+        const workspaceEl = document.getElementById("center-workspace");
+        const prevTouchAction = workspaceEl ? workspaceEl.style.touchAction : "";
+        if (workspaceEl) workspaceEl.style.touchAction = "none";
         const startX = e.clientX;
         const startY = e.clientY;
         const curScale = State.zoomScale || 1;
@@ -1406,6 +1425,7 @@ export class InlineTextEditor {
         };
 
         const onUp = (upEv) => {
+          if (workspaceEl) workspaceEl.style.touchAction = prevTouchAction;
           try { handle.releasePointerCapture(upEv.pointerId); } catch (_) {}
           window.removeEventListener("pointermove", onMove);
           window.removeEventListener("pointerup", onUp);
