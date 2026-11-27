@@ -15,7 +15,9 @@ const SHARED_MODULES = [
   "state.js",
   "history.js",
   "toolbar.js",
-  "scanned-editor.js"
+  "scanned-editor.js",
+  "conversion-engine.js",
+  "portal-advanced-tools.js"
 ];
 
 const TARGET_DIRS = [

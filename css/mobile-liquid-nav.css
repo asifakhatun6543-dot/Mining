@@ -190,12 +190,12 @@
   .mobile-liquid-backdrop {
     position: fixed;
     inset: 0;
-    background: rgba(15, 23, 42, 0.45);
-    backdrop-filter: blur(8px);
-    -webkit-backdrop-filter: blur(8px);
+    background: transparent;
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
     z-index: 100000;
     opacity: 0;
-    transition: opacity 0.3s ease;
+    transition: opacity 0.2s ease;
     display: none;
   }
 

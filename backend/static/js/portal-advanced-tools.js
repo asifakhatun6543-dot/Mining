@@ -4,6 +4,16 @@
  * Powered by PDF.js, PDF-Lib, Canvas & Zero-Dependency Pure-JS ZIP/OOXML
  */
 
+import {
+  convertPdfToDocx,
+  convertDocxToPdf,
+  convertPdfToXlsx,
+  convertExcelToPdf,
+  convertPdfToPptx,
+  convertPptxToPdf,
+  validateConvertedOutput
+} from "./conversion-engine.js?v=5.2";
+
 // Ensure PDF.js worker is always configured even before editor loads
 if (typeof window !== "undefined" && window.pdfjsLib && !window.pdfjsLib.GlobalWorkerOptions.workerSrc) {
   window.pdfjsLib.GlobalWorkerOptions.workerSrc = new URL("vendor/pdfjs/pdf.worker.js", document.baseURI).href;
@@ -1046,9 +1056,51 @@ export class AdvancedToolsManager {
 
     this._bindDrop(dropzone, picker, chooseBtn, onFileSelected);
 
+    const ensureWordSettings = () => {
+      if (!readyWrap || readyWrap.querySelector("#conv-settings-pdf-word")) return;
+      const box = document.createElement("div");
+      box.id = "conv-settings-pdf-word";
+      box.style.cssText = "display:flex;flex-wrap:wrap;gap:10px;margin:10px 0;padding:10px 12px;border-radius:10px;border:1px solid var(--border-color,#e2e8f0);background:var(--surface-secondary,#f8fafc);font-size:12.5px;";
+      box.innerHTML = `
+        <label style="display:flex;flex-direction:column;gap:4px;flex:1;min-width:170px;">
+          <span style="font-weight:600;opacity:0.85;">Conversion Mode</span>
+          <select id="pdf-word-mode" style="padding:6px 8px;border-radius:6px;border:1px solid var(--border-color,#cbd5e1);background:var(--surface-primary,#fff);color:inherit;">
+            <option value="editable" selected>Editable Document (Layout-Aware DOCX)</option>
+            <option value="appearance">Original Appearance (High-Res Page Images)</option>
+          </select>
+        </label>
+        <label style="display:flex;flex-direction:column;gap:4px;min-width:120px;">
+          <span style="font-weight:600;opacity:0.85;">Pages</span>
+          <input id="pdf-word-pages" type="text" value="all" placeholder="all or 1-3,5" style="padding:6px 8px;border-radius:6px;border:1px solid var(--border-color,#cbd5e1);background:var(--surface-primary,#fff);color:inherit;width:110px;" />
+        </label>
+        <label style="display:flex;flex-direction:column;gap:4px;min-width:110px;">
+          <span style="font-weight:600;opacity:0.85;">Quality</span>
+          <select id="pdf-word-quality" style="padding:6px 8px;border-radius:6px;border:1px solid var(--border-color,#cbd5e1);background:var(--surface-primary,#fff);color:inherit;">
+            <option value="high" selected>High</option>
+            <option value="standard">Standard</option>
+          </select>
+        </label>
+        <div id="pdf-word-mode-note" style="width:100%;font-size:11px;opacity:0.75;">Reconstructs editable paragraphs, tables, fonts, colors, alignment, and page sizes.</div>
+      `;
+      readyWrap.insertBefore(box, convertBtn);
+      box.querySelector("#pdf-word-mode")?.addEventListener("change", (ev) => {
+        generatedBlob = null;
+        const note = box.querySelector("#pdf-word-mode-note");
+        if (note) {
+          note.textContent = ev.target.value === "appearance"
+            ? "Note: Original Appearance Mode embeds high-resolution page images; text inside images is not editable."
+            : "Reconstructs editable paragraphs, tables, fonts, colors, alignment, and page sizes.";
+        }
+      });
+    };
+
     convertBtn?.addEventListener("click", async () => {
       if (!activeFile) return;
+      ensureWordSettings();
       const baseName = activeFile.name.replace(/\.pdf$/i, "");
+      const modeVal = readyWrap?.querySelector("#pdf-word-mode")?.value || "editable";
+      const pageRangeVal = readyWrap?.querySelector("#pdf-word-pages")?.value || "all";
+      const qualityVal = readyWrap?.querySelector("#pdf-word-quality")?.value || "high";
 
       // If already generated, re-download immediately
       if (generatedBlob) {
@@ -1065,40 +1117,19 @@ export class AdvancedToolsManager {
         const arrayBuffer = await activeFile.arrayBuffer();
         const pdfJsDoc = await pdfjsLib.getDocument({ data: new Uint8Array(arrayBuffer) }).promise;
 
-        const pagesData = [];
-        for (let pno = 1; pno <= pdfJsDoc.numPages; pno++) {
-          const page = await pdfJsDoc.getPage(pno);
-          const textContent = await page.getTextContent();
-          const lines = [];
+        const result = await convertPdfToDocx(pdfJsDoc, pdfjsLib, {
+          mode: modeVal,
+          pageRange: pageRangeVal,
+          quality: qualityVal
+        });
+        const check = await validateConvertedOutput(result.blob, "docx");
+        if (!check.valid) throw new Error(check.reason || "Invalid DOCX generated.");
 
-          textContent.items.forEach(item => {
-            const str = item.str || "";
-            if (!str.trim()) return;
-            const y = Math.round(item.transform[5]);
-            const x = Math.round(item.transform[4]);
-            const fontH = Math.round(Math.hypot(item.transform[2], item.transform[3]) || item.height || 11);
-            let line = lines.find(l => Math.abs(l.y - y) < 4);
-            if (!line) {
-              line = { y, fontH, isBold: false, items: [] };
-              lines.push(line);
-            }
-            line.items.push({ x, str });
-            if (fontH > line.fontH) line.fontH = fontH;
-            if (/bold|black|heavy/i.test(item.fontName || "")) line.isBold = true;
-          });
-
-          lines.sort((a, b) => b.y - a.y);
-          pagesData.push(lines.map(l => ({
-            text: l.items.sort((a, b) => a.x - b.x).map(i => i.str).join(" ").replace(/\s+/g, " ").trim(),
-            fontH: l.fontH,
-            isBold: l.isBold
-          })));
-        }
-
-        generatedBlob = buildRealDocxBlob(pagesData);
+        generatedBlob = result.blob;
         downloadBlob(generatedBlob, `${baseName}.docx`);
         if (statusText) {
-          statusText.innerHTML = `<div class="tw-file-meta tw-file-success"><strong>${escapeHtml(baseName)}.docx Ready!</strong><span>${pdfJsDoc.numPages} pages converted &bull; ${formatBytes(generatedBlob.size)}</span></div>`;
+          const modeLabel = result.isImageBased ? "Original Appearance (Image-Based)" : "Editable Layout-Aware";
+          statusText.innerHTML = `<div class="tw-file-meta tw-file-success"><strong>${escapeHtml(baseName)}.docx Ready!</strong><span>${result.pageCount} pages (${modeLabel}) &bull; ${formatBytes(generatedBlob.size)}</span></div>`;
         }
         convertBtn.textContent = "Download Word (.docx) Again";
         showPortalToast("success", `Converted & downloaded "${baseName}.docx"!`);
@@ -1203,20 +1234,53 @@ export class AdvancedToolsManager {
       return tableRows;
     };
 
+    const ensureExcelSettings = () => {
+      if (!readyWrap || readyWrap.querySelector("#conv-settings-pdf-excel")) return;
+      const box = document.createElement("div");
+      box.id = "conv-settings-pdf-excel";
+      box.style.cssText = "display:flex;flex-wrap:wrap;gap:10px;margin:10px 0;padding:10px 12px;border-radius:10px;border:1px solid var(--border-color,#e2e8f0);background:var(--surface-secondary,#f8fafc);font-size:12.5px;";
+      box.innerHTML = `
+        <label style="display:flex;flex-direction:column;gap:4px;flex:1;min-width:170px;">
+          <span style="font-weight:600;opacity:0.85;">Conversion Mode</span>
+          <select id="pdf-excel-mode" style="padding:6px 8px;border-radius:6px;border:1px solid var(--border-color,#cbd5e1);background:var(--surface-primary,#fff);color:inherit;">
+            <option value="structured" selected>Structured Data Mode (Editable Cells)</option>
+            <option value="visual">Visual Layout Mode (Data + Page Visual Sheets)</option>
+          </select>
+        </label>
+        <label style="display:flex;flex-direction:column;gap:4px;min-width:120px;">
+          <span style="font-weight:600;opacity:0.85;">Pages</span>
+          <input id="pdf-excel-pages" type="text" value="all" placeholder="all or 1-3" style="padding:6px 8px;border-radius:6px;border:1px solid var(--border-color,#cbd5e1);background:var(--surface-primary,#fff);color:inherit;width:110px;" />
+        </label>
+      `;
+      readyWrap.insertBefore(box, downloadXlsxBtn);
+    };
+
     downloadXlsxBtn?.addEventListener("click", async () => {
       if (!activeFile) return;
+      ensureExcelSettings();
       downloadXlsxBtn.disabled = true;
       downloadXlsxBtn.textContent = "Generating Excel (.xlsx)...";
       try {
-        const rows = await ensureRows();
+        const pdfjsLib = window.pdfjsLib;
+        const buf = await activeFile.arrayBuffer();
+        const pdfJsDoc = await pdfjsLib.getDocument({ data: new Uint8Array(buf) }).promise;
+        const modeVal = readyWrap?.querySelector("#pdf-excel-mode")?.value || "structured";
+        const pageRangeVal = readyWrap?.querySelector("#pdf-excel-pages")?.value || "all";
+
+        const result = await convertPdfToXlsx(pdfJsDoc, pdfjsLib, {
+          mode: modeVal,
+          pageRange: pageRangeVal
+        });
+        const check = await validateConvertedOutput(result.blob, "xlsx");
+        if (!check.valid) throw new Error(check.reason || "Invalid XLSX generated.");
+
         const baseName = activeFile.name.replace(/\.pdf$/i, "");
-        const blob = buildRealXlsxBlob(rows);
-        downloadBlob(blob, `${baseName}.xlsx`);
+        downloadBlob(result.blob, `${baseName}.xlsx`);
         if (statsBadge) {
-          statsBadge.innerHTML = `<div class="tw-file-meta tw-file-success"><strong>${escapeHtml(baseName)}.xlsx Ready!</strong><span>${rows.length} rows extracted &bull; ${formatBytes(blob.size)}</span></div>`;
+          statsBadge.innerHTML = `<div class="tw-file-meta tw-file-success"><strong>${escapeHtml(baseName)}.xlsx Ready!</strong><span>${result.sheetCount} sheets (${modeVal}) &bull; ${formatBytes(result.blob.size)}</span></div>`;
         }
         downloadXlsxBtn.textContent = "Download Excel (.xlsx) Again";
-        showPortalToast("success", `Downloaded "${baseName}.xlsx" (${rows.length} rows)!`);
+        showPortalToast("success", `Downloaded "${baseName}.xlsx" (${result.sheetCount} sheets)!`);
       } catch (err) {
         console.error(err);
         showPortalToast("error", `Excel export failed: ${err.message}`);
@@ -1286,8 +1350,40 @@ export class AdvancedToolsManager {
 
     this._bindDrop(dropzone, picker, chooseBtn, onFileSelected);
 
+    const ensurePptxSettings = () => {
+      if (!readyWrap || readyWrap.querySelector("#conv-settings-pdf-pptx")) return;
+      const box = document.createElement("div");
+      box.id = "conv-settings-pdf-pptx";
+      box.style.cssText = "display:flex;flex-wrap:wrap;gap:10px;margin:10px 0;padding:10px 12px;border-radius:10px;border:1px solid var(--border-color,#e2e8f0);background:var(--surface-secondary,#f8fafc);font-size:12.5px;";
+      box.innerHTML = `
+        <label style="display:flex;flex-direction:column;gap:4px;flex:1;min-width:170px;">
+          <span style="font-weight:600;opacity:0.85;">Slide Mode</span>
+          <select id="pdf-pptx-mode" style="padding:6px 8px;border-radius:6px;border:1px solid var(--border-color,#cbd5e1);background:var(--surface-primary,#fff);color:inherit;">
+            <option value="editable" selected>Editable Slides (Positioned Text Boxes)</option>
+            <option value="appearance">Original Appearance (High-Res Slide Images)</option>
+          </select>
+        </label>
+        <label style="display:flex;flex-direction:column;gap:4px;min-width:120px;">
+          <span style="font-weight:600;opacity:0.85;">Aspect Ratio</span>
+          <select id="pdf-pptx-aspect" style="padding:6px 8px;border-radius:6px;border:1px solid var(--border-color,#cbd5e1);background:var(--surface-primary,#fff);color:inherit;">
+            <option value="original" selected>Original Page Size</option>
+            <option value="16:9">Widescreen 16:9</option>
+            <option value="4:3">Standard 4:3</option>
+          </select>
+        </label>
+        <label style="display:flex;flex-direction:column;gap:4px;min-width:100px;">
+          <span style="font-weight:600;opacity:0.85;">Pages</span>
+          <input id="pdf-pptx-pages" type="text" value="all" placeholder="all or 1-5" style="padding:6px 8px;border-radius:6px;border:1px solid var(--border-color,#cbd5e1);background:var(--surface-primary,#fff);color:inherit;width:100px;" />
+        </label>
+      `;
+      readyWrap.insertBefore(box, downloadBtn);
+      box.querySelector("#pdf-pptx-mode")?.addEventListener("change", () => { generatedPptxBlob = null; });
+      box.querySelector("#pdf-pptx-aspect")?.addEventListener("change", () => { generatedPptxBlob = null; });
+    };
+
     downloadBtn?.addEventListener("click", async () => {
       if (!activeFile) return;
+      ensurePptxSettings();
       const baseName = activeFile.name.replace(/\.pdf$/i, "");
 
       if (generatedPptxBlob) {
@@ -1303,29 +1399,23 @@ export class AdvancedToolsManager {
         const pdfjsLib = window.pdfjsLib;
         const arrayBuffer = await activeFile.arrayBuffer();
         const pdfJsDoc = await pdfjsLib.getDocument({ data: new Uint8Array(arrayBuffer) }).promise;
-        const slides = [];
+        const modeVal = readyWrap?.querySelector("#pdf-pptx-mode")?.value || "editable";
+        const aspectVal = readyWrap?.querySelector("#pdf-pptx-aspect")?.value || "original";
+        const pageRangeVal = readyWrap?.querySelector("#pdf-pptx-pages")?.value || "all";
 
-        for (let pno = 1; pno <= pdfJsDoc.numPages; pno++) {
-          downloadBtn.textContent = `Rendering Slide ${pno} of ${pdfJsDoc.numPages}...`;
-          const page = await pdfJsDoc.getPage(pno);
-          const viewport = page.getViewport({ scale: 1.6 });
-          const canvas = document.createElement("canvas");
-          canvas.width = Math.floor(viewport.width);
-          canvas.height = Math.floor(viewport.height);
-          const ctx = canvas.getContext("2d");
-          ctx.fillStyle = "#ffffff";
-          ctx.fillRect(0, 0, canvas.width, canvas.height);
-          await page.render({ canvasContext: ctx, viewport }).promise;
+        const result = await convertPdfToPptx(pdfJsDoc, pdfjsLib, {
+          mode: modeVal,
+          aspect: aspectVal,
+          pageRange: pageRangeVal
+        });
+        const check = await validateConvertedOutput(result.blob, "pptx");
+        if (!check.valid) throw new Error(check.reason || "Invalid PPTX generated.");
 
-          const jpgBlob = await new Promise(r => canvas.toBlob(r, "image/jpeg", 0.90));
-          const jpgBytes = new Uint8Array(await jpgBlob.arrayBuffer());
-          slides.push({ width: canvas.width, height: canvas.height, jpgBytes });
-        }
-
-        generatedPptxBlob = buildRealPptxBlob(slides);
+        generatedPptxBlob = result.blob;
         downloadBlob(generatedPptxBlob, `${baseName}.pptx`);
         if (statusText) {
-          statusText.innerHTML = `<div class="tw-file-meta tw-file-success"><strong>${escapeHtml(baseName)}.pptx Ready!</strong><span>${slides.length} widescreen slides &bull; ${formatBytes(generatedPptxBlob.size)}</span></div>`;
+          const modeLabel = result.isImageBased ? "Original Appearance (Image-Based)" : "Editable Slides";
+          statusText.innerHTML = `<div class="tw-file-meta tw-file-success"><strong>${escapeHtml(baseName)}.pptx Ready!</strong><span>${result.slideCount} slides (${modeLabel}) &bull; ${formatBytes(generatedPptxBlob.size)}</span></div>`;
         }
         downloadBtn.textContent = "Download PowerPoint (.pptx) Again";
         showPortalToast("success", `Converted & downloaded "${baseName}.pptx"!`);
@@ -1422,18 +1512,32 @@ export class AdvancedToolsManager {
       convertBtn.textContent = "Converting Word to PDF...";
       try {
         const baseName = activeFile.name.replace(/\.(docx?|rtf|txt)$/i, "");
-        const pdfBytes = await generateUnicodeSafeTextPdf(
-          baseName,
-          "Converted from Word Document",
-          extractedText,
-          fontSelect?.value || "Helvetica"
-        );
-        const blob = new Blob([pdfBytes], { type: "application/pdf" });
+        let blob, pageCount = 1, warnings = [];
+        if (activeFile.name.toLowerCase().endsWith(".docx")) {
+          const buf = await activeFile.arrayBuffer();
+          const res = await convertDocxToPdf(buf, activeFile.name, window.PDFLib, {
+            fallbackFont: fontSelect?.value || "Helvetica"
+          });
+          blob = res.blob;
+          pageCount = res.pageCount;
+          warnings = res.warnings || [];
+        } else {
+          const pdfBytes = await generateUnicodeSafeTextPdf(
+            baseName,
+            "Converted from Word Document",
+            extractedText,
+            fontSelect?.value || "Helvetica"
+          );
+          blob = new Blob([pdfBytes], { type: "application/pdf" });
+        }
+        const check = await validateConvertedOutput(blob, "pdf");
+        if (!check.valid) throw new Error(check.reason || "Invalid PDF generated.");
         downloadBlob(blob, `${baseName}.pdf`);
         if (fileLabel) {
-          fileLabel.innerHTML = `<div class="tw-file-meta tw-file-success"><strong>${escapeHtml(baseName)}.pdf Ready!</strong><span>${formatBytes(blob.size)} &bull; Downloaded</span></div>`;
+          fileLabel.innerHTML = `<div class="tw-file-meta tw-file-success"><strong>${escapeHtml(baseName)}.pdf Ready!</strong><span>${pageCount} pages &bull; ${formatBytes(blob.size)} &bull; Downloaded</span></div>`;
         }
         convertBtn.textContent = "Download PDF Again";
+        if (warnings.length > 0) showPortalToast("warning", warnings[0]);
         showPortalToast("success", `Converted & downloaded "${baseName}.pdf"!`);
       } catch (err) {
         console.error(err);
@@ -1560,66 +1664,51 @@ export class AdvancedToolsManager {
 
     this._bindDrop(dropzone, picker, chooseBtn, onFileSelected);
 
+    const ensureExcelPdfSettings = () => {
+      if (!readyWrap || readyWrap.querySelector("#conv-settings-excel-pdf")) return;
+      const box = document.createElement("div");
+      box.id = "conv-settings-excel-pdf";
+      box.style.cssText = "display:flex;flex-wrap:wrap;gap:10px;margin:10px 0;padding:10px 12px;border-radius:10px;border:1px solid var(--border-color,#e2e8f0);background:var(--surface-secondary,#f8fafc);font-size:12.5px;";
+      box.innerHTML = `
+        <label style="display:flex;flex-direction:column;gap:4px;min-width:140px;">
+          <span style="font-weight:600;opacity:0.85;">Sheets</span>
+          <select id="excel-pdf-sheet" style="padding:6px 8px;border-radius:6px;border:1px solid var(--border-color,#cbd5e1);background:var(--surface-primary,#fff);color:inherit;">
+            <option value="all" selected>All Sheets</option>
+            <option value="0">First Sheet Only</option>
+          </select>
+        </label>
+        <label style="display:flex;flex-direction:column;gap:4px;min-width:140px;">
+          <span style="font-weight:600;opacity:0.85;">Orientation</span>
+          <select id="excel-pdf-orient" style="padding:6px 8px;border-radius:6px;border:1px solid var(--border-color,#cbd5e1);background:var(--surface-primary,#fff);color:inherit;">
+            <option value="landscape" selected>Landscape (Workbook Default)</option>
+            <option value="portrait">Portrait</option>
+          </select>
+        </label>
+      `;
+      readyWrap.insertBefore(box, convertBtn);
+    };
+
     convertBtn?.addEventListener("click", async () => {
-      if (!activeFile || parsedRows.length === 0) return;
+      if (!activeFile) return;
+      ensureExcelPdfSettings();
       convertBtn.disabled = true;
       convertBtn.textContent = "Converting Spreadsheet to PDF...";
 
       try {
-        const PDFLib = window.PDFLib;
-        const pdfDoc = await PDFLib.PDFDocument.create();
-        const font = await pdfDoc.embedFont(PDFLib.StandardFonts.Helvetica);
-        const fontBold = await pdfDoc.embedFont(PDFLib.StandardFonts.HelveticaBold);
         const baseName = activeFile.name.replace(/\.(xlsx?|csv|txt)$/i, "");
-
-        const pageW = 841.89; // Landscape A4
-        const pageH = 595.28;
-        const margin = 36;
-        const colCount = Math.min(12, Math.max(1, ...parsedRows.map(r => r.length)));
-        const colW = (pageW - margin * 2) / colCount;
-        const rowH = 22;
-        const maxRowsPerPage = Math.floor((pageH - margin * 2 - 36) / rowH);
-
-        let page = pdfDoc.addPage([pageW, pageH]);
-        let pageRowIdx = 0;
-
-        page.drawText(toSafeWinAnsi(`${baseName} - Spreadsheet Report`, fontBold).text.substring(0, 75), {
-          x: margin, y: pageH - margin + 6, size: 14, font: fontBold, color: PDFLib.rgb(0.13, 0.45, 0.27)
+        const buf = await activeFile.arrayBuffer();
+        const sheetOpt = readyWrap?.querySelector("#excel-pdf-sheet")?.value || "all";
+        const orientOpt = readyWrap?.querySelector("#excel-pdf-orient")?.value || "landscape";
+        const res = await convertExcelToPdf(buf, activeFile.name, window.PDFLib, {
+          sheetIndex: sheetOpt,
+          orientation: orientOpt
         });
+        const check = await validateConvertedOutput(res.blob, "pdf");
+        if (!check.valid) throw new Error(check.reason || "Invalid PDF generated.");
 
-        parsedRows.forEach((row, rIdx) => {
-          if (pageRowIdx >= maxRowsPerPage) {
-            page = pdfDoc.addPage([pageW, pageH]);
-            pageRowIdx = 0;
-          }
-          const y = pageH - margin - 26 - pageRowIdx * rowH;
-          const isHeader = rIdx === 0;
-
-          if (isHeader) {
-            page.drawRectangle({ x: margin, y: y - 4, width: pageW - margin * 2, height: rowH, color: PDFLib.rgb(0.13, 0.45, 0.27) });
-          } else if (rIdx % 2 === 1) {
-            page.drawRectangle({ x: margin, y: y - 4, width: pageW - margin * 2, height: rowH, color: PDFLib.rgb(0.96, 0.98, 0.96) });
-          }
-
-          for (let c = 0; c < colCount; c++) {
-            const rawCell = String(row[c] ?? "").substring(0, Math.max(8, Math.floor(colW / 5.5)));
-            const safeCell = toSafeWinAnsi(rawCell, font).text;
-            page.drawText(safeCell, {
-              x: margin + c * colW + 4,
-              y: y + 2,
-              size: isHeader ? 9.5 : 8.5,
-              font: isHeader ? fontBold : font,
-              color: isHeader ? PDFLib.rgb(1, 1, 1) : PDFLib.rgb(0.1, 0.12, 0.16)
-            });
-          }
-          pageRowIdx++;
-        });
-
-        const pdfBytes = await pdfDoc.save();
-        const blob = new Blob([pdfBytes], { type: "application/pdf" });
-        downloadBlob(blob, `${baseName}.pdf`);
+        downloadBlob(res.blob, `${baseName}.pdf`);
         if (fileLabel) {
-          fileLabel.innerHTML = `<div class="tw-file-meta tw-file-success"><strong>${escapeHtml(baseName)}.pdf Ready!</strong><span>${formatBytes(blob.size)} &bull; Downloaded</span></div>`;
+          fileLabel.innerHTML = `<div class="tw-file-meta tw-file-success"><strong>${escapeHtml(baseName)}.pdf Ready!</strong><span>${res.pageCount} pages &bull; ${formatBytes(res.blob.size)} &bull; Downloaded</span></div>`;
         }
         convertBtn.textContent = "Download PDF Again";
         showPortalToast("success", `Converted & downloaded "${baseName}.pdf"!`);
@@ -1672,80 +1761,38 @@ export class AdvancedToolsManager {
 
     this._bindDrop(dropzone, picker, chooseBtn, onFileSelected);
 
+    const ensurePptxPdfSettings = () => {
+      if (!readyWrap || readyWrap.querySelector("#conv-settings-pptx-pdf")) return;
+      const box = document.createElement("div");
+      box.id = "conv-settings-pptx-pdf";
+      box.style.cssText = "display:flex;flex-wrap:wrap;gap:10px;margin:10px 0;padding:10px 12px;border-radius:10px;border:1px solid var(--border-color,#e2e8f0);background:var(--surface-secondary,#f8fafc);font-size:12.5px;";
+      box.innerHTML = `
+        <label style="display:flex;flex-direction:column;gap:4px;min-width:140px;">
+          <span style="font-weight:600;opacity:0.85;">Slides</span>
+          <input id="pptx-pdf-slides" type="text" value="all" placeholder="all or 1-5" style="padding:6px 8px;border-radius:6px;border:1px solid var(--border-color,#cbd5e1);background:var(--surface-primary,#fff);color:inherit;width:120px;" />
+        </label>
+        <div style="flex:1;min-width:180px;font-size:11px;opacity:0.75;align-self:center;">Preserves original slide dimensions (16:9, 4:3, portrait or custom), backgrounds, shapes, and embedded images. Static PDF excludes slide animations.</div>
+      `;
+      readyWrap.insertBefore(box, convertBtn);
+    };
+
     convertBtn?.addEventListener("click", async () => {
       if (!selectedFile) return;
+      ensurePptxPdfSettings();
       convertBtn.disabled = true;
       convertBtn.textContent = "Converting Presentation to PDF...";
 
       try {
-        const PDFLib = window.PDFLib;
-        const pdfDoc = await PDFLib.PDFDocument.create();
-        const fontBold = await pdfDoc.embedFont(PDFLib.StandardFonts.HelveticaBold);
-        const font = await pdfDoc.embedFont(PDFLib.StandardFonts.Helvetica);
         const baseName = selectedFile.name.replace(/\.[^/.]+$/, "");
-        const slideW = 960, slideH = 540;
-
         const buf = await selectedFile.arrayBuffer();
-        const entries = await extractZipEntries(buf);
-        const decoder = new TextDecoder("utf-8");
-        const parser = new DOMParser();
+        const slideRangeVal = readyWrap?.querySelector("#pptx-pdf-slides")?.value || "all";
+        const res = await convertPptxToPdf(buf, window.PDFLib, { slideRange: slideRangeVal });
+        const check = await validateConvertedOutput(res.blob, "pdf");
+        if (!check.valid) throw new Error(check.reason || "Invalid PDF generated.");
 
-        // Collect all slide XMLs in numeric order
-        const slideKeys = Array.from(entries.keys())
-          .filter(k => /^ppt\/slides\/slide\d+\.xml$/i.test(k))
-          .sort((a, b) => parseInt(a.match(/\d+/)[0], 10) - parseInt(b.match(/\d+/)[0], 10));
-
-        // Collect media images if slides are image-based (e.g. converted from PDF!)
-        const mediaKeys = Array.from(entries.keys())
-          .filter(k => /^ppt\/media\/.+\.(jpe?g|png)$/i.test(k))
-          .sort((a, b) => {
-            const na = parseInt((a.match(/\d+/) || [0])[0], 10);
-            const nb = parseInt((b.match(/\d+/) || [0])[0], 10);
-            return na - nb;
-          });
-
-        if (slideKeys.length > 0) {
-          for (let i = 0; i < slideKeys.length; i++) {
-            const xml = decoder.decode(entries.get(slideKeys[i]));
-            const doc = parser.parseFromString(xml, "application/xml");
-            const texts = Array.from(doc.getElementsByTagName("a:t")).map(t => (t.textContent || "").trim()).filter(Boolean);
-            const page = pdfDoc.addPage([slideW, slideH]);
-
-            if (texts.length === 0 && mediaKeys[i]) {
-              // Slide contains an embedded image — draw it full-bleed!
-              const mBytes = entries.get(mediaKeys[i]);
-              const img = mediaKeys[i].toLowerCase().endsWith(".png")
-                ? await pdfDoc.embedPng(mBytes)
-                : await pdfDoc.embedJpg(mBytes);
-              page.drawImage(img, { x: 0, y: 0, width: slideW, height: slideH });
-            } else {
-              page.drawRectangle({ x: 0, y: 0, width: slideW, height: slideH, color: i === 0 ? PDFLib.rgb(0.08, 0.12, 0.22) : PDFLib.rgb(0.99, 0.99, 1) });
-              const heading = toSafeWinAnsi(texts[0] || `Slide ${i + 1}`, fontBold).text.substring(0, 60);
-              page.drawText(heading, {
-                x: 60, y: slideH - 100, size: i === 0 ? 32 : 24, font: fontBold,
-                color: i === 0 ? PDFLib.rgb(1, 1, 1) : PDFLib.rgb(0.08, 0.14, 0.28)
-              });
-              let y = slideH - 150;
-              texts.slice(1, 16).forEach(line => {
-                page.drawText(`- ${toSafeWinAnsi(line, font).text.substring(0, 95)}`, {
-                  x: 64, y, size: 14, font,
-                  color: i === 0 ? PDFLib.rgb(0.82, 0.88, 0.98) : PDFLib.rgb(0.2, 0.24, 0.3)
-                });
-                y -= 24;
-              });
-            }
-          }
-        } else {
-          const page = pdfDoc.addPage([slideW, slideH]);
-          page.drawRectangle({ x: 0, y: 0, width: slideW, height: slideH, color: PDFLib.rgb(0.08, 0.12, 0.22) });
-          page.drawText(toSafeWinAnsi(baseName, fontBold).text.substring(0, 60), { x: 60, y: slideH - 120, size: 30, font: fontBold, color: PDFLib.rgb(1, 1, 1) });
-        }
-
-        const pdfBytes = await pdfDoc.save();
-        const blob = new Blob([pdfBytes], { type: "application/pdf" });
-        downloadBlob(blob, `${baseName}.pdf`);
+        downloadBlob(res.blob, `${baseName}.pdf`);
         if (fileLabel) {
-          fileLabel.innerHTML = `<div class="tw-file-meta tw-file-success"><strong>${escapeHtml(baseName)}.pdf Ready!</strong><span>${pdfDoc.getPageCount()} slides &bull; ${formatBytes(blob.size)}</span></div>`;
+          fileLabel.innerHTML = `<div class="tw-file-meta tw-file-success"><strong>${escapeHtml(baseName)}.pdf Ready!</strong><span>${res.pageCount} slides &bull; ${formatBytes(res.blob.size)}</span></div>`;
         }
         convertBtn.textContent = "Download PDF Again";
         showPortalToast("success", `Converted & downloaded "${baseName}.pdf"!`);

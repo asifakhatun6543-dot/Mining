@@ -53,27 +53,56 @@ export class PDFRenderer {
             : edit.is_italic ? StandardFonts.HelveticaOblique : StandardFonts.Helvetica;
         }
         const font = await pdfDoc.embedFont(stdFont);
-        const [x0, y0, , y1] = edit.bbox.map(Number);
+        const targetBox = Array.isArray(edit.target_bbox) && edit.target_bbox.length >= 4 ? edit.target_bbox : edit.bbox;
+        const [x0, y0, x1] = targetBox.map(Number);
         const fontSize = Math.max(5, Number(edit.font_size) || 12);
-        const baselineY = (edit.baseline_y !== undefined && edit.baseline_y !== null)
-          ? (box.y + box.height - Number(edit.baseline_y))
-          : (box.y + box.height - y0 - fontSize * 0.84);
+        const baselineY = (edit.target_baseline_y !== undefined && edit.target_baseline_y !== null)
+          ? (box.y + box.height - Number(edit.target_baseline_y))
+          : (edit.baseline_y !== undefined && edit.baseline_y !== null)
+            ? (box.y + box.height - Number(edit.baseline_y))
+            : (box.y + box.height - y0 - fontSize * 0.84);
         const [r, g, b] = Array.isArray(edit.text_color) ? edit.text_color : [0, 0, 0];
-        const drawOpts = {
-          x: box.x + x0,
-          y: baselineY,
-          size: fontSize,
-          font,
-          color: rgb(r, g, b)
-        };
-        if (edit.opacity !== undefined && edit.opacity < 1) drawOpts.opacity = Math.max(0.05, Number(edit.opacity));
-        if (edit.angle_deg && Math.abs(edit.angle_deg) > 0.25) drawOpts.rotate = degrees(-Number(edit.angle_deg));
-        page.drawText(String(edit.replacement_text), drawOpts);
+        const maxWidth = Math.max(12, x1 - x0);
+        const lineHeight = fontSize * 1.18;
+        const rawLines = String(edit.replacement_text).split("\n");
+        const wrappedLines = [];
+        for (const rawLine of rawLines) {
+          if (!edit.has_custom_width) {
+            wrappedLines.push(rawLine);
+            continue;
+          }
+          const words = rawLine.split(/(\s+)/);
+          let cur = "";
+          for (const wPart of words) {
+            const test = cur + wPart;
+            if (cur && font.widthOfTextAtSize(test, fontSize) > maxWidth) {
+              wrappedLines.push(cur.trimEnd());
+              cur = wPart.trimStart();
+            } else {
+              cur = test;
+            }
+          }
+          if (cur || wrappedLines.length === 0) wrappedLines.push(cur);
+        }
+        wrappedLines.forEach((lineText, li) => {
+          if (!lineText) return;
+          const drawOpts = {
+            x: box.x + x0,
+            y: baselineY - li * lineHeight,
+            size: fontSize,
+            font,
+            color: rgb(r, g, b)
+          };
+          if (edit.opacity !== undefined && edit.opacity < 1) drawOpts.opacity = Math.max(0.05, Number(edit.opacity));
+          if (edit.angle_deg && Math.abs(edit.angle_deg) > 0.25) drawOpts.rotate = degrees(-Number(edit.angle_deg));
+          page.drawText(lineText, drawOpts);
+        });
       };
 
       const res = await applyPageEditsForPreview(State.pdfBytes, pageIndex, pageEdits, window.PDFLib, drawFallbackFn);
-      if (res && res.warnings && res.warnings.length > 0) {
-        State.emit("toast", { type: "warning", message: res.warnings[0] });
+      this.lastPreviewWarnings = (res && res.warnings) ? res.warnings : [];
+      if (this.lastPreviewWarnings.length > 0) {
+        State.emit("toast", { type: "warning", message: this.lastPreviewWarnings[0] });
       }
       if (!res || !res.bytes || res.appliedKeys.size === 0) {
         this.suppressedKeysByPage.delete(pageIndex);

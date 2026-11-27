@@ -638,7 +638,7 @@ export function editPageContentStream(pdfDoc, page, edit, pageBox, pdfLib) {
     const fontInfo = inspectPageFontResource(pdfDoc, page, op.font, pdfLib);
 
     // Validate in-place replacement compatibility against actual PDF font dictionary
-    const canAttemptInPlace =
+    let canAttemptInPlace =
       !edit.forceSuppress &&
       !edit.user_changed_font &&
       !edit.is_bold &&
@@ -647,10 +647,16 @@ export function editPageContentStream(pdfDoc, page, edit, pageBox, pdfLib) {
       (!edit.alignment || edit.alignment === "left") &&
       replacementText.length > 0;
 
+    let coverageWarning = null;
     if (canAttemptInPlace) {
       const coverage = validateFontCoverage(fontInfo, originalText, replacementText, op);
       if (!coverage.ok) {
-        return { handled: false, mode: "rejected", reason: coverage.reason, fontInfo };
+        if (!isWinAnsiSafe(replacementText)) {
+          return { handled: false, mode: "rejected", reason: coverage.reason, fontInfo };
+        }
+        // WinAnsi-safe replacement on CID/subset font: suppress original operator cleanly and draw compatible vector font
+        canAttemptInPlace = false;
+        coverageWarning = `${coverage.reason} Replaced using closest compatible vector font without modifying background.`;
       }
     }
 
@@ -686,7 +692,7 @@ export function editPageContentStream(pdfDoc, page, edit, pageBox, pdfLib) {
         replacementSegment = `${encodeTokenLike(op.arg.type, newFull)} ${op.op}`;
         mode = "inplace";
       }
-    } else if (edit.user_changed_font || edit.is_bold || edit.is_italic || edit.is_underline || (edit.alignment && edit.alignment !== "left") || replacementText.length === 0 || edit.forceSuppress) {
+    } else if (coverageWarning || edit.user_changed_font || edit.is_bold || edit.is_italic || edit.is_underline || (edit.alignment && edit.alignment !== "left") || replacementText.length === 0 || edit.forceSuppress) {
       // Intentional style/font override or deletion: suppress ONLY if full operator or safely split substring
       if (!isExact && extraOps.length === 0) {
         if (op.arg.type === "array") {
@@ -728,7 +734,7 @@ export function editPageContentStream(pdfDoc, page, edit, pageBox, pdfLib) {
       entry.parent.set(entry.key, pdfDoc.context.register(newStream));
     }
 
-    return { handled: true, mode, fontInfo };
+    return { handled: true, mode, fontInfo, warning: coverageWarning };
   } catch (e) {
     console.warn("Content-stream text edit rejected:", e);
     return { handled: false, mode: "rejected", reason: e?.message || "Content-stream edit error." };
@@ -763,6 +769,7 @@ export async function applyPageEditsForPreview(pdfBytes, pageIndex, edits, pdfLi
       warnings.push(res.reason || `Unsupported edit for "${edit.original_text}"`);
       continue;
     }
+    if (res.warning) warnings.push(res.warning);
     appliedKeys.add(`${Math.round(edit.bbox[0])}_${Math.round(edit.bbox[1])}`);
     if (res.mode === "suppressed" && drawFallbackFn) {
       await drawFallbackFn(pdfDoc, page, edit, box);

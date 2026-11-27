@@ -665,17 +665,25 @@ export class ExportClient {
         continue;
       }
 
+      if (csResult.warning) {
+        this._lastExportWarnings.push(csResult.warning);
+      }
+
       if (csResult.mode === "inplace") {
         // Genuine in-place vector replacement in original embedded font + original graphics state!
         continue;
       }
 
       if (edit.replacement_text && String(edit.replacement_text).length > 0) {
-        await drawSafeMultilineText(page, edit.replacement_text, x0, y0, box, {
+        const targetBox = Array.isArray(edit.target_bbox) && edit.target_bbox.length >= 4 ? edit.target_bbox : edit.bbox;
+        const [tx0, ty0, tx1, ty1] = targetBox.map(Number);
+        const tw = Math.max(tx1 - tx0, 8);
+        const th = Math.max(ty1 - ty0, 8);
+        await drawSafeMultilineText(page, edit.replacement_text, tx0, ty0, box, {
           fontName: edit.font_name || edit.original_font || edit.font || "Helvetica",
           loadedFontName: edit.loaded_font_name || "",
           userChangedFont: !!edit.user_changed_font,
-          baselineY: edit.baseline_y,
+          baselineY: edit.target_baseline_y !== undefined ? edit.target_baseline_y : edit.baseline_y,
           angleDeg: edit.angle_deg || 0,
           opacity: edit.opacity !== undefined ? edit.opacity : 1.0,
           fontSize: edit.font_size || Math.max(8, h * 0.82),
@@ -685,8 +693,8 @@ export class ExportClient {
           colorRgb: edit.text_color,
           colorHex: edit.text_color_hex,
           alignment: edit.alignment || "left",
-          boxWidth: w,
-          boxHeight: h
+          boxWidth: tw,
+          boxHeight: th
         });
       }
     }

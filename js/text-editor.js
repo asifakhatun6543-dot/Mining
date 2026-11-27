@@ -414,6 +414,11 @@ export class InlineTextEditor {
         <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/><circle cx="5" cy="12" r="1"/></svg>
       </button>
       <span id="mt-overflow-pill" style="display: none; font-size: 10px; font-weight: 700; color: #b45309; background: #fef3c7; border: 1px solid #f59e0b; border-radius: 4px; padding: 1px 5px; cursor: pointer;" title="Replacement text exceeds available width. Click to scale down.">⚠ Fit</span>
+      <div id="mt-error-banner" style="display: none; width: 100%; flex-basis: 100%; margin-top: 4px; padding: 5px 8px; background: #fef2f2; border: 1px solid #fca5a5; border-radius: 6px; color: #b91c1c; font-size: 11px; align-items: center; justify-content: space-between; gap: 6px;">
+        <span id="mt-error-text" style="flex: 1; line-height: 1.3;"></span>
+        <button type="button" id="mt-error-retry" style="background: #dc2626; color: #fff; border: none; border-radius: 4px; padding: 2px 7px; font-size: 10.5px; font-weight: 600; cursor: pointer;">Retry</button>
+        <button type="button" id="mt-error-cancel" style="background: #fff; color: #475569; border: 1px solid #cbd5e1; border-radius: 4px; padding: 2px 7px; font-size: 10.5px; font-weight: 600; cursor: pointer;">Cancel</button>
+      </div>
     `;
 
     // 2. More Options Dropdown Menu
@@ -486,6 +491,8 @@ export class InlineTextEditor {
   _bindMiniToolbarEvents() {
     this.miniToolbarEl.querySelector("#mt-ok-btn")?.addEventListener("click", () => this.applyEdit());
     this.miniToolbarEl.querySelector("#mt-delete-btn")?.addEventListener("click", () => this.applyDelete());
+    this.miniToolbarEl.querySelector("#mt-error-retry")?.addEventListener("click", () => this.applyEdit());
+    this.miniToolbarEl.querySelector("#mt-error-cancel")?.addEventListener("click", () => this.cancel());
 
     // Style Dropdown (B with popover dropdown for B / I / U)
     const styleBtn = this.miniToolbarEl.querySelector("#mt-style-btn");
@@ -972,7 +979,7 @@ export class InlineTextEditor {
     const scale = State.zoomScale;
     this._ensureGoogleFontLoaded(this.currentFont);
     this.activeBoxEl.style.backgroundImage = "none";
-    this.activeBoxEl.style.backgroundColor = "rgba(37, 99, 235, 0.06)";
+    this.activeBoxEl.style.backgroundColor = "transparent";
     const loadedFont = this.currentSpanData?.span?.loadedFontName;
     editableDiv.style.fontFamily = this._getSpanCssFontFamily(this.currentFont, loadedFont, this.userChangedFont);
     editableDiv.style.fontSize = `${this.currentFontSize * scale}px`;
@@ -1156,6 +1163,25 @@ export class InlineTextEditor {
     }
   }
 
+  _showCommitError(message) {
+    const banner = this.miniToolbarEl?.querySelector("#mt-error-banner");
+    const textEl = this.miniToolbarEl?.querySelector("#mt-error-text");
+    if (banner && textEl) {
+      textEl.textContent = message || "Could not apply text edit to this PDF.";
+      banner.style.display = "flex";
+    }
+    if (this.activeBoxEl) {
+      this.activeBoxEl.style.borderColor = "#dc2626";
+      this._positionMiniToolbar(this.activeBoxEl);
+    }
+  }
+
+  _clearCommitError() {
+    const banner = this.miniToolbarEl?.querySelector("#mt-error-banner");
+    if (banner) banner.style.display = "none";
+    if (this.activeBoxEl) this.activeBoxEl.style.borderColor = "#2563eb";
+  }
+
   _checkTextOverflow() {
     const pill = this.miniToolbarEl?.querySelector("#mt-overflow-pill");
     if (!pill || !this.activeBoxEl || !this.currentSpanData) return;
@@ -1165,8 +1191,10 @@ export class InlineTextEditor {
     const { pageIndex, span } = this.currentSpanData;
     const pageDim = State.pageDimensions[pageIndex] || { width: 612, height: 792 };
     const text = editableDiv.innerText || "";
-    const [x0] = span.bbox;
-    const availW = Math.max(20, pageDim.width - x0 - 12);
+    const boxRect = this.customBoxRect || { x0: span.bbox[0], y0: span.bbox[1], x1: span.bbox[2], y1: span.bbox[3], hasCustomWidth: false, hasCustomHeight: false };
+    const availW = boxRect.hasCustomWidth
+      ? Math.max(16, boxRect.x1 - boxRect.x0)
+      : Math.max(20, pageDim.width - boxRect.x0 - 12);
 
     const cacheKey = `${this.currentFont}|${this.currentFontSize}|${this.isBold}|${this.isItalic}|${text}`;
     let measuredW = this._measureCache.get(cacheKey);
@@ -1181,7 +1209,13 @@ export class InlineTextEditor {
       this._measureCache.set(cacheKey, measuredW);
     }
 
-    if (measuredW > availW) {
+    const scale = State.zoomScale || 1;
+    const contentOverflowsHeight = boxRect.hasCustomHeight && editableDiv.scrollHeight > (this.activeBoxEl.clientHeight + 3 * scale);
+    const contentOverflowsWidth = boxRect.hasCustomWidth
+      ? editableDiv.scrollWidth > (this.activeBoxEl.clientWidth + 3 * scale)
+      : measuredW > availW;
+
+    if (contentOverflowsWidth || contentOverflowsHeight) {
       pill.style.display = "inline-block";
       this.activeBoxEl.style.borderColor = "#f59e0b";
     } else {
@@ -1235,6 +1269,14 @@ export class InlineTextEditor {
     const width = Math.max(16, (x1 - x0) * scale);
     const height = Math.max(12, (y1 - y0) * scale);
 
+    this.customBoxRect = {
+      x0, y0, x1, y1,
+      hasCustomWidth: false,
+      hasCustomHeight: false,
+      moved: false
+    };
+    this._clearCommitError();
+
     const box = document.createElement("div");
     box.className = "inplace-text-box word-style-editor";
     box.style.position = "absolute";
@@ -1246,16 +1288,15 @@ export class InlineTextEditor {
     box.style.height = `${height}px`;
     box.style.minHeight = `${height}px`;
     box.style.boxSizing = "border-box";
-    box.style.background = "rgba(37, 99, 235, 0.06)";
+    box.style.background = "transparent";
     box.style.border = "1.5px solid #2563eb";
     box.style.borderRadius = "2px";
     box.style.boxShadow = "0 1px 6px rgba(37, 99, 235, 0.22)";
     box.style.padding = "0";
     box.style.display = "inline-flex";
-    box.style.alignItems = "center";
+    box.style.alignItems = "flex-start";
     box.style.zIndex = "80";
 
-    // Clean, natural Word-style editing (NO handles obscuring the text!)
     const editableDiv = document.createElement("div");
     editableDiv.className = "inplace-text-editable";
     editableDiv.contentEditable = "true";
@@ -1264,14 +1305,145 @@ export class InlineTextEditor {
     editableDiv.style.whiteSpace = "pre";
     editableDiv.style.wordBreak = "normal";
     editableDiv.style.minWidth = `${width}px`;
+    editableDiv.style.width = "100%";
     editableDiv.style.outline = "none";
     editableDiv.style.border = "none";
     editableDiv.style.background = "transparent";
-    editableDiv.style.lineHeight = "1";
+    editableDiv.style.lineHeight = "1.12";
     editableDiv.style.webkitFontSmoothing = "antialiased";
     editableDiv.style.textRendering = "optimizeLegibility";
 
     box.appendChild(editableDiv);
+
+    // 8 Resize Handles (TL, TC, TR, ML, MR, BL, BC, BR) with mouse + touch support
+    const handleDirs = ["nw", "n", "ne", "w", "e", "sw", "s", "se"];
+    const pageDim = State.pageDimensions[pageIndex] || { width: 612, height: 792 };
+    handleDirs.forEach(dir => {
+      const handle = document.createElement("div");
+      handle.className = `text-resize-handle handle-${dir}`;
+      handle.dataset.handle = dir;
+      handle.title = `Resize (${dir.toUpperCase()})`;
+
+      handle.addEventListener("pointerdown", (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        const startX = e.clientX;
+        const startY = e.clientY;
+        const curScale = State.zoomScale || 1;
+        const startRect = {
+          left: parseFloat(box.style.left) || (this.customBoxRect.x0 * curScale),
+          top: parseFloat(box.style.top) || (this.customBoxRect.y0 * curScale),
+          width: box.getBoundingClientRect().width,
+          height: box.getBoundingClientRect().height
+        };
+        const minW = 24;
+        const minH = Math.max(14, this.currentFontSize * curScale * 1.1);
+
+        try { handle.setPointerCapture(e.pointerId); } catch (_) {}
+
+        const onMove = (mv) => {
+          const dx = mv.clientX - startX;
+          const dy = mv.clientY - startY;
+          let newL = startRect.left;
+          let newT = startRect.top;
+          let newW = startRect.width;
+          let newH = startRect.height;
+
+          if (dir.includes("e")) newW = Math.max(minW, startRect.width + dx);
+          if (dir.includes("s")) newH = Math.max(minH, startRect.height + dy);
+          if (dir.includes("w")) {
+            const proposedW = Math.max(minW, startRect.width - dx);
+            newL = startRect.left + (startRect.width - proposedW);
+            newW = proposedW;
+          }
+          if (dir.includes("n")) {
+            const proposedH = Math.max(minH, startRect.height - dy);
+            newT = startRect.top + (startRect.height - proposedH);
+            newH = proposedH;
+          }
+
+          newL = Math.max(0, Math.min(pageDim.width * curScale - minW, newL));
+          newT = Math.max(0, Math.min(pageDim.height * curScale - minH, newT));
+          newW = Math.min(pageDim.width * curScale - newL, newW);
+          newH = Math.min(pageDim.height * curScale - newT, newH);
+
+          box.style.left = `${newL}px`;
+          box.style.top = `${newT}px`;
+          if (dir.includes("e") || dir.includes("w")) {
+            box.style.width = `${newW}px`;
+            box.style.minWidth = `${newW}px`;
+            box.style.maxWidth = `${newW}px`;
+            editableDiv.style.whiteSpace = "pre-wrap";
+            editableDiv.style.wordBreak = "break-word";
+            this.customBoxRect.hasCustomWidth = true;
+          }
+          if (dir.includes("n") || dir.includes("s")) {
+            box.style.height = `${newH}px`;
+            box.style.minHeight = `${newH}px`;
+            this.customBoxRect.hasCustomHeight = true;
+          }
+
+          this.customBoxRect.x0 = newL / curScale;
+          this.customBoxRect.y0 = newT / curScale;
+          this.customBoxRect.x1 = (newL + newW) / curScale;
+          this.customBoxRect.y1 = (newT + newH) / curScale;
+          if (dir.includes("w") || dir.includes("n")) {
+            this.customBoxRect.moved = true;
+          }
+          this._positionMiniToolbar(box);
+          this._checkTextOverflow();
+        };
+
+        const onUp = (upEv) => {
+          try { handle.releasePointerCapture(upEv.pointerId); } catch (_) {}
+          window.removeEventListener("pointermove", onMove);
+          window.removeEventListener("pointerup", onUp);
+          window.removeEventListener("pointercancel", onUp);
+        };
+
+        window.addEventListener("pointermove", onMove);
+        window.addEventListener("pointerup", onUp);
+        window.addEventListener("pointercancel", onUp);
+      });
+
+      box.appendChild(handle);
+    });
+
+    // Reposition box when dragging along its border (outside editable text or when holding border)
+    box.addEventListener("pointerdown", (e) => {
+      if (e.target !== box) return;
+      e.preventDefault();
+      e.stopPropagation();
+      const startX = e.clientX;
+      const startY = e.clientY;
+      const curScale = State.zoomScale || 1;
+      const startLeft = parseFloat(box.style.left) || 0;
+      const startTop = parseFloat(box.style.top) || 0;
+      const boxW = box.getBoundingClientRect().width;
+      const boxH = box.getBoundingClientRect().height;
+
+      const onMove = (mv) => {
+        const newL = Math.max(0, Math.min(pageDim.width * curScale - boxW, startLeft + (mv.clientX - startX)));
+        const newT = Math.max(0, Math.min(pageDim.height * curScale - boxH, startTop + (mv.clientY - startY)));
+        box.style.left = `${newL}px`;
+        box.style.top = `${newT}px`;
+        this.customBoxRect.x0 = newL / curScale;
+        this.customBoxRect.y0 = newT / curScale;
+        this.customBoxRect.x1 = (newL + boxW) / curScale;
+        this.customBoxRect.y1 = (newT + boxH) / curScale;
+        this.customBoxRect.moved = true;
+        this._positionMiniToolbar(box);
+      };
+      const onUp = () => {
+        window.removeEventListener("pointermove", onMove);
+        window.removeEventListener("pointerup", onUp);
+        window.removeEventListener("pointercancel", onUp);
+      };
+      window.addEventListener("pointermove", onMove);
+      window.addEventListener("pointerup", onUp);
+      window.addEventListener("pointercancel", onUp);
+    });
+
     overlayLayer.appendChild(box);
     this.activeBoxEl = box;
 
@@ -1351,140 +1523,165 @@ export class InlineTextEditor {
     }
   }
 
-  applyEdit() {
-    if (!this.currentSpanData || !this.activeBoxEl) return;
+  async applyEdit() {
+    if (!this.currentSpanData || !this.activeBoxEl || this._isApplyingEdit) return false;
+    this._isApplyingEdit = true;
+    this._clearCommitError();
 
-    const { pageIndex, span, element } = this.currentSpanData;
-    const editableDiv = this.activeBoxEl.querySelector(".inplace-text-editable");
-    const replacementText = editableDiv ? editableDiv.innerText.trim() : (span.currentText || span.text);
-
-    // Capture previous state for undo
-    const previousText = span.currentText !== undefined ? span.currentText : (span.original_text || span.text);
-    const previousFont = span.currentFont || span.font;
-    const previousFontSize = span.currentFontSize || span.size;
-    const previousBold = span.isBold;
-    const previousItalic = span.isItalic;
-    const previousUnderline = span.isUnderline;
-    const previousColorHex = span.currentColorHex;
-    const previousColorRgb = span.currentColorRgb;
-    const previousAlignment = span.currentAlignment;
-
-    // Deep-copy the previous edit if one exists, so undo can restore it
-    const previousEdit = State.pendingTextEdits.find(e => 
-      e.page_number === pageIndex &&
-      Math.abs(e.bbox[0] - span.bbox[0]) < 1 &&
-      Math.abs(e.bbox[1] - span.bbox[1]) < 1
-    );
-    const previousEditCopy = previousEdit ? { ...previousEdit } : null;
-    const isFirstEdit = !previousEdit;
-
-    // Update span state with current editor values
-    span.original_text = span.original_text || span.text;
-    span.currentText = replacementText;
-    span.currentFont = this.currentFont;
-    span.userChangedFont = !!this.userChangedFont;
-    span.userChangedStyle = !!this.userChangedStyle;
-    span.opacity = this.currentOpacity;
-    span.angleDeg = this.currentAngleDeg;
-    span.currentFontSize = this.currentFontSize;
-    span.isBold = this.isBold;
-    span.isItalic = this.isItalic;
-    span.isUnderline = this.isUnderline;
-    span.currentColorHex = this.currentColorHex;
-    span.currentColorRgb = [...this.currentColorRgb];
-    span.letterSpacing = this.currentLetterSpacing;
-    span.currentAlignment = this.currentAlignment;
-
-    const editItem = {
-      page_number: pageIndex,
-      original_text: span.original_text,
-      replacement_text: replacementText,
-      bbox: [...span.bbox],
-      baseline_y: span.baselineY,
-      font_name: this.currentFont,
-      original_font: span.rawFontName || span.font,
-      loaded_font_name: span.loadedFontName || "",
-      user_changed_font: !!this.userChangedFont,
-      user_changed_style: !!this.userChangedStyle,
-      opacity: this.currentOpacity !== undefined ? this.currentOpacity : 1.0,
-      angle_deg: this.currentAngleDeg || 0,
-      font_size: this.currentFontSize,
-      fit_mode: this.currentFitMode,
-      alignment: this.currentAlignment,
-      is_bold: this.isBold,
-      is_italic: this.isItalic,
-      is_underline: this.isUnderline,
-      flags: span.flags || 0,
-      text_color: [...this.currentColorRgb],
-      text_color_hex: this.currentColorHex,
-      letter_spacing: this.currentLetterSpacing
-    };
-
-    State.addTextEdit(editItem);
-
-    // Store original highlight element reference
-    const originalHighlightEl = span._origHighlightEl || (element && !element.classList.contains("edited-text-overlay") ? element : null);
-    if (!span._origHighlightEl && originalHighlightEl) {
-      span._origHighlightEl = originalHighlightEl;
+    const okBtn = this.miniToolbarEl?.querySelector("#mt-ok-btn");
+    const prevOkHtml = okBtn ? okBtn.innerHTML : "";
+    if (okBtn) {
+      okBtn.disabled = true;
+      okBtn.innerHTML = "...";
     }
 
-    const prevState = {
-      previousText,
-      previousFont,
-      previousFontSize,
-      previousBold,
-      previousItalic,
-      previousUnderline,
-      previousColorHex,
-      previousColorRgb,
-      previousAlignment
-    };
+    try {
+      const { pageIndex, span, element } = this.currentSpanData;
+      const editableDiv = this.activeBoxEl.querySelector(".inplace-text-editable");
+      const replacementText = editableDiv ? editableDiv.innerText.trim() : (span.currentText || span.text);
 
-    const restorePreviousState = () => {
-      if (isFirstEdit) {
-        State.removeTextEdit(editItem);
-        span.currentText = span.original_text;
-        delete span.currentFont;
-        delete span.currentFontSize;
-        delete span.isBold;
-        delete span.isItalic;
-        delete span.isUnderline;
-        delete span.currentColorHex;
-        delete span.currentColorRgb;
-        delete span.currentAlignment;
-        if (span._coverEl) {
-          span._coverEl.remove();
-          span._coverEl = null;
-        }
-        if (span._origHighlightEl) {
-          span._origHighlightEl.style.display = "";
-        }
-      } else {
-        State.updateTextEdit(editItem, previousEditCopy);
-        span.currentText = prevState.previousText;
-        span.currentFont = prevState.previousFont;
-        span.currentFontSize = prevState.previousFontSize;
-        span.isBold = prevState.previousBold;
-        span.isItalic = prevState.previousItalic;
-        span.isUnderline = prevState.previousUnderline;
-        span.currentColorHex = prevState.previousColorHex;
-        span.currentColorRgb = prevState.previousColorRgb;
-        span.currentAlignment = prevState.previousAlignment;
+      // Capture previous state for undo
+      const previousText = span.currentText !== undefined ? span.currentText : (span.original_text || span.text);
+      const previousFont = span.currentFont || span.font;
+      const previousFontSize = span.currentFontSize || span.size;
+      const previousBold = span.isBold;
+      const previousItalic = span.isItalic;
+      const previousUnderline = span.isUnderline;
+      const previousColorHex = span.currentColorHex;
+      const previousColorRgb = span.currentColorRgb;
+      const previousAlignment = span.currentAlignment;
+
+      // Deep-copy the previous edit if one exists, so undo can restore it
+      const previousEdit = State.pendingTextEdits.find(e => 
+        e.page_number === pageIndex &&
+        Math.abs(e.bbox[0] - span.bbox[0]) < 1 &&
+        Math.abs(e.bbox[1] - span.bbox[1]) < 1
+      );
+      const previousEditCopy = previousEdit ? { ...previousEdit } : null;
+      const isFirstEdit = !previousEdit;
+
+      // Update span state with current editor values
+      span.original_text = span.original_text || span.text;
+      span.currentText = replacementText;
+      span.currentFont = this.currentFont;
+      span.userChangedFont = !!this.userChangedFont;
+      span.userChangedStyle = !!this.userChangedStyle;
+      span.opacity = this.currentOpacity;
+      span.angleDeg = this.currentAngleDeg;
+      span.currentFontSize = this.currentFontSize;
+      span.isBold = this.isBold;
+      span.isItalic = this.isItalic;
+      span.isUnderline = this.isUnderline;
+      span.currentColorHex = this.currentColorHex;
+      span.currentColorRgb = [...this.currentColorRgb];
+      span.letterSpacing = this.currentLetterSpacing;
+      span.currentAlignment = this.currentAlignment;
+
+      const boxRect = this.customBoxRect;
+      const hasCustomSizeOrPos = !!(boxRect && (boxRect.moved || boxRect.hasCustomWidth || boxRect.hasCustomHeight));
+      const targetBbox = hasCustomSizeOrPos
+        ? [boxRect.x0, boxRect.y0, boxRect.x1, boxRect.y1]
+        : [...span.bbox];
+      const deltaY = boxRect && boxRect.moved ? (boxRect.y0 - span.bbox[1]) : 0;
+      const targetBaselineY = (span.baselineY !== undefined && span.baselineY !== null)
+        ? (span.baselineY + deltaY)
+        : undefined;
+
+      const editItem = {
+        page_number: pageIndex,
+        original_text: span.original_text,
+        replacement_text: replacementText,
+        bbox: [...span.bbox],
+        target_bbox: targetBbox,
+        baseline_y: span.baselineY,
+        target_baseline_y: targetBaselineY,
+        has_custom_width: !!(boxRect && boxRect.hasCustomWidth),
+        has_custom_height: !!(boxRect && boxRect.hasCustomHeight),
+        forceSuppress: hasCustomSizeOrPos,
+        font_name: this.currentFont,
+        original_font: span.rawFontName || span.font,
+        loaded_font_name: span.loadedFontName || "",
+        user_changed_font: !!this.userChangedFont,
+        user_changed_style: !!this.userChangedStyle,
+        opacity: this.currentOpacity !== undefined ? this.currentOpacity : 1.0,
+        angle_deg: this.currentAngleDeg || 0,
+        font_size: this.currentFontSize,
+        fit_mode: this.currentFitMode,
+        alignment: this.currentAlignment,
+        is_bold: this.isBold,
+        is_italic: this.isItalic,
+        is_underline: this.isUnderline,
+        flags: span.flags || 0,
+        text_color: [...this.currentColorRgb],
+        text_color_hex: this.currentColorHex,
+        letter_spacing: this.currentLetterSpacing
+      };
+
+      State.addTextEdit(editItem);
+
+      // Store original highlight element reference
+      const originalHighlightEl = span._origHighlightEl || (element && !element.classList.contains("edited-text-overlay") ? element : null);
+      if (!span._origHighlightEl && originalHighlightEl) {
+        span._origHighlightEl = originalHighlightEl;
       }
-    };
 
-    this.hide();
+      const prevState = {
+        previousText,
+        previousFont,
+        previousFontSize,
+        previousBold,
+        previousItalic,
+        previousUnderline,
+        previousColorHex,
+        previousColorRgb,
+        previousAlignment
+      };
 
-    const renderer = window.app?.renderer;
-    if (renderer && typeof renderer.renderPageWithSuppressedEdits === "function") {
-      renderer.renderPageWithSuppressedEdits(pageIndex).then((ok) => {
+      const restorePreviousState = () => {
+        if (isFirstEdit) {
+          State.removeTextEdit(editItem);
+          span.currentText = span.original_text;
+          delete span.currentFont;
+          delete span.currentFontSize;
+          delete span.isBold;
+          delete span.isItalic;
+          delete span.isUnderline;
+          delete span.currentColorHex;
+          delete span.currentColorRgb;
+          delete span.currentAlignment;
+          if (span._coverEl) {
+            span._coverEl.remove();
+            span._coverEl = null;
+          }
+          if (span._origHighlightEl) {
+            span._origHighlightEl.style.display = "";
+          }
+        } else {
+          State.updateTextEdit(editItem, previousEditCopy);
+          span.currentText = prevState.previousText;
+          span.currentFont = prevState.previousFont;
+          span.currentFontSize = prevState.previousFontSize;
+          span.isBold = prevState.previousBold;
+          span.isItalic = prevState.previousItalic;
+          span.isUnderline = prevState.previousUnderline;
+          span.currentColorHex = prevState.previousColorHex;
+          span.currentColorRgb = prevState.previousColorRgb;
+          span.currentAlignment = prevState.previousAlignment;
+        }
+      };
+
+      const renderer = window.app?.renderer;
+      if (renderer && typeof renderer.renderPageWithSuppressedEdits === "function") {
+        const ok = await renderer.renderPageWithSuppressedEdits(pageIndex);
         const appliedOnCanvas = !!ok && !!renderer.isSpanSuppressedOnCanvas?.(pageIndex, editItem.bbox);
         if (!appliedOnCanvas) {
           restorePreviousState();
-          renderer.renderPageWithSuppressedEdits(pageIndex).then((rOk) => {
-            if (rOk) this.reRenderPageEdits(pageIndex);
-          });
-          return;
+          await renderer.renderPageWithSuppressedEdits(pageIndex).catch(() => false);
+          const errMsg = (renderer.lastPreviewWarnings && renderer.lastPreviewWarnings[0]) ||
+            "Could not commit text edit to this PDF object. Your typed text is preserved so you can adjust or cancel.";
+          this._showCommitError(errMsg);
+          State.emit("toast", { type: "error", message: errMsg });
+          return false;
         }
 
         HistoryManager.record({
@@ -1494,6 +1691,7 @@ export class InlineTextEditor {
             restorePreviousState();
             renderer.renderPageWithSuppressedEdits(pageIndex).then((rOk) => {
               if (rOk) this.reRenderPageEdits(pageIndex);
+              else renderer.renderPage(pageIndex);
             });
             this.hide();
           },
@@ -1516,9 +1714,19 @@ export class InlineTextEditor {
         });
 
         this.reRenderPageEdits(pageIndex);
-      });
-    } else {
-      this._renderVisualTextReplacement(pageIndex, span, replacementText, span._origHighlightEl, editItem);
+        this.hide();
+        return true;
+      } else {
+        this._renderVisualTextReplacement(pageIndex, span, replacementText, span._origHighlightEl, editItem);
+        this.hide();
+        return true;
+      }
+    } finally {
+      this._isApplyingEdit = false;
+      if (okBtn) {
+        okBtn.disabled = false;
+        okBtn.innerHTML = prevOkHtml;
+      }
     }
   }
 
@@ -1835,6 +2043,8 @@ export class InlineTextEditor {
       this.activeBoxEl.remove();
       this.activeBoxEl = null;
     }
+    this._clearCommitError();
+    this.customBoxRect = null;
     this.miniToolbarEl.style.display = "none";
     this.moreMenuEl.style.display = "none";
     this.currentSpanData = null;
