@@ -70,7 +70,7 @@ class _PdfEditorWebViewScreenState extends State<PdfEditorWebViewScreen> {
       // 2. Configure the controller using cascaded calls
       controller
         ..setJavaScriptMode(JavaScriptMode.unrestricted)
-        ..setBackgroundColor(const Color(0xFF0F172A))
+        ..setBackgroundColor(const Color(0xFFF8FAFC))
         ..addJavaScriptChannel(
           'FlutterBridge',
           onMessageReceived: (JavaScriptMessage message) {
@@ -153,7 +153,7 @@ class _PdfEditorWebViewScreenState extends State<PdfEditorWebViewScreen> {
 
       controller
         ..setJavaScriptMode(JavaScriptMode.unrestricted)
-        ..setBackgroundColor(const Color(0xFF0F172A))
+        ..setBackgroundColor(const Color(0xFFF8FAFC))
         ..addJavaScriptChannel(
           'FlutterBridge',
           onMessageReceived: (JavaScriptMessage message) {
@@ -363,11 +363,49 @@ class _PdfEditorWebViewScreenState extends State<PdfEditorWebViewScreen> {
     return PopScope(
       canPop: true,
       child: Scaffold(
-        backgroundColor: const Color(0xFF0F172A),
+        resizeToAvoidBottomInset: false,
+        backgroundColor: const Color(0xFFF8FAFC),
         body: SafeArea(
           child: _webViewController != null
               ? WebViewWidget(controller: _webViewController!)
-              : const SizedBox.shrink(),
+              : Center(
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(16),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withValues(alpha: 0.08),
+                          blurRadius: 20,
+                          offset: const Offset(0, 6),
+                        ),
+                      ],
+                    ),
+                    child: const Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        SizedBox(
+                          width: 32,
+                          height: 32,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 3,
+                            color: Color(0xFFE5322D),
+                          ),
+                        ),
+                        SizedBox(height: 14),
+                        Text(
+                          'Processing PDF...',
+                          style: TextStyle(
+                            fontSize: 15,
+                            fontWeight: FontWeight.w700,
+                            color: Color(0xFF0F172A),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
         ),
       ),
     );

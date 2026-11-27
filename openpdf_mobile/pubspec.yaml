@@ -1,7 +1,7 @@
 name: openpdf_studio
 description: "PDF WITH LOVE - Professional Android PDF & Document Utility Application by RS7 Private Limited"
 publish_to: "none"
-version: 2.0.3+13
+version: 2.0.4+14
 
 environment:
   sdk: ">=3.2.0 <4.0.0"

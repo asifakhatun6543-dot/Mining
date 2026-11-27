@@ -45,15 +45,53 @@
     html.direct-editor-mode #editor-view {
       display: flex !important;
     }
-    /* Lift bottom toolbar and page controls for comfortable mobile spacing */
+    /* Lift and enlarge bottom toolbar in Android app; remove floating zoom/page pill */
     #editor-view .main-toolbar {
-      bottom: max(14px, env(safe-area-inset-bottom, 14px)) !important;
+      bottom: max(10px, env(safe-area-inset-bottom, 10px)) !important;
+      min-height: 68px !important;
+      padding: 6px 10px !important;
+    }
+    #editor-view .main-toolbar .tool-btn {
+      min-width: 56px !important;
+      height: 54px !important;
+      padding: 5px 8px !important;
+      gap: 4px !important;
+    }
+    #editor-view .main-toolbar .tool-btn svg {
+      width: 21px !important;
+      height: 21px !important;
+    }
+    #editor-view .main-toolbar .tool-btn span {
+      font-size: 11px !important;
+      font-weight: 600 !important;
     }
     #page-controls,
     .floating-bottom-pill {
-      bottom: calc(88px + env(safe-area-inset-bottom, 14px)) !important;
+      display: none !important;
+    }
+    /* Hide bottom toolbar when keyboard / inline text input is active so only keyboard shows */
+    body.app-keyboard-open #editor-view .main-toolbar,
+    body.app-keyboard-open .mobile-liquid-dock {
+      display: none !important;
     }
   </style>
+  <script>
+    (function () {
+      var initialH = window.innerHeight;
+      var syncKeyboardState = function () {
+        var active = document.activeElement;
+        var isEditable = active && (active.isContentEditable || active.tagName === "INPUT" || active.tagName === "TEXTAREA");
+        var shrunk = window.visualViewport ? (window.visualViewport.height < initialH * 0.78) : (window.innerHeight < initialH * 0.78);
+        document.body.classList.toggle("app-keyboard-open", !!(isEditable || shrunk));
+      };
+      document.addEventListener("focusin", syncKeyboardState, true);
+      document.addEventListener("focusout", function () { setTimeout(syncKeyboardState, 80); }, true);
+      if (window.visualViewport) {
+        window.visualViewport.addEventListener("resize", syncKeyboardState);
+      }
+      window.addEventListener("resize", syncKeyboardState);
+    })();
+  </script>
 </head>
 
 <body>
@@ -1758,15 +1796,6 @@
             <line x1="21" y1="21" x2="16.65" y2="16.65" />
           </svg>
           <span>Search</span>
-        </button>
-
-        <!-- Mobile Dedicated Done Button (PDFfiller style) -->
-        <button type="button" class="btn-done-orange mobile-toolbar-done" id="mobile-toolbar-done-btn"
-          title="Finish and Download">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3">
-            <polyline points="20 6 9 17 4 12" />
-          </svg>
-          <span>DONE</span>
         </button>
       </div>
     </nav>
