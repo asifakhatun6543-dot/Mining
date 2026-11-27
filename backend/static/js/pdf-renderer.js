@@ -84,19 +84,54 @@ export class PDFRenderer {
           }
           if (cur || wrappedLines.length === 0) wrappedLines.push(cur);
         }
-        wrappedLines.forEach((lineText, li) => {
-          if (!lineText) return;
-          const drawOpts = {
-            x: box.x + x0,
-            y: baselineY - li * lineHeight,
-            size: fontSize,
-            font,
-            color: rgb(r, g, b)
-          };
-          if (edit.opacity !== undefined && edit.opacity < 1) drawOpts.opacity = Math.max(0.05, Number(edit.opacity));
-          if (edit.angle_deg && Math.abs(edit.angle_deg) > 0.25) drawOpts.rotate = degrees(-Number(edit.angle_deg));
-          page.drawText(lineText, drawOpts);
-        });
+        for (let li = 0; li < wrappedLines.length; li++) {
+          const lineText = wrappedLines[li];
+          if (!lineText) continue;
+          let isWinAnsi = true;
+          try { font.encodeText(lineText); } catch (_) { isWinAnsi = false; }
+          if (isWinAnsi) {
+            const drawOpts = {
+              x: box.x + x0,
+              y: baselineY - li * lineHeight,
+              size: fontSize,
+              font,
+              color: rgb(r, g, b)
+            };
+            if (edit.opacity !== undefined && edit.opacity < 1) drawOpts.opacity = Math.max(0.05, Number(edit.opacity));
+            if (edit.angle_deg && Math.abs(edit.angle_deg) > 0.25) drawOpts.rotate = degrees(-Number(edit.angle_deg));
+            page.drawText(lineText, drawOpts);
+          } else {
+            // Transparent-background high-DPI Unicode text fallback (zero white rectangle)
+            const dpiScale = 3;
+            const tc = document.createElement("canvas");
+            const tctx = tc.getContext("2d");
+            const wt = edit.is_bold ? "bold" : "normal";
+            const st = edit.is_italic ? "italic" : "normal";
+            const cssFont = `${st} ${wt} ${fontSize * dpiScale}px "${edit.font_name || "Noto Sans"}", Arial, sans-serif`;
+            tctx.font = cssFont;
+            const tw = Math.max(8, Math.ceil(tctx.measureText(lineText).width) + 6);
+            const th = Math.max(12, Math.ceil(fontSize * dpiScale * 1.35));
+            tc.width = tw;
+            tc.height = th;
+            tctx.clearRect(0, 0, tw, th);
+            tctx.font = cssFont;
+            tctx.fillStyle = `rgb(${Math.round(r * 255)}, ${Math.round(g * 255)}, ${Math.round(b * 255)})`;
+            tctx.textBaseline = "alphabetic";
+            tctx.fillText(lineText, 2, fontSize * dpiScale * 0.92);
+            const pngDataUrl = tc.toDataURL("image/png");
+            const bstr = atob(pngDataUrl.split(",")[1]);
+            const pngBytes = new Uint8Array(bstr.length);
+            for (let k = 0; k < bstr.length; k++) pngBytes[k] = bstr.charCodeAt(k);
+            const pngImg = await pdfDoc.embedPng(pngBytes);
+            page.drawImage(pngImg, {
+              x: box.x + x0,
+              y: (baselineY - li * lineHeight) - fontSize * 0.28,
+              width: tw / dpiScale,
+              height: th / dpiScale,
+              opacity: edit.opacity !== undefined ? Math.max(0.05, Number(edit.opacity)) : 1
+            });
+          }
+        }
       };
 
       const res = await applyPageEditsForPreview(State.pdfBytes, pageIndex, pageEdits, window.PDFLib, drawFallbackFn);

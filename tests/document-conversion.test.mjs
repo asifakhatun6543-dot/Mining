@@ -123,17 +123,31 @@ async function runConversionTests() {
   const samplePdfBytes = await pdfDoc.save();
   const pdfJsDoc = await pdfjsLib.getDocument({ data: new Uint8Array(samplePdfBytes), verbosity: 0 }).promise;
 
-  // 1. PDF -> Word (.docx)
-  const docxRes = await convertPdfToDocx(pdfJsDoc, pdfjsLib, { mode: "editable", pageRange: "all" });
+  // 1a. PDF -> Word (.docx) Exact Layout + Editable Text Mode (Hoba-Hu)
+  const exactDocxRes = await convertPdfToDocx(pdfJsDoc, pdfjsLib, {
+    mode: "exact-editable",
+    pageRange: "all",
+    pdfBytes: samplePdfBytes,
+    pdfLib: PDFLib
+  });
+  const exactCheck = await validateConvertedOutput(exactDocxRes.blob, "docx");
+  assert.equal(exactCheck.valid, true, "Exact-Editable DOCX must pass OOXML validation");
+  const exactEntries = await extractZipEntries(await exactDocxRes.blob.arrayBuffer());
+  const exactXml = new TextDecoder().decode(exactEntries.get("word/document.xml"));
+  assert.ok(exactXml.includes("<w:txbxContent>") && exactXml.includes("<wps:wsp"), "Exact-Editable DOCX must create editable Word text boxes");
+  assert.ok(exactXml.includes("Quarterly Financial Summary"), "Exact-Editable DOCX must preserve heading text");
+
+  // 1b. PDF -> Word (.docx) Flowing Mode (with tables)
+  const docxRes = await convertPdfToDocx(pdfJsDoc, pdfjsLib, { mode: "flowing", pageRange: "all" });
   const docxCheck = await validateConvertedOutput(docxRes.blob, "docx");
   assert.equal(docxCheck.valid, true, "DOCX must pass OOXML validation");
   assert.equal(docxRes.pageCount, 2);
   const docxEntries = await extractZipEntries(await docxRes.blob.arrayBuffer());
   const docXml = new TextDecoder().decode(docxEntries.get("word/document.xml"));
-  assert.ok(docXml.includes("<w:tbl>"), "DOCX Editable Mode must reconstruct <w:tbl> table");
+  assert.ok(docXml.includes("<w:tbl>"), "DOCX Flowing Mode must reconstruct <w:tbl> table");
   assert.ok(docXml.includes("Quarterly Financial Summary"), "DOCX must preserve heading text");
   assert.ok(docXml.includes("1A4099") || docXml.includes("<w:color"), "DOCX must preserve text color");
-  console.log("PASS [1/6]: PDF -> Word (.docx) Editable Mode with tables, fonts, colors & page breaks");
+  console.log("PASS [1/6]: PDF -> Word (.docx) Exact-Editable (Hoba-Hu) & Flowing Modes");
 
   // 2. Word (.docx) -> PDF
   const docxPdfRes = await convertDocxToPdf(await docxRes.blob.arrayBuffer(), "test.docx", PDFLib);

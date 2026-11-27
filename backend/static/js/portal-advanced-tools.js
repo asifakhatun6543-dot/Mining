@@ -1065,7 +1065,8 @@ export class AdvancedToolsManager {
         <label style="display:flex;flex-direction:column;gap:4px;flex:1;min-width:170px;">
           <span style="font-weight:600;opacity:0.85;">Conversion Mode</span>
           <select id="pdf-word-mode" style="padding:6px 8px;border-radius:6px;border:1px solid var(--border-color,#cbd5e1);background:var(--surface-primary,#fff);color:inherit;">
-            <option value="editable" selected>Editable Document (Layout-Aware DOCX)</option>
+            <option value="exact-editable" selected>Exact Layout + Editable Text (Hoba-Hu DOCX)</option>
+            <option value="flowing">Flowing Document (Reflowable Paragraphs & Tables)</option>
             <option value="appearance">Original Appearance (High-Res Page Images)</option>
           </select>
         </label>
@@ -1080,7 +1081,7 @@ export class AdvancedToolsManager {
             <option value="standard">Standard</option>
           </select>
         </label>
-        <div id="pdf-word-mode-note" style="width:100%;font-size:11px;opacity:0.75;">Reconstructs editable paragraphs, tables, fonts, colors, alignment, and page sizes.</div>
+        <div id="pdf-word-mode-note" style="width:100%;font-size:11px;opacity:0.75;">Preserves exact PDF visuals, watermarks, borders & QR codes behind transparent editable Word text boxes.</div>
       `;
       readyWrap.insertBefore(box, convertBtn);
       box.querySelector("#pdf-word-mode")?.addEventListener("change", (ev) => {
@@ -1089,7 +1090,9 @@ export class AdvancedToolsManager {
         if (note) {
           note.textContent = ev.target.value === "appearance"
             ? "Note: Original Appearance Mode embeds high-resolution page images; text inside images is not editable."
-            : "Reconstructs editable paragraphs, tables, fonts, colors, alignment, and page sizes.";
+            : ev.target.value === "flowing"
+              ? "Reconstructs reflowable paragraphs, tables, fonts, colors, alignment, and page sizes."
+              : "Preserves exact PDF visuals, watermarks, borders & QR codes behind transparent editable Word text boxes.";
         }
       });
     };
@@ -1098,7 +1101,7 @@ export class AdvancedToolsManager {
       if (!activeFile) return;
       ensureWordSettings();
       const baseName = activeFile.name.replace(/\.pdf$/i, "");
-      const modeVal = readyWrap?.querySelector("#pdf-word-mode")?.value || "editable";
+      const modeVal = readyWrap?.querySelector("#pdf-word-mode")?.value || "exact-editable";
       const pageRangeVal = readyWrap?.querySelector("#pdf-word-pages")?.value || "all";
       const qualityVal = readyWrap?.querySelector("#pdf-word-quality")?.value || "high";
 
@@ -1120,7 +1123,9 @@ export class AdvancedToolsManager {
         const result = await convertPdfToDocx(pdfJsDoc, pdfjsLib, {
           mode: modeVal,
           pageRange: pageRangeVal,
-          quality: qualityVal
+          quality: qualityVal,
+          pdfBytes: arrayBuffer,
+          pdfLib: window.PDFLib
         });
         const check = await validateConvertedOutput(result.blob, "docx");
         if (!check.valid) throw new Error(check.reason || "Invalid DOCX generated.");

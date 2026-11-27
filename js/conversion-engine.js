@@ -462,11 +462,119 @@ function segmentLinesIntoTablesAndParagraphs(lines, pageW) {
   return blocks;
 }
 
+/**
+ * Strips all text-showing operators (Tj, TJ, ', ") from a PDF's page streams
+ * so PDF.js renders ONLY graphics, borders, logos, QR codes, and watermarks.
+ */
+async function createTextFreePdfDocument(pdfBytes, pdfLib) {
+  if (!pdfBytes || !pdfLib) return null;
+  const { PDFDocument, PDFName, PDFArray, PDFRawStream, PDFRef, decodePDFRawStream } = pdfLib;
+  if (!PDFDocument || !decodePDFRawStream) return null;
+
+  const pdfDoc = await PDFDocument.load(pdfBytes, { ignoreEncryption: true });
+  const stripTextOpsFromStream = (streamRef) => {
+    const stream = pdfDoc.context.lookup(streamRef);
+    if (!stream || !(stream instanceof PDFRawStream)) return;
+    const bytes = decodePDFRawStream(stream).decode();
+    let s = "";
+    for (let i = 0; i < bytes.length; i++) s += String.fromCharCode(bytes[i]);
+
+    // Tokenize and blank out literal/hex/array operands immediately preceding Tj, TJ, ', "
+    let out = "";
+    let i = 0;
+    const len = s.length;
+    const skipWs = (p) => { while (p < len && /\s/.test(s[p])) p++; return p; };
+    while (i < len) {
+      const ch = s[i];
+      if (ch === "(" || ch === "<" || ch === "[") {
+        const start = i;
+        if (ch === "(") {
+          i++;
+          let depth = 1;
+          while (i < len && depth > 0) {
+            if (s[i] === "\\") i += 2;
+            else { if (s[i] === "(") depth++; else if (s[i] === ")") depth--; i++; }
+          }
+        } else if (ch === "<") {
+          if (s[i + 1] === "<") { out += "<<"; i += 2; continue; }
+          i++;
+          while (i < len && s[i] !== ">") i++;
+          if (i < len) i++;
+        } else {
+          i++;
+          let depth = 1;
+          while (i < len && depth > 0) {
+            if (s[i] === "(") {
+              i++;
+              let pd = 1;
+              while (i < len && pd > 0) {
+                if (s[i] === "\\") i += 2;
+                else { if (s[i] === "(") pd++; else if (s[i] === ")") pd--; i++; }
+              }
+            } else {
+              if (s[i] === "[") depth++;
+              else if (s[i] === "]") depth--;
+              i++;
+            }
+          }
+        }
+        const after = skipWs(i);
+        if (s.startsWith("TJ", after) || s.startsWith("Tj", after)) {
+          out += "() Tj";
+          i = after + 2;
+          continue;
+        }
+        if ((s[after] === "'" || s[after] === '"') && (after + 1 >= len || /[\s/<([]/.test(s[after + 1]))) {
+          out += "() Tj";
+          i = after + 1;
+          continue;
+        }
+        out += s.slice(start, i);
+        continue;
+      }
+      out += ch;
+      i++;
+    }
+
+    const outBytes = new Uint8Array(out.length);
+    for (let k = 0; k < out.length; k++) outBytes[k] = out.charCodeAt(k) & 0xff;
+    if (streamRef instanceof PDFRef) {
+      pdfDoc.context.assign(streamRef, pdfDoc.context.stream(outBytes));
+    }
+  };
+
+  for (const page of pdfDoc.getPages()) {
+    const contentsRef = page.node.get(PDFName.of("Contents"));
+    if (contentsRef) {
+      const resolved = pdfDoc.context.lookup(contentsRef);
+      if (resolved instanceof PDFArray) {
+        for (let idx = 0; idx < resolved.size(); idx++) stripTextOpsFromStream(resolved.get(idx));
+      } else {
+        stripTextOpsFromStream(contentsRef);
+      }
+    }
+    try {
+      const resources = page.node.Resources ? page.node.Resources() : null;
+      const xObjects = resources ? resources.lookup(PDFName.of("XObject")) : null;
+      if (xObjects && typeof xObjects.entries === "function") {
+        for (const [, xVal] of xObjects.entries()) {
+          const xStream = pdfDoc.context.lookup(xVal);
+          if (xStream instanceof PDFRawStream && xStream.dict.get(PDFName.of("Subtype"))?.toString() === "/Form") {
+            stripTextOpsFromStream(xVal);
+          }
+        }
+      }
+    } catch (_) {}
+  }
+
+  return await pdfDoc.save();
+}
+
 // ============================================================================
 // 1. PDF -> WORD (.docx)
 // ============================================================================
 export async function convertPdfToDocx(pdfJsDoc, pdfjsLib, options = {}) {
-  const mode = options.mode === "appearance" ? "appearance" : "editable";
+  const mode = options.mode === "appearance" ? "appearance" : (options.mode === "flowing" ? "flowing" : "exact-editable");
   const quality = options.quality === "standard" ? "standard" : "high";
   const pageNums = parsePageRange(options.pageRange, pdfJsDoc.numPages);
 
@@ -474,7 +582,18 @@ export async function convertPdfToDocx(pdfJsDoc, pdfjsLib, options = {}) {
   const mediaEntries = [];
   const docRels = [];
   let relIdx = 1;
+  let shapeId = 10;
   let firstPageSize = { wTwips: 11906, hTwips: 16838, orient: "portrait" };
+
+  let bgPdfJsDoc = null;
+  if (mode === "exact-editable" && options.pdfBytes && options.pdfLib) {
+    try {
+      const bgBytes = await createTextFreePdfDocument(options.pdfBytes, options.pdfLib);
+      if (bgBytes) {
+        bgPdfJsDoc = await pdfjsLib.getDocument({ data: new Uint8Array(bgBytes), verbosity: 0 }).promise;
+      }
+    } catch (_) {}
+  }
 
   for (let i = 0; i < pageNums.length; i++) {
     const pNum = pageNums[i];
@@ -487,6 +606,70 @@ export async function convertPdfToDocx(pdfJsDoc, pdfjsLib, options = {}) {
 
     if (i > 0) {
       bodyXml += `<w:p><w:r><w:br w:type="page"/></w:r></w:p>`;
+    }
+
+    if (mode === "exact-editable") {
+      const pageRunsXml = [];
+      // 1) Behind-text exact PDF background image (graphics, borders, watermarks, QR codes, without duplicate text)
+      if (bgPdfJsDoc && typeof document !== "undefined") {
+        const bgPage = await bgPdfJsDoc.getPage(pNum);
+        const bgImg = await renderPdfPageToImage(bgPage, quality === "high" ? 2.0 : 1.5, "image/jpeg", quality === "high" ? 0.92 : 0.82);
+        const rId = `rId${relIdx++}`;
+        const imgName = `page${pNum}_bg.jpg`;
+        mediaEntries.push({ name: `word/media/${imgName}`, data: bgImg.bytes });
+        docRels.push(`<Relationship Id="${rId}" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/image" Target="media/${imgName}"/>`);
+        const bgCx = Math.round(vp.width * 12700);
+        const bgCy = Math.round(vp.height * 12700);
+        pageRunsXml.push(`<w:r><w:drawing><wp:anchor distT="0" distB="0" distL="0" distR="0" simplePos="0" relativeHeight="1" behindDoc="1" locked="0" layoutInCell="1" allowOverlap="1" xmlns:wp="http://schemas.openxmlformats.org/drawingml/2006/wordprocessingDrawing"><wp:simplePos x="0" y="0"/><wp:positionH relativeFrom="page"><wp:posOffset>0</wp:posOffset></wp:positionH><wp:positionV relativeFrom="page"><wp:posOffset>0</wp:posOffset></wp:positionV><wp:extent cx="${bgCx}" cy="${bgCy}"/><wp:effectExtent l="0" t="0" r="0" b="0"/><wp:wrapNone/><wp:docPr id="${shapeId++}" name="PageBg${pNum}"/><wp:cNvGraphicFramePr><a:graphicFrameLocks xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" noChangeAspect="1"/></wp:cNvGraphicFramePr><a:graphic xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main"><a:graphicData uri="http://schemas.openxmlformats.org/drawingml/2006/picture"><pic:pic xmlns:pic="http://schemas.openxmlformats.org/drawingml/2006/picture"><pic:nvPicPr><pic:cNvPr id="${shapeId++}" name="${imgName}"/><pic:cNvPicPr/></pic:nvPicPr><pic:blipFill><a:blip r:embed="${rId}"/><a:stretch><a:fillRect/></a:stretch></pic:blipFill><pic:spPr><a:xfrm><a:off x="0" y="0"/><a:ext cx="${bgCx}" cy="${bgCy}"/></a:xfrm><a:prstGeom prst="rect"><a:avLst/></a:prstGeom></pic:spPr></pic:pic></a:graphicData></a:graphic></wp:anchor></w:drawing></w:r>`);
+      }
+
+      // 2) Transparent, borderless, exact-coordinate editable Word text boxes for every cell/line
+      const extracted = await extractStructuredPdfPage(pdfPage, pdfjsLib);
+      let relZ = 251658240;
+      for (const line of extracted.lines) {
+        // Split line into separate cell runs when horizontal gap > max(12, fontH * 1.3)
+        const cells = [];
+        let curCell = null;
+        for (const s of line.spans) {
+          if (!curCell) {
+            curCell = { x: s.x, xEnd: s.xEnd, y: s.y, fontH: s.fontH, spans: [s] };
+          } else {
+            const gap = s.x - curCell.xEnd;
+            if (gap > Math.max(12, line.fontH * 1.3)) {
+              cells.push(curCell);
+              curCell = { x: s.x, xEnd: s.xEnd, y: s.y, fontH: s.fontH, spans: [s] };
+            } else {
+              curCell.spans.push(s);
+              curCell.xEnd = Math.max(curCell.xEnd, s.xEnd);
+              curCell.fontH = Math.max(curCell.fontH, s.fontH);
+            }
+          }
+        }
+        if (curCell) cells.push(curCell);
+
+        for (const cell of cells) {
+          const xEmu = Math.max(0, Math.round(cell.x * 12700));
+          const yEmu = Math.max(0, Math.round(cell.y * 12700));
+          const wEmu = Math.max(254000, Math.round((cell.xEnd - cell.x + 14) * 12700));
+          const hEmu = Math.max(180000, Math.round(cell.fontH * 1.45 * 12700));
+          let txbxRuns = "";
+          cell.spans.forEach((sp, si) => {
+            const sz = Math.max(10, Math.min(96, Math.round(sp.fontH * 2)));
+            const b = sp.isBold ? "<w:b/>" : "";
+            const it = sp.isItalic ? "<w:i/>" : "";
+            const prefix = si > 0 ? " " : "";
+            txbxRuns += `<w:r><w:rPr><w:rFonts w:ascii="${escapeXml(sp.fontName)}" w:hAnsi="${escapeXml(sp.fontName)}"/>${b}${it}<w:color w:val="${sp.colorHex}"/><w:sz w:val="${sz}"/><w:szCs w:val="${sz}"/></w:rPr><w:t xml:space="preserve">${escapeXml(prefix + sp.text)}</w:t></w:r>`;
+          });
+          const curId = shapeId++;
+          const vLeftPt = (cell.x).toFixed(2);
+          const vTopPt = (cell.y).toFixed(2);
+          const vWidthPt = Math.max(18, cell.xEnd - cell.x + 14).toFixed(2);
+          const vHeightPt = Math.max(14, cell.fontH * 1.45).toFixed(2);
+          pageRunsXml.push(`<w:r><mc:AlternateContent xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"><mc:Choice Requires="wps"><w:drawing><wp:anchor distT="0" distB="0" distL="0" distR="0" simplePos="0" relativeHeight="${relZ++}" behindDoc="0" locked="0" layoutInCell="1" allowOverlap="1" xmlns:wp="http://schemas.openxmlformats.org/drawingml/2006/wordprocessingDrawing"><wp:simplePos x="0" y="0"/><wp:positionH relativeFrom="page"><wp:posOffset>${xEmu}</wp:posOffset></wp:positionH><wp:positionV relativeFrom="page"><wp:posOffset>${yEmu}</wp:posOffset></wp:positionV><wp:extent cx="${wEmu}" cy="${hEmu}"/><wp:effectExtent l="0" t="0" r="0" b="0"/><wp:wrapNone/><wp:docPr id="${curId}" name="TextBox${curId}"/><wp:cNvGraphicFramePr><a:graphicFrameLocks xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main"/></wp:cNvGraphicFramePr><a:graphic xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main"><a:graphicData uri="http://schemas.microsoft.com/office/word/2010/wordprocessingShape"><wps:wsp xmlns:wps="http://schemas.microsoft.com/office/word/2010/wordprocessingShape"><wps:cNvSpPr txBox="1"/><wps:spPr><a:xfrm><a:off x="0" y="0"/><a:ext cx="${wEmu}" cy="${hEmu}"/></a:xfrm><a:prstGeom prst="rect"><a:avLst/></a:prstGeom><a:noFill/><a:ln><a:noFill/></a:ln></wps:spPr><wps:txbx><w:txbxContent><w:p><w:pPr><w:spacing w:before="0" w:after="0" w:line="240" w:lineRule="auto"/></w:pPr>${txbxRuns}</w:p></w:txbxContent></wps:txbx><wps:bodyPr rot="0" vert="horz" wrap="none" lIns="0" tIns="0" rIns="0" bIns="0" anchor="t"><a:noAutofit/></wps:bodyPr></wps:wsp></a:graphicData></a:graphic></wp:anchor></w:drawing></mc:Choice><mc:Fallback><w:pict><v:shape xmlns:v="urn:schemas-microsoft-com:vml" id="VTextBox${curId}" style="position:absolute;margin-left:${vLeftPt}pt;margin-top:${vTopPt}pt;width:${vWidthPt}pt;height:${vHeightPt}pt;z-index:${relZ}" filled="f" stroked="f"><v:textbox inset="0,0,0,0"><w:txbxContent><w:p><w:pPr><w:spacing w:before="0" w:after="0"/></w:pPr>${txbxRuns}</w:p></w:txbxContent></v:textbox></v:shape></w:pict></mc:Fallback></mc:AlternateContent></w:r>`);
+        }
+      }
+      bodyXml += `<w:p><w:pPr><w:spacing w:before="0" w:after="0"/></w:pPr>${pageRunsXml.join("")}</w:p>`;
+      continue;
     }
 
     if (mode === "appearance") {
@@ -565,7 +748,9 @@ export async function convertPdfToDocx(pdfJsDoc, pdfjsLib, options = {}) {
     }
   }
 
-  const margins = mode === "appearance" ? `w:top="0" w:right="0" w:bottom="0" w:left="0"` : `w:top="720" w:right="720" w:bottom="720" w:left="720"`;
+  const margins = (mode === "appearance" || mode === "exact-editable")
+    ? `w:top="0" w:right="0" w:bottom="0" w:left="0"`
+    : `w:top="720" w:right="720" w:bottom="720" w:left="720"`;
   const documentXml = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 <w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">
   <w:body>

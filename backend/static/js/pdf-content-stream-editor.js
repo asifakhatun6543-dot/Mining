@@ -108,6 +108,90 @@ function isWinAnsiSafe(str) {
 }
 
 /**
+ * Parses a /ToUnicode CMap stream into a Map<hexCodeUpper, unicodeString>.
+ */
+function parseToUnicodeCMap(cmapStr) {
+  const map = new Map();
+  if (!cmapStr) return map;
+  const decodeHexUtf16 = (hex) => {
+    const clean = hex.replace(/\s+/g, "");
+    let out = "";
+    for (let i = 0; i + 3 < clean.length; i += 4) {
+      out += String.fromCharCode(parseInt(clean.slice(i, i + 4), 16));
+    }
+    if (!out && clean.length === 2) out = String.fromCharCode(parseInt(clean, 16));
+    return out;
+  };
+  const bfcharRe = /beginbfchar([\s\S]*?)endbfchar/g;
+  let m;
+  while ((m = bfcharRe.exec(cmapStr)) !== null) {
+    const pairRe = /<([0-9a-fA-F]+)>\s*<([0-9a-fA-F]+)>/g;
+    let pm;
+    while ((pm = pairRe.exec(m[1])) !== null) {
+      map.set(pm[1].toUpperCase(), decodeHexUtf16(pm[2]));
+    }
+  }
+  const bfrangeRe = /beginbfrange([\s\S]*?)endbfrange/g;
+  while ((m = bfrangeRe.exec(cmapStr)) !== null) {
+    const lineRe = /<([0-9a-fA-F]+)>\s*<([0-9a-fA-F]+)>\s*<([0-9a-fA-F]+)>/g;
+    let rm;
+    while ((rm = lineRe.exec(m[1])) !== null) {
+      const start = parseInt(rm[1], 16);
+      const end = parseInt(rm[2], 16);
+      let dst = parseInt(rm[3], 16);
+      const padLen = rm[1].length;
+      for (let c = start; c <= end && (c - start) < 512; c++, dst++) {
+        map.set(c.toString(16).toUpperCase().padStart(padLen, "0"), String.fromCharCode(dst));
+      }
+    }
+  }
+  return map;
+}
+
+function buildPageToUnicodeMaps(pdfDoc, page, pdfLib) {
+  const fontMaps = new Map();
+  try {
+    const { PDFName, PDFRawStream, decodePDFRawStream } = pdfLib || {};
+    if (!PDFName || !decodePDFRawStream) return fontMaps;
+    const resources = page.node.Resources ? page.node.Resources() : null;
+    const fonts = resources ? resources.lookup(PDFName.of("Font")) : null;
+    if (!fonts || typeof fonts.entries !== "function") return fontMaps;
+    for (const [fKey, fVal] of fonts.entries()) {
+      const fName = fKey.toString().replace(/^\//, "");
+      const fDict = pdfDoc.context.lookup(fVal);
+      if (!fDict || typeof fDict.lookup !== "function") continue;
+      const tuStream = fDict.lookup(PDFName.of("ToUnicode"));
+      if (tuStream && tuStream instanceof PDFRawStream) {
+        const bytes = decodePDFRawStream(tuStream).decode();
+        let str = "";
+        for (let i = 0; i < bytes.length; i++) str += String.fromCharCode(bytes[i]);
+        const parsed = parseToUnicodeCMap(str);
+        if (parsed.size > 0) fontMaps.set(fName, parsed);
+      }
+    }
+  } catch (_) {}
+  return fontMaps;
+}
+
+function decodeHexWithCMap(hexRaw, cmap) {
+  if (!cmap || cmap.size === 0) return null;
+  const clean = hexRaw.replace(/\s+/g, "").toUpperCase();
+  if (!clean) return "";
+  const firstKey = cmap.keys().next().value || "";
+  const step = firstKey.length === 2 ? 2 : 4;
+  let out = "";
+  let hits = 0;
+  for (let i = 0; i + step <= clean.length; i += step) {
+    const code = clean.slice(i, i + step);
+    if (cmap.has(code)) {
+      out += cmap.get(code);
+      hits++;
+    }
+  }
+  return hits > 0 ? out : null;
+}
+
+/**
  * Inspects a PDF page's /Resources /Font dictionary entry for encoding,
  * subset coverage, CID/Type3 status, and character widths.
  */
@@ -574,8 +658,12 @@ export function editPageContentStream(pdfDoc, page, edit, pageBox, pdfLib) {
       }
     } catch (_) {}
 
+    const toUnicodeMaps = buildPageToUnicodeMaps(pdfDoc, page, pdfLib);
+
     let bestMatch = null;
     let bestScore = Infinity;
+    let coordCandidate = null;
+    let coordBestDist = Infinity;
 
     for (const entry of streamEntries) {
       const stream = pdfDoc.context.lookup(entry.ref);
@@ -588,10 +676,45 @@ export function editPageContentStream(pdfDoc, page, edit, pageBox, pdfLib) {
       }
 
       const ops = scanContentStreamTextOps(contentStr);
+      // Enrich CID/hex operators using /ToUnicode CMap when available
+      for (const op of ops) {
+        const cmap = op.font ? toUnicodeMaps.get(op.font) : null;
+        if (!cmap) continue;
+        if (op.arg.type === "hex") {
+          const decoded = decodeHexWithCMap(contentStr.slice(op.arg.start + 1, op.arg.end - 1), cmap);
+          if (decoded) op.text = decoded;
+        } else if (op.arg.type === "array") {
+          const inner = contentStr.slice(op.arg.start + 1, op.arg.end - 1);
+          const hexRe = /<([0-9a-fA-F\s]*)>/g;
+          let hm, acc = "";
+          while ((hm = hexRe.exec(inner)) !== null) {
+            const d = decodeHexWithCMap(hm[1], cmap);
+            if (d) acc += d;
+          }
+          if (acc) op.text = acc;
+        }
+      }
+
       for (let oi = 0; oi < ops.length; oi++) {
         const op = ops[oi];
         const opTrim = op.text.trim();
         if (!opTrim) continue;
+
+        // Track tight coordinate match for CID/custom-encoded streams lacking ToUnicode
+        if (Math.abs(op.y - targetY) <= 5.5 && op.x >= targetX - 8 && op.x <= targetX + Math.max(24, x1 - x0) + 8) {
+          const d = Math.hypot(op.x - targetX, op.y - targetY);
+          if (d < coordBestDist) {
+            coordBestDist = d;
+            const sameSpanExtras = [];
+            for (let oj = oi + 1; oj < Math.min(ops.length, oi + 10); oj++) {
+              const nx = ops[oj];
+              if (Math.abs(nx.y - op.y) <= 4 && nx.x >= targetX - 8 && nx.x <= targetX + Math.max(24, x1 - x0) + 8) {
+                sameSpanExtras.push(nx);
+              } else break;
+            }
+            coordCandidate = { entry, contentStr, op, extraOps: sameSpanExtras, isExact: true, matchedByCoords: true };
+          }
+        }
 
         const isExact = opTrim === originalText;
         const isSubstring = !isExact && opTrim.includes(originalText);
@@ -629,6 +752,11 @@ export function editPageContentStream(pdfDoc, page, edit, pageBox, pdfLib) {
       }
     }
 
+    if ((!bestMatch || bestScore > 250) && coordCandidate) {
+      bestMatch = coordCandidate;
+      bestScore = coordBestDist;
+    }
+
     if (!bestMatch || bestScore > 250) {
       return { handled: false, mode: "rejected", reason: "No matching vector text operator found (document may be scanned or use non-standard layout)." };
     }
@@ -639,6 +767,7 @@ export function editPageContentStream(pdfDoc, page, edit, pageBox, pdfLib) {
 
     // Validate in-place replacement compatibility against actual PDF font dictionary
     let canAttemptInPlace =
+      !bestMatch.matchedByCoords &&
       !edit.forceSuppress &&
       !edit.user_changed_font &&
       !edit.is_bold &&
@@ -647,7 +776,9 @@ export function editPageContentStream(pdfDoc, page, edit, pageBox, pdfLib) {
       (!edit.alignment || edit.alignment === "left") &&
       replacementText.length > 0;
 
-    let coverageWarning = null;
+    let coverageWarning = bestMatch.matchedByCoords
+      ? "Matched CID/custom-encoded text by coordinates; replaced using compatible vector font without modifying background."
+      : null;
     if (canAttemptInPlace) {
       const coverage = validateFontCoverage(fontInfo, originalText, replacementText, op);
       if (!coverage.ok) {
