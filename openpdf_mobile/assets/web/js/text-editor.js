@@ -358,6 +358,9 @@ export class InlineTextEditor {
     this.miniToolbarEl = document.createElement("div");
     this.miniToolbarEl.className = "floating-mini-toolbar";
     this.miniToolbarEl.style.display = "none";
+    this.miniToolbarEl.style.maxWidth = "calc(100vw - 16px)";
+    this.miniToolbarEl.style.boxSizing = "border-box";
+    this.miniToolbarEl.style.flexWrap = "wrap";
 
     this.miniToolbarEl.innerHTML = `
       <!-- Drag Handle -->
@@ -414,8 +417,8 @@ export class InlineTextEditor {
         <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/><circle cx="5" cy="12" r="1"/></svg>
       </button>
       <span id="mt-overflow-pill" style="display: none; font-size: 10px; font-weight: 700; color: #b45309; background: #fef3c7; border: 1px solid #f59e0b; border-radius: 4px; padding: 1px 5px; cursor: pointer;" title="Replacement text exceeds available width. Click to scale down.">⚠ Fit</span>
-      <div id="mt-error-banner" style="display: none; width: 100%; flex-basis: 100%; margin-top: 4px; padding: 5px 8px; background: #fef2f2; border: 1px solid #fca5a5; border-radius: 6px; color: #b91c1c; font-size: 11px; align-items: center; justify-content: space-between; gap: 6px;">
-        <span id="mt-error-text" style="flex: 1; line-height: 1.3;"></span>
+      <div id="mt-error-banner" style="display: none; width: 100%; max-width: 100%; box-sizing: border-box; flex-basis: 100%; flex-wrap: wrap; margin-top: 4px; padding: 5px 8px; background: #fef2f2; border: 1px solid #fca5a5; border-radius: 6px; color: #b91c1c; font-size: 11px; align-items: center; justify-content: space-between; gap: 6px;">
+        <span id="mt-error-text" style="flex: 1 1 180px; min-width: 0; word-break: break-word; line-height: 1.3;"></span>
         <button type="button" id="mt-error-retry" style="background: #dc2626; color: #fff; border: none; border-radius: 4px; padding: 2px 7px; font-size: 10.5px; font-weight: 600; cursor: pointer;">Retry</button>
         <button type="button" id="mt-error-cancel" style="background: #fff; color: #475569; border: 1px solid #cbd5e1; border-radius: 4px; padding: 2px 7px; font-size: 10.5px; font-weight: 600; cursor: pointer;">Cancel</button>
       </div>

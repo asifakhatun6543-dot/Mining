@@ -26,7 +26,7 @@ export class PDFRenderer {
   }
 
   async renderPageWithSuppressedEdits(pageIndex) {
-    if (!State.pdfBytes || !window.PDFLib || !window.pdfjsLib) return false;
+    if (!State.rawFileBytes || !window.PDFLib || !window.pdfjsLib) return false;
     const pageEdits = (State.pendingTextEdits || []).filter(e => e.page_number === pageIndex);
     if (pageEdits.length === 0) {
       this.suppressedKeysByPage.delete(pageIndex);
@@ -134,7 +134,7 @@ export class PDFRenderer {
         }
       };
 
-      const res = await applyPageEditsForPreview(State.pdfBytes, pageIndex, pageEdits, window.PDFLib, drawFallbackFn);
+      const res = await applyPageEditsForPreview(State.rawFileBytes, pageIndex, pageEdits, window.PDFLib, drawFallbackFn);
       this.lastPreviewWarnings = (res && res.warnings) ? res.warnings : [];
       if (this.lastPreviewWarnings.length > 0) {
         State.emit("toast", { type: "warning", message: this.lastPreviewWarnings[0] });
@@ -272,6 +272,7 @@ export class PDFRenderer {
     // Render PDF.js Text Layer
     if (textLayerDiv && window.pdfjsLib) {
       textLayerDiv.innerHTML = "";
+      textLayerDiv.style.setProperty("--scale-factor", String(viewport.scale));
       textLayerDiv.style.width = `${viewport.width}px`;
       textLayerDiv.style.height = `${viewport.height}px`;
 
