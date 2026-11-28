@@ -322,11 +322,7 @@ class OpenPDFStudioApp {
     });
 
     // Insert Blank Page (Support both sidebar-insert-btn and sidebar-add-btn)
-    const handleInsert = () => {
-      const op = { type: "insert_blank", target_page: State.currentPage + 1 };
-      State.addPageOperation(op);
-      this.showToast("info", `Blank page inserted after Page ${State.currentPage + 1}.`);
-    };
+    const handleInsert = () => this.insertBlankPage(State.currentPage);
     document.getElementById("sidebar-insert-btn")?.addEventListener("click", handleInsert);
     document.getElementById("sidebar-add-btn")?.addEventListener("click", handleInsert);
 
@@ -810,7 +806,8 @@ class OpenPDFStudioApp {
           } catch (_) {}
         }
 
-        const cleanReal = realFontName.replace(/^[A-Za-z0-9]{6}\+/, "").trim();
+        let cleanReal = realFontName.replace(/^[A-Za-z0-9]{6}\+/, "").trim();
+        if (/^g_d\d+_f\d+$/i.test(cleanReal)) cleanReal = "";
         const style = textContent.styles?.[item.fontName];
         const fontFam = (style?.fontFamily || "").toLowerCase();
         const combined = `${cleanReal} ${fontFam}`.toLowerCase();
@@ -932,6 +929,40 @@ class OpenPDFStudioApp {
     };
 
     return { docInfo, pages };
+  }
+
+  async insertBlankPage(afterPageIndex = State.currentPage) {
+    if (!State.rawFileBytes || !window.PDFLib || !window.pdfjsLib) return;
+    try {
+      const pdfDoc = await window.PDFLib.PDFDocument.load(State.rawFileBytes, { ignoreEncryption: true });
+      const refPage = pdfDoc.getPages()[Math.max(0, Math.min(afterPageIndex, pdfDoc.getPageCount() - 1))];
+      const size = refPage ? refPage.getSize() : { width: 612, height: 792 };
+      const insertAt = Math.max(0, Math.min(pdfDoc.getPageCount(), afterPageIndex + 1));
+      pdfDoc.insertPage(insertAt, [size.width, size.height]);
+
+      const updatedBytes = await pdfDoc.save();
+      const safeBuffer = updatedBytes.buffer.slice(updatedBytes.byteOffset, updatedBytes.byteOffset + updatedBytes.byteLength);
+      const workerData = new Uint8Array(safeBuffer.slice(0));
+      const newPdfJsDoc = await window.pdfjsLib.getDocument({ data: workerData }).promise;
+
+      State.pdfDoc = newPdfJsDoc;
+      State.rawFileBytes = safeBuffer;
+      State.pageCount = newPdfJsDoc.numPages;
+      State.pageDimensions.splice(insertAt, 0, { page: insertAt, width: size.width, height: size.height });
+      State.currentPage = insertAt;
+
+      const totalPagesEl = document.getElementById("total-pages-label");
+      if (totalPagesEl) totalPagesEl.textContent = State.pageCount;
+
+      await this.renderer.renderDocument();
+      this.selectionManager.updateSelectionOverlays(State.activeTool);
+      this.toolbar.renderAnnotationsOnPage(insertAt);
+      this.renderer.scrollToPage(insertAt);
+      this.showToast("success", `Blank page added (Page ${insertAt + 1} of ${State.pageCount}).`);
+    } catch (err) {
+      console.error("Insert blank page failed:", err);
+      this.showToast("error", `Could not add page: ${err.message}`);
+    }
   }
 
   resetDocument() {

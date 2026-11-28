@@ -213,6 +213,20 @@ export class PDFRenderer {
       this._createThumbnailItem(pno);
     }
 
+    // Add "+" card in Manage pages sidebar to insert a new blank page
+    if (this.thumbnailsContainer) {
+      const addCard = document.createElement("button");
+      addCard.type = "button";
+      addCard.id = "sidebar-thumb-add-btn";
+      addCard.title = "Add Blank Page";
+      addCard.style.cssText = "width:140px;min-height:48px;margin:8px auto 12px auto;display:flex;align-items:center;justify-content:center;gap:6px;border:1.5px dashed #3b82f6;border-radius:8px;background:rgba(59,130,246,0.06);color:#2563eb;font-weight:700;font-size:12.5px;cursor:pointer;";
+      addCard.innerHTML = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg><span>Add Page</span>`;
+      addCard.addEventListener("click", () => {
+        window.app?.insertBlankPage?.(State.pageCount - 1);
+      });
+      this.thumbnailsContainer.appendChild(addCard);
+    }
+
     // Render current active page first, then others
     await this.renderPage(State.currentPage);
     this._renderRemainingPages();

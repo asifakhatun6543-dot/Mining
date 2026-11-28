@@ -368,11 +368,15 @@ export class InlineTextEditor {
         <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="9" cy="5" r="1.5"/><circle cx="9" cy="12" r="1.5"/><circle cx="9" cy="19" r="1.5"/><circle cx="15" cy="5" r="1.5"/><circle cx="15" cy="12" r="1.5"/><circle cx="15" cy="19" r="1.5"/></svg>
       </div>
 
-      <!-- Commit OK Button -->
-      <button type="button" class="mini-btn ok-btn" id="mt-ok-btn" title="Confirm and apply edit (Enter)">
+      <!-- Commit / Edit Mode Button (Edit text -> Done) -->
+      <button type="button" class="mini-btn ok-btn" id="mt-ok-btn" title="Edit or confirm text (Enter)">
         <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg>
-        <span>OK</span>
+        <span id="mt-ok-label">Done</span>
       </button>
+
+      <!-- Quick Font Size - / + (T↓ / T↑) -->
+      <button type="button" class="mini-btn" id="mt-size-down" title="Decrease Font Size" style="padding: 0 5px; height: 26px; font-weight: 700; font-size: 11px;">T&darr;</button>
+      <button type="button" class="mini-btn" id="mt-size-up" title="Increase Font Size" style="padding: 0 5px; height: 26px; font-weight: 700; font-size: 11px;">T&uarr;</button>
 
       <div class="mini-separator"></div>
 
@@ -492,7 +496,32 @@ export class InlineTextEditor {
   }
 
   _bindMiniToolbarEvents() {
-    this.miniToolbarEl.querySelector("#mt-ok-btn")?.addEventListener("click", () => this.applyEdit());
+    this.miniToolbarEl.querySelector("#mt-ok-btn")?.addEventListener("click", () => {
+      const editableDiv = this.activeBoxEl?.querySelector(".inplace-text-editable");
+      if (editableDiv && editableDiv.contentEditable !== "true") {
+        this._enterInlineTypingMode();
+        return;
+      }
+      this.applyEdit();
+    });
+    this.miniToolbarEl.querySelector("#mt-size-down")?.addEventListener("click", () => {
+      const next = Math.max(4, (Number(this.currentFontSize) || 12) - 1);
+      this.currentFontSize = next;
+      this.userChangedStyle = true;
+      const sizeInput = this.miniToolbarEl.querySelector("#mt-font-size");
+      if (sizeInput) sizeInput.value = next;
+      this._updateEditableStyle();
+      this._checkTextOverflow();
+    });
+    this.miniToolbarEl.querySelector("#mt-size-up")?.addEventListener("click", () => {
+      const next = Math.min(144, (Number(this.currentFontSize) || 12) + 1);
+      this.currentFontSize = next;
+      this.userChangedStyle = true;
+      const sizeInput = this.miniToolbarEl.querySelector("#mt-font-size");
+      if (sizeInput) sizeInput.value = next;
+      this._updateEditableStyle();
+      this._checkTextOverflow();
+    });
     this.miniToolbarEl.querySelector("#mt-delete-btn")?.addEventListener("click", () => this.applyDelete());
     this.miniToolbarEl.querySelector("#mt-error-retry")?.addEventListener("click", () => this.applyEdit());
     this.miniToolbarEl.querySelector("#mt-error-cancel")?.addEventListener("click", () => this.cancel());
@@ -1314,9 +1343,10 @@ export class InlineTextEditor {
     box.style.alignItems = "flex-start";
     box.style.zIndex = "80";
 
+    const isTouch = !!(window.matchMedia && window.matchMedia("(pointer: coarse)").matches);
     const editableDiv = document.createElement("div");
     editableDiv.className = "inplace-text-editable";
-    editableDiv.contentEditable = "true";
+    editableDiv.contentEditable = isTouch ? "false" : "true";
     editableDiv.spellcheck = false;
     editableDiv.innerText = textToShow;
     editableDiv.style.whiteSpace = baseRect.hasCustomWidth ? "pre-wrap" : "pre";
@@ -1329,6 +1359,11 @@ export class InlineTextEditor {
     editableDiv.style.lineHeight = "1.12";
     editableDiv.style.webkitFontSmoothing = "antialiased";
     editableDiv.style.textRendering = "optimizeLegibility";
+    editableDiv.style.cursor = isTouch ? "move" : "text";
+    editableDiv.style.userSelect = isTouch ? "none" : "text";
+
+    const okLabel = this.miniToolbarEl?.querySelector("#mt-ok-label");
+    if (okLabel) okLabel.textContent = isTouch ? "Edit text" : "Done";
 
     box.appendChild(editableDiv);
 
@@ -1440,11 +1475,15 @@ export class InlineTextEditor {
       box.appendChild(handle);
     });
 
-    // Reposition box when dragging along its border (outside editable text or when holding border)
+    // Smooth drag-to-move: anywhere on box in Select/Move mode, or along border while typing
     box.addEventListener("pointerdown", (e) => {
-      if (e.target !== box) return;
+      if (e.target.closest(".text-resize-handle")) return;
+      if (e.target !== box && editableDiv.contentEditable === "true") return;
       e.preventDefault();
       e.stopPropagation();
+      const workspaceEl = document.getElementById("center-workspace");
+      const prevTouchAction = workspaceEl ? workspaceEl.style.touchAction : "";
+      if (workspaceEl) workspaceEl.style.touchAction = "none";
       const startX = e.clientX;
       const startY = e.clientY;
       const curScale = State.zoomScale || 1;
@@ -1466,6 +1505,7 @@ export class InlineTextEditor {
         this._positionMiniToolbar(box);
       };
       const onUp = () => {
+        if (workspaceEl) workspaceEl.style.touchAction = prevTouchAction;
         window.removeEventListener("pointermove", onMove);
         window.removeEventListener("pointerup", onUp);
         window.removeEventListener("pointercancel", onUp);
@@ -1473,6 +1513,13 @@ export class InlineTextEditor {
       window.addEventListener("pointermove", onMove);
       window.addEventListener("pointerup", onUp);
       window.addEventListener("pointercancel", onUp);
+    });
+
+    editableDiv.addEventListener("dblclick", (e) => {
+      e.stopPropagation();
+      if (editableDiv.contentEditable !== "true") {
+        this._enterInlineTypingMode();
+      }
     });
 
     overlayLayer.appendChild(box);
@@ -1486,14 +1533,16 @@ export class InlineTextEditor {
       this._checkTextOverflow();
     });
 
-    setTimeout(() => {
-      editableDiv.focus();
-      const range = document.createRange();
-      range.selectNodeContents(editableDiv);
-      const sel = window.getSelection();
-      sel.removeAllRanges();
-      sel.addRange(range);
-    }, 50);
+    if (!isTouch) {
+      setTimeout(() => {
+        editableDiv.focus();
+        const range = document.createRange();
+        range.selectNodeContents(editableDiv);
+        const sel = window.getSelection();
+        sel.removeAllRanges();
+        sel.addRange(range);
+      }, 50);
+    }
 
     box.addEventListener("click", (e) => e.stopPropagation());
     box.addEventListener("mousedown", (e) => e.stopPropagation());
@@ -1513,6 +1562,25 @@ export class InlineTextEditor {
     };
     window.addEventListener("scroll", onScrollReposition, { passive: true });
     document.getElementById("center-workspace")?.addEventListener("scroll", onScrollReposition, { passive: true });
+  }
+
+  _enterInlineTypingMode() {
+    if (!this.activeBoxEl) return;
+    const editableDiv = this.activeBoxEl.querySelector(".inplace-text-editable");
+    if (!editableDiv) return;
+    editableDiv.contentEditable = "true";
+    editableDiv.style.cursor = "text";
+    editableDiv.style.userSelect = "text";
+    const okLabel = this.miniToolbarEl?.querySelector("#mt-ok-label");
+    if (okLabel) okLabel.textContent = "Done";
+    setTimeout(() => {
+      editableDiv.focus();
+      const range = document.createRange();
+      range.selectNodeContents(editableDiv);
+      const sel = window.getSelection();
+      sel.removeAllRanges();
+      sel.addRange(range);
+    }, 30);
   }
 
   _positionMiniToolbar(box) {
