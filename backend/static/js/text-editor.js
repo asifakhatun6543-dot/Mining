@@ -416,9 +416,9 @@ export class InlineTextEditor {
         <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
       </button>
 
-      <!-- More Options Button -->
-      <button type="button" class="mini-btn" id="mt-more-btn" title="More formatting options" style="height: 26px; padding: 0 6px;">
-        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/><circle cx="5" cy="12" r="1"/></svg>
+      <!-- Settings Gear Button (Opens Integrated Bottom Settings Panel) -->
+      <button type="button" class="mini-btn" id="mt-more-btn" title="Text Settings" style="height: 26px; padding: 0 6px;">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
       </button>
       <span id="mt-overflow-pill" style="display: none; font-size: 10px; font-weight: 700; color: #b45309; background: #fef3c7; border: 1px solid #f59e0b; border-radius: 4px; padding: 1px 5px; cursor: pointer;" title="Replacement text exceeds available width. Click to scale down.">⚠ Fit</span>
       <div id="mt-error-banner" style="display: none; width: 100%; max-width: 100%; box-sizing: border-box; flex-basis: 100%; flex-wrap: wrap; margin-top: 4px; padding: 5px 8px; background: #fef2f2; border: 1px solid #fca5a5; border-radius: 6px; color: #b91c1c; font-size: 11px; align-items: center; justify-content: space-between; gap: 6px;">
@@ -428,42 +428,95 @@ export class InlineTextEditor {
       </div>
     `;
 
-    // 2. More Options Dropdown Menu
+    // 2. Integrated Bottom Settings Panel (Non-dimming, scrollable, with Font sub-view)
     this.moreMenuEl = document.createElement("div");
-    this.moreMenuEl.className = "floating-mini-toolbar";
+    this.moreMenuEl.id = "mt-bottom-settings-panel";
+    this.moreMenuEl.className = "bottom-settings-panel";
     this.moreMenuEl.style.display = "none";
-    this.moreMenuEl.style.height = "auto";
-    this.moreMenuEl.style.padding = "8px 10px";
-    this.moreMenuEl.style.flexDirection = "column";
-    this.moreMenuEl.style.alignItems = "stretch";
-    this.moreMenuEl.style.gap = "8px";
-    this.moreMenuEl.style.zIndex = "105";
 
     this.moreMenuEl.innerHTML = `
-      <div style="display: flex; align-items: center; justify-content: space-between; gap: 8px;">
-        <span style="font-size: 11px; color: #64748b; font-weight: 600;">Alignment:</span>
-        <div style="display: flex; gap: 2px;">
-          <button type="button" class="mini-btn" id="mt-align-left" title="Align Left">
-            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="17" y1="10" x2="3" y2="10"/><line x1="21" y1="6" x2="3" y2="6"/><line x1="21" y1="14" x2="3" y2="14"/><line x1="17" y1="18" x2="3" y2="18"/></svg>
-          </button>
-          <button type="button" class="mini-btn" id="mt-align-center" title="Center">
-            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="10" x2="6" y2="10"/><line x1="21" y1="6" x2="3" y2="6"/><line x1="18" y1="14" x2="6" y2="14"/><line x1="21" y1="18" x2="3" y2="18"/></svg>
-          </button>
-          <button type="button" class="mini-btn" id="mt-align-right" title="Align Right">
-            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="21" y1="10" x2="7" y2="10"/><line x1="21" y1="6" x2="3" y2="6"/><line x1="21" y1="14" x2="7" y2="14"/><line x1="21" y1="18" x2="3" y2="18"/></svg>
-          </button>
+      <div id="bs-settings-view" class="bs-view">
+        <div class="bs-header">
+          <button type="button" id="bs-cancel-btn" class="bs-header-btn">Cancel</button>
+          <span class="bs-title">Text Settings</span>
+          <button type="button" id="bs-apply-btn" class="bs-header-btn bs-apply">Apply</button>
+        </div>
+        <div class="bs-scroll-body">
+          <div class="bs-row bs-row-clickable" id="bs-font-row">
+            <span class="bs-label">Font</span>
+            <span class="bs-value-wrap"><span id="bs-font-value">Arial</span> <span class="bs-chevron">&rsaquo;</span></span>
+          </div>
+          <div class="bs-row">
+            <span class="bs-label">Font size</span>
+            <div class="bs-stepper">
+              <button type="button" id="bs-size-minus" class="bs-step-btn">&minus;</button>
+              <span id="bs-size-value" class="bs-step-val">12</span>
+              <button type="button" id="bs-size-plus" class="bs-step-btn">+</button>
+            </div>
+          </div>
+          <div class="bs-row">
+            <span class="bs-label">Font style</span>
+            <div class="bs-btn-group">
+              <button type="button" id="bs-bold-btn" class="bs-toggle-btn" style="font-weight:800;">B</button>
+              <button type="button" id="bs-italic-btn" class="bs-toggle-btn" style="font-style:italic;">I</button>
+              <button type="button" id="bs-underline-btn" class="bs-toggle-btn" style="text-decoration:underline;">U</button>
+            </div>
+          </div>
+          <div class="bs-row">
+            <span class="bs-label">Font color</span>
+            <input type="color" id="bs-color-picker" value="#000000" class="bs-color-input" />
+          </div>
+          <div class="bs-row">
+            <span class="bs-label">Horizontal align</span>
+            <div class="bs-btn-group">
+              <button type="button" id="mt-align-left" class="bs-toggle-btn" title="Left">L</button>
+              <button type="button" id="mt-align-center" class="bs-toggle-btn" title="Center">C</button>
+              <button type="button" id="mt-align-right" class="bs-toggle-btn" title="Right">R</button>
+            </div>
+          </div>
+          <div class="bs-row">
+            <span class="bs-label">Character spacing</span>
+            <div class="bs-stepper">
+              <button type="button" id="bs-cspace-minus" class="bs-step-btn">&minus;</button>
+              <span id="bs-cspace-value" class="bs-step-val">0</span>
+              <button type="button" id="bs-cspace-plus" class="bs-step-btn">+</button>
+            </div>
+          </div>
+          <div class="bs-row">
+            <span class="bs-label">Line spacing</span>
+            <div class="bs-stepper">
+              <button type="button" id="bs-lspace-minus" class="bs-step-btn">&minus;</button>
+              <span id="bs-lspace-value" class="bs-step-val">1.15</span>
+              <button type="button" id="bs-lspace-plus" class="bs-step-btn">+</button>
+            </div>
+          </div>
+          <div class="bs-row">
+            <span class="bs-label">Fit Mode</span>
+            <select id="mt-fit-select" class="bs-select">
+              <option value="expand" selected>Expand Bounds</option>
+              <option value="scale_down">Scale Font Down</option>
+              <option value="exact">Exact BBox</option>
+            </select>
+          </div>
+          <div id="mt-font-status" style="font-size: 11px; opacity: 0.8; padding: 6px 2px;"></div>
         </div>
       </div>
-      <div style="display: flex; align-items: center; justify-content: space-between; gap: 8px;">
-        <span style="font-size: 11px; color: #64748b; font-weight: 600;">Fit Mode:</span>
-        <select class="mini-select" id="mt-fit-select" style="font-size: 11px; height: 24px;">
-          <option value="expand" selected>Expand Bounds</option>
-          <option value="scale_down">Scale Font Down</option>
-          <option value="exact">Exact BBox</option>
-        </select>
+
+      <div id="bs-font-view" class="bs-view" style="display:none;">
+        <div class="bs-header">
+          <button type="button" id="bs-font-back-btn" class="bs-header-btn">&lsaquo; Back</button>
+          <span class="bs-title">Select Font</span>
+          <span style="width:48px;"></span>
+        </div>
+        <div style="padding: 8px 14px 4px 14px;">
+          <input type="search" id="bs-font-search" placeholder="Search fonts..." autocomplete="off" spellcheck="false" class="bs-search-input" />
+        </div>
+        <div id="bs-font-list" class="bs-scroll-body"></div>
       </div>
-      <div id="mt-font-status" style="font-size: 10.5px; color: #334155; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px; padding: 4px 6px; line-height: 1.3;"></div>
     `;
+
+    this.moreMenuEl.addEventListener("click", (e) => e.stopPropagation());
+    this.moreMenuEl.addEventListener("pointerdown", (e) => e.stopPropagation());
 
     document.body.appendChild(this.miniToolbarEl);
     document.body.appendChild(this.moreMenuEl);
@@ -648,42 +701,215 @@ export class InlineTextEditor {
       this._fitFontSizeToAvailableWidth();
     });
 
-    // More Options Menu Toggle
+    // Settings Gear Button -> Opens Integrated Bottom Settings Panel
     const moreBtn = this.miniToolbarEl.querySelector("#mt-more-btn");
+    const settingsView = this.moreMenuEl.querySelector("#bs-settings-view");
+    const fontView = this.moreMenuEl.querySelector("#bs-font-view");
+
+    const syncPanelControls = () => {
+      const p = this._pendingSettings || {};
+      const allFonts = this._getUnifiedFontList();
+      const fMatch = allFonts.find(f => f.key === p.font);
+      const fv = this.moreMenuEl.querySelector("#bs-font-value");
+      if (fv) fv.textContent = fMatch ? fMatch.label : (p.font || "Arial");
+      const sv = this.moreMenuEl.querySelector("#bs-size-value");
+      if (sv) sv.textContent = String(p.fontSize ?? 12);
+      this.moreMenuEl.querySelector("#bs-bold-btn")?.classList.toggle("active", !!p.isBold);
+      this.moreMenuEl.querySelector("#bs-italic-btn")?.classList.toggle("active", !!p.isItalic);
+      this.moreMenuEl.querySelector("#bs-underline-btn")?.classList.toggle("active", !!p.isUnderline);
+      const cp = this.moreMenuEl.querySelector("#bs-color-picker");
+      if (cp) cp.value = p.colorHex || "#000000";
+      const csv = this.moreMenuEl.querySelector("#bs-cspace-value");
+      if (csv) csv.textContent = String(p.letterSpacing ?? 0);
+      const lsv = this.moreMenuEl.querySelector("#bs-lspace-value");
+      if (lsv) lsv.textContent = String(p.lineHeight ?? 1.15);
+      this.moreMenuEl.querySelector("#mt-align-left")?.classList.toggle("active", (p.alignment || "left") === "left");
+      this.moreMenuEl.querySelector("#mt-align-center")?.classList.toggle("active", p.alignment === "center");
+      this.moreMenuEl.querySelector("#mt-align-right")?.classList.toggle("active", p.alignment === "right");
+      const fs = this.moreMenuEl.querySelector("#mt-fit-select");
+      if (fs) fs.value = p.fitMode || "expand";
+    };
+
+    const renderPanelFontList = (query = "") => {
+      const listEl = this.moreMenuEl.querySelector("#bs-font-list");
+      if (!listEl) return;
+      const q = query.trim().toLowerCase();
+      const allFonts = this._getUnifiedFontList();
+      const filtered = q ? allFonts.filter(f => f.label.toLowerCase().includes(q) || f.key.toLowerCase().includes(q)) : allFonts;
+      listEl.innerHTML = "";
+      if (filtered.length === 0) {
+        listEl.innerHTML = `<div style="padding:14px;text-align:center;opacity:0.6;font-size:12.5px;">No matching fonts</div>`;
+        return;
+      }
+      filtered.forEach(f => {
+        const isSel = (this._pendingSettings?.font || this.currentFont) === f.key;
+        const row = document.createElement("button");
+        row.type = "button";
+        row.className = `bs-font-item${isSel ? " selected" : ""}`;
+        row.style.fontFamily = f.css;
+        row.innerHTML = `<span>${f.label}</span><span class="bs-font-check">${isSel ? "&#10003;" : ""}</span>`;
+        row.addEventListener("click", () => {
+          if (this._pendingSettings) {
+            this._pendingSettings.font = f.key;
+            this._pendingSettings.userChangedFont = true;
+          }
+          syncPanelControls();
+          if (fontView) fontView.style.display = "none";
+          if (settingsView) settingsView.style.display = "flex";
+        });
+        listEl.appendChild(row);
+      });
+    };
+
     moreBtn?.addEventListener("click", (e) => {
       e.stopPropagation();
-      const isVisible = this.moreMenuEl.style.display === "flex";
-      this.moreMenuEl.style.display = isVisible ? "none" : "flex";
       if (stylePopover) stylePopover.style.display = "none";
-      if (!isVisible) {
-        const rect = moreBtn.getBoundingClientRect();
-        this.moreMenuEl.style.top = `${rect.bottom + 6}px`;
-        this.moreMenuEl.style.left = `${Math.min(window.innerWidth - 220, rect.left - 100)}px`;
+      const isOpen = this.moreMenuEl.style.display === "flex";
+      if (isOpen) {
+        this.moreMenuEl.style.display = "none";
+        return;
       }
+      this._pendingSettings = {
+        font: this.currentFont,
+        userChangedFont: !!this.userChangedFont,
+        fontSize: this.currentFontSize,
+        isBold: this.isBold,
+        isItalic: this.isItalic,
+        isUnderline: this.isUnderline,
+        colorHex: this.currentColorHex,
+        letterSpacing: this.currentLetterSpacing || 0,
+        lineHeight: this.currentLineHeight || 1.15,
+        alignment: this.currentAlignment || "left",
+        fitMode: this.currentFitMode || "expand"
+      };
+      syncPanelControls();
+      if (settingsView) settingsView.style.display = "flex";
+      if (fontView) fontView.style.display = "none";
+      this.moreMenuEl.style.display = "flex";
     });
 
-    // Alignments in More Menu
-    const alignL = this.moreMenuEl.querySelector("#mt-align-left");
-    const alignC = this.moreMenuEl.querySelector("#mt-align-center");
-    const alignR = this.moreMenuEl.querySelector("#mt-align-right");
+    this.moreMenuEl.querySelector("#bs-cancel-btn")?.addEventListener("click", () => {
+      this._pendingSettings = null;
+      this.moreMenuEl.style.display = "none";
+    });
 
-    alignL?.addEventListener("click", () => this._setAlignment("left"));
-    alignC?.addEventListener("click", () => this._setAlignment("center"));
-    alignR?.addEventListener("click", () => this._setAlignment("right"));
+    this.moreMenuEl.querySelector("#bs-apply-btn")?.addEventListener("click", () => {
+      const p = this._pendingSettings;
+      if (p) {
+        if (p.userChangedFont || p.font !== this.currentFont) {
+          this.userChangedFont = true;
+          this.userChangedStyle = true;
+          this._setSelectedFont(p.font);
+        }
+        if (p.fontSize !== this.currentFontSize || p.isBold !== this.isBold || p.isItalic !== this.isItalic || p.isUnderline !== this.isUnderline || p.colorHex !== this.currentColorHex) {
+          this.userChangedStyle = true;
+        }
+        this.currentFontSize = p.fontSize;
+        this.isBold = p.isBold;
+        this.isItalic = p.isItalic;
+        this.isUnderline = p.isUnderline;
+        this.currentColorHex = p.colorHex;
+        this.currentColorRgb = this._hexToRgbArray(p.colorHex);
+        this.currentLetterSpacing = p.letterSpacing;
+        this.currentLineHeight = p.lineHeight;
+        this.currentAlignment = p.alignment;
+        this.currentFitMode = p.fitMode;
 
+        const sizeInput = this.miniToolbarEl.querySelector("#mt-font-size");
+        if (sizeInput) sizeInput.value = this.currentFontSize;
+        const cp = this.miniToolbarEl.querySelector("#mt-color-picker");
+        if (cp) cp.value = this.currentColorHex;
+        this._setAlignment(this.currentAlignment);
+        this._updateFontStatusBadge();
+        this._updateEditableStyle();
+        this._checkTextOverflow();
+      }
+      this.moreMenuEl.style.display = "none";
+    });
+
+    this.moreMenuEl.querySelector("#bs-font-row")?.addEventListener("click", () => {
+      if (settingsView) settingsView.style.display = "none";
+      if (fontView) fontView.style.display = "flex";
+      const s = this.moreMenuEl.querySelector("#bs-font-search");
+      if (s) s.value = "";
+      renderPanelFontList("");
+      setTimeout(() => s?.focus(), 40);
+    });
+
+    this.moreMenuEl.querySelector("#bs-font-back-btn")?.addEventListener("click", () => {
+      if (fontView) fontView.style.display = "none";
+      if (settingsView) settingsView.style.display = "flex";
+    });
+
+    this.moreMenuEl.querySelector("#bs-font-search")?.addEventListener("input", (e) => {
+      renderPanelFontList(e.target.value);
+    });
+
+    this.moreMenuEl.querySelector("#bs-size-minus")?.addEventListener("click", () => {
+      if (!this._pendingSettings) return;
+      this._pendingSettings.fontSize = Math.max(4, Math.round((this._pendingSettings.fontSize - 0.5) * 10) / 10);
+      syncPanelControls();
+    });
+    this.moreMenuEl.querySelector("#bs-size-plus")?.addEventListener("click", () => {
+      if (!this._pendingSettings) return;
+      this._pendingSettings.fontSize = Math.min(144, Math.round((this._pendingSettings.fontSize + 0.5) * 10) / 10);
+      syncPanelControls();
+    });
+    this.moreMenuEl.querySelector("#bs-bold-btn")?.addEventListener("click", () => {
+      if (!this._pendingSettings) return;
+      this._pendingSettings.isBold = !this._pendingSettings.isBold;
+      syncPanelControls();
+    });
+    this.moreMenuEl.querySelector("#bs-italic-btn")?.addEventListener("click", () => {
+      if (!this._pendingSettings) return;
+      this._pendingSettings.isItalic = !this._pendingSettings.isItalic;
+      syncPanelControls();
+    });
+    this.moreMenuEl.querySelector("#bs-underline-btn")?.addEventListener("click", () => {
+      if (!this._pendingSettings) return;
+      this._pendingSettings.isUnderline = !this._pendingSettings.isUnderline;
+      syncPanelControls();
+    });
+    this.moreMenuEl.querySelector("#bs-color-picker")?.addEventListener("input", (e) => {
+      if (!this._pendingSettings) return;
+      this._pendingSettings.colorHex = e.target.value;
+    });
+    this.moreMenuEl.querySelector("#bs-cspace-minus")?.addEventListener("click", () => {
+      if (!this._pendingSettings) return;
+      this._pendingSettings.letterSpacing = Math.max(-2, Math.round((this._pendingSettings.letterSpacing - 0.2) * 10) / 10);
+      syncPanelControls();
+    });
+    this.moreMenuEl.querySelector("#bs-cspace-plus")?.addEventListener("click", () => {
+      if (!this._pendingSettings) return;
+      this._pendingSettings.letterSpacing = Math.min(10, Math.round((this._pendingSettings.letterSpacing + 0.2) * 10) / 10);
+      syncPanelControls();
+    });
+    this.moreMenuEl.querySelector("#bs-lspace-minus")?.addEventListener("click", () => {
+      if (!this._pendingSettings) return;
+      this._pendingSettings.lineHeight = Math.max(0.8, Math.round((this._pendingSettings.lineHeight - 0.05) * 100) / 100);
+      syncPanelControls();
+    });
+    this.moreMenuEl.querySelector("#bs-lspace-plus")?.addEventListener("click", () => {
+      if (!this._pendingSettings) return;
+      this._pendingSettings.lineHeight = Math.min(2.5, Math.round((this._pendingSettings.lineHeight + 0.05) * 100) / 100);
+      syncPanelControls();
+    });
+
+    this.moreMenuEl.querySelector("#mt-align-left")?.addEventListener("click", () => {
+      if (this._pendingSettings) { this._pendingSettings.alignment = "left"; syncPanelControls(); }
+    });
+    this.moreMenuEl.querySelector("#mt-align-center")?.addEventListener("click", () => {
+      if (this._pendingSettings) { this._pendingSettings.alignment = "center"; syncPanelControls(); }
+    });
+    this.moreMenuEl.querySelector("#mt-align-right")?.addEventListener("click", () => {
+      if (this._pendingSettings) { this._pendingSettings.alignment = "right"; syncPanelControls(); }
+    });
     this.moreMenuEl.querySelector("#mt-fit-select")?.addEventListener("change", (e) => {
-      this.currentFitMode = e.target.value;
+      if (this._pendingSettings) this._pendingSettings.fitMode = e.target.value;
     });
 
     // Drag to move in-place box
     this._bindDragHandler();
-
-    // Close more menu when clicking outside
-    document.addEventListener("click", (e) => {
-      if (!this.moreMenuEl.contains(e.target) && e.target !== moreBtn) {
-        this.moreMenuEl.style.display = "none";
-      }
-    });
   }
 
   _bindDragHandler() {
@@ -1367,8 +1593,8 @@ export class InlineTextEditor {
 
     box.appendChild(editableDiv);
 
-    // 4 Corner White Circle Resize Handles (TL, TR, BL, BR) with mouse + touch support
-    const handleDirs = ["nw", "ne", "sw", "se"];
+    // 8 Resize Handles (TL, TC, TR, ML, MR, BL, BC, BR) with mouse + touch support
+    const handleDirs = ["nw", "n", "ne", "w", "e", "sw", "s", "se"];
     const pageDim = State.pageDimensions[pageIndex] || { width: 612, height: 792 };
     handleDirs.forEach(dir => {
       const handle = document.createElement("div");

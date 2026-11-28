@@ -17,6 +17,13 @@ export class PDFRenderer {
     this.renderedPages = new Map();
     this.renderTasks = new Map();
     this.suppressedKeysByPage = new Map();
+    this._renderSeqByPage = new Map();
+  }
+
+  _nextRenderSeq(pageIndex) {
+    const next = (this._renderSeqByPage.get(pageIndex) || 0) + 1;
+    this._renderSeqByPage.set(pageIndex, next);
+    return next;
   }
 
   isSpanSuppressedOnCanvas(pageIndex, bbox) {
@@ -33,6 +40,7 @@ export class PDFRenderer {
       await this.renderPage(pageIndex);
       return true;
     }
+    const mySeq = this._nextRenderSeq(pageIndex);
     try {
       const { StandardFonts, rgb, degrees } = window.PDFLib;
       const drawFallbackFn = async (pdfDoc, page, edit, box) => {
@@ -155,13 +163,18 @@ export class PDFRenderer {
       const targetW = Math.floor(viewport.width * dpr);
       const targetH = Math.floor(viewport.height * dpr);
 
-      // Render into an offscreen canvas first to eliminate any white flash when committing Done
       const offCanvas = document.createElement("canvas");
       offCanvas.width = targetW;
       offCanvas.height = targetH;
       const offCtx = offCanvas.getContext("2d");
       offCtx.scale(dpr, dpr);
       await pdfPage.render({ canvasContext: offCtx, viewport }).promise;
+
+      // Drop stale render if a newer render started while awaiting
+      if (this._renderSeqByPage.get(pageIndex) !== mySeq) {
+        try { tempDoc.destroy(); } catch (_) {}
+        return false;
+      }
 
       if (pageContainer) {
         pageContainer.style.width = `${viewport.width}px`;
@@ -255,6 +268,7 @@ export class PDFRenderer {
         await this.renderTasks.get(pageIndex).cancel();
       } catch (e) {}
     }
+    const mySeq = this._nextRenderSeq(pageIndex);
 
     const pdfPage = await State.pdfDoc.getPage(pageIndex + 1);
     const viewport = pdfPage.getViewport({ scale: State.zoomScale });
@@ -263,31 +277,38 @@ export class PDFRenderer {
     const pageContainer = document.getElementById(`page-container-${pageIndex}`);
     const canvas = document.getElementById(`page-canvas-${pageIndex}`);
     const textLayerDiv = document.getElementById(`page-text-layer-${pageIndex}`);
-    const overlayLayer = document.getElementById(`page-overlay-${pageIndex}`);
 
     if (!pageContainer || !canvas) return;
 
-    pageContainer.style.width = `${viewport.width}px`;
-    pageContainer.style.height = `${viewport.height}px`;
+    const targetW = Math.floor(viewport.width * dpr);
+    const targetH = Math.floor(viewport.height * dpr);
 
-    canvas.width = Math.floor(viewport.width * dpr);
-    canvas.height = Math.floor(viewport.height * dpr);
-    canvas.style.width = `${viewport.width}px`;
-    canvas.style.height = `${viewport.height}px`;
+    // Double-buffer render offscreen so the visible canvas never flashes white
+    const offCanvas = document.createElement("canvas");
+    offCanvas.width = targetW;
+    offCanvas.height = targetH;
+    const offCtx = offCanvas.getContext("2d");
+    offCtx.scale(dpr, dpr);
 
-    const ctx = canvas.getContext("2d");
-    ctx.scale(dpr, dpr);
-
-    const renderContext = {
-      canvasContext: ctx,
-      viewport: viewport
-    };
-
-    const renderTask = pdfPage.render(renderContext);
+    const renderTask = pdfPage.render({ canvasContext: offCtx, viewport });
     this.renderTasks.set(pageIndex, renderTask);
 
     try {
       await renderTask.promise;
+      if (this._renderSeqByPage.get(pageIndex) !== mySeq) return;
+
+      pageContainer.style.width = `${viewport.width}px`;
+      pageContainer.style.height = `${viewport.height}px`;
+      if (canvas.width !== targetW || canvas.height !== targetH) {
+        canvas.width = targetW;
+        canvas.height = targetH;
+      }
+      canvas.style.width = `${viewport.width}px`;
+      canvas.style.height = `${viewport.height}px`;
+      const ctx = canvas.getContext("2d");
+      ctx.setTransform(1, 0, 0, 1, 0, 0);
+      ctx.clearRect(0, 0, targetW, targetH);
+      ctx.drawImage(offCanvas, 0, 0);
       this.renderedPages.set(pageIndex, true);
     } catch (err) {
       if (err.name !== "RenderingCancelledException") {
