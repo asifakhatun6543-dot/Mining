@@ -583,10 +583,10 @@
    position: absolute;
    width: 12px;
    height: 12px;
-   background: #2563eb;
-   border: 2px solid #ffffff;
+   background: #ffffff;
+   border: 1.5px solid #2563eb;
    border-radius: 50%;
-   box-shadow: 0 1px 4px rgba(15, 23, 42, 0.35);
+   box-shadow: 0 1px 4px rgba(15, 23, 42, 0.28);
    z-index: 90;
    touch-action: none;
    box-sizing: border-box;

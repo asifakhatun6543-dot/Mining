@@ -198,7 +198,7 @@ async function runConversionTests() {
 
   // 7. Verify 8-handle resize & Done commit UI invariants in text-editor.js
   const editorSrc = fs.readFileSync(path.join(ROOT, "js/text-editor.js"), "utf8");
-  assert.ok(editorSrc.includes('["nw", "n", "ne", "w", "e", "sw", "s", "se"]'), "8 resize handles must exist");
+  assert.ok(editorSrc.includes('["nw", "ne", "sw", "se"]'), "4 corner white circle resize handles must exist");
   assert.ok(editorSrc.includes("async applyEdit()"), "applyEdit must be async and await commit before closing");
   assert.ok(editorSrc.includes("mt-error-banner"), "Inline error banner must keep toolbar open on commit failure");
 

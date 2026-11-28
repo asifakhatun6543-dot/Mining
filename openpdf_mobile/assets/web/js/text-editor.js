@@ -1367,8 +1367,8 @@ export class InlineTextEditor {
 
     box.appendChild(editableDiv);
 
-    // 8 Resize Handles (TL, TC, TR, ML, MR, BL, BC, BR) with mouse + touch support
-    const handleDirs = ["nw", "n", "ne", "w", "e", "sw", "s", "se"];
+    // 4 Corner White Circle Resize Handles (TL, TR, BL, BR) with mouse + touch support
+    const handleDirs = ["nw", "ne", "sw", "se"];
     const pageDim = State.pageDimensions[pageIndex] || { width: 612, height: 792 };
     handleDirs.forEach(dir => {
       const handle = document.createElement("div");

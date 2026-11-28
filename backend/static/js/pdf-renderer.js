@@ -152,18 +152,31 @@ export class PDFRenderer {
       const pageContainer = document.getElementById(`page-container-${pageIndex}`);
       const canvas = document.getElementById(`page-canvas-${pageIndex}`);
       if (!canvas) return false;
+      const targetW = Math.floor(viewport.width * dpr);
+      const targetH = Math.floor(viewport.height * dpr);
+
+      // Render into an offscreen canvas first to eliminate any white flash when committing Done
+      const offCanvas = document.createElement("canvas");
+      offCanvas.width = targetW;
+      offCanvas.height = targetH;
+      const offCtx = offCanvas.getContext("2d");
+      offCtx.scale(dpr, dpr);
+      await pdfPage.render({ canvasContext: offCtx, viewport }).promise;
+
       if (pageContainer) {
         pageContainer.style.width = `${viewport.width}px`;
         pageContainer.style.height = `${viewport.height}px`;
       }
-      canvas.width = Math.floor(viewport.width * dpr);
-      canvas.height = Math.floor(viewport.height * dpr);
+      if (canvas.width !== targetW || canvas.height !== targetH) {
+        canvas.width = targetW;
+        canvas.height = targetH;
+      }
       canvas.style.width = `${viewport.width}px`;
       canvas.style.height = `${viewport.height}px`;
       const ctx = canvas.getContext("2d");
-      ctx.scale(dpr, dpr);
-
-      await pdfPage.render({ canvasContext: ctx, viewport }).promise;
+      ctx.setTransform(1, 0, 0, 1, 0, 0);
+      ctx.clearRect(0, 0, targetW, targetH);
+      ctx.drawImage(offCanvas, 0, 0);
       this.suppressedKeysByPage.set(pageIndex, res.appliedKeys);
       try { tempDoc.destroy(); } catch (_) {}
       return true;

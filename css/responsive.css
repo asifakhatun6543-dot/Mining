@@ -363,13 +363,14 @@ html, body {
     height: 18px !important;
   }
 
-  /* Center Workspace: Full Screen Width with Smooth Horizontal Panning */
+  /* Center Workspace: Full Screen Width with Centered Vertical Alignment */
   .center-workspace {
-    padding: 10px 4px 92px 4px !important; /* Bottom clearance for docked toolbar */
+    padding: 16px 4px 96px 4px !important; /* Balanced clearance between top header and bottom toolbar */
     width: 100% !important;
     display: flex !important;
     flex-direction: column !important;
     align-items: center !important;
+    justify-content: safe center !important;
     overflow-x: auto !important;
     -webkit-overflow-scrolling: touch !important;
   }
@@ -377,6 +378,7 @@ html, body {
   .pages-viewport {
     width: 100% !important;
     max-width: 100% !important;
+    margin: auto 0 !important;
     display: flex !important;
     flex-direction: column !important;
     align-items: center !important;
